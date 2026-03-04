@@ -1,13 +1,33 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/AppSidebar";
+import { SubfunctionForm } from "@/components/SubfunctionForm";
+import { MetricsFooter } from "@/components/MetricsFooter";
+import { AgendaProvider } from "@/context/AgendaContext";
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
-    </div>
+    <AgendaProvider>
+      <SidebarProvider>
+        <div className="min-h-screen flex w-full">
+          <AppSidebar />
+          <div className="flex-1 flex flex-col min-h-screen">
+            <header className="h-14 flex items-center gap-3 border-b bg-ucp-red px-4">
+              <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
+              <h1 className="text-primary-foreground font-semibold text-lg">
+                Sistema de Gestión de Agenda Docente
+              </h1>
+              <span className="text-primary-foreground/70 text-sm ml-auto hidden sm:block">
+                Universidad Católica de Pereira
+              </span>
+            </header>
+            <main className="flex-1 p-6 overflow-auto">
+              <SubfunctionForm />
+            </main>
+            <MetricsFooter />
+          </div>
+        </div>
+      </SidebarProvider>
+    </AgendaProvider>
   );
 };
 
