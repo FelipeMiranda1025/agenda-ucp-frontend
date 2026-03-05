@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAgenda } from "@/context/AgendaContext";
 import { subfunctions } from "@/data/subfunctions";
+import ucpLogo from "@/assets/ucp-logo.png";
 
 const iconMap: { [key: string]: React.ElementType } = {
   "docencia-directa": BookOpen,
@@ -61,11 +62,11 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4">
+        <div className={collapsed ? "flex justify-center mb-2" : "mb-3"}>
+          <img src={ucpLogo} alt="Universidad Católica de Pereira" className={collapsed ? "h-8 w-auto" : "h-14 w-auto mb-1"} />
+        </div>
         {!collapsed && (
-          <div className="mb-3">
-            <h2 className="text-lg font-bold tracking-tight">UCP</h2>
-            <p className="text-xs opacity-80">Agenda Docente</p>
-          </div>
+          <p className="text-xs opacity-80">Agenda Docente</p>
         )}
         {!collapsed && (
           <div className="relative">
