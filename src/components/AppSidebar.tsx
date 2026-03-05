@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import { useAgenda } from "@/context/AgendaContext";
 import { subfunctions } from "@/data/subfunctions";
+import ucpLogo from "@/assets/ucp-logo.png";
 
 const iconMap: { [key: string]: React.ElementType } = {
   "docencia-directa": BookOpen,
