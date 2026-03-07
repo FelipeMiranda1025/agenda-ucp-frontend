@@ -88,7 +88,7 @@ export function SubfunctionForm() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-primary px-6 py-4 rounded-lg">
+      <div className="bg-ucp-red px-6 py-4 rounded-lg">
         <h1 className="text-xl font-bold text-primary-foreground">{config.title}</h1>
       </div>
 
