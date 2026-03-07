@@ -11,7 +11,7 @@ const Index = () => {
         <div className="min-h-screen flex w-full">
           <AppSidebar />
           <div className="flex-1 flex flex-col min-h-screen">
-            <header className="h-14 flex items-center gap-3 border-b bg-ucp-red px-4">
+            <header className="h-14 flex items-center gap-3 border-b bg-primary px-4">
               <SidebarTrigger className="text-primary-foreground hover:bg-primary-foreground/10" />
               <h1 className="text-primary-foreground font-semibold text-lg">
                 Sistema de Gestión de Agenda Docente
