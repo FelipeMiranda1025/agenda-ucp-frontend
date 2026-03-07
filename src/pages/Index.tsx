@@ -2,6 +2,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SubfunctionForm } from "@/components/SubfunctionForm";
 import { MetricsFooter } from "@/components/MetricsFooter";
+import { SummaryPanel } from "@/components/SummaryPanel";
 import { AgendaProvider } from "@/context/AgendaContext";
 
 const Index = () => {
