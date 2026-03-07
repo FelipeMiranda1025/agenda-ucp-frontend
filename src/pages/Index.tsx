@@ -26,6 +26,7 @@ const Index = () => {
             </main>
             <MetricsFooter />
           </div>
+          <SummaryPanel />
         </div>
       </SidebarProvider>
     </AgendaProvider>

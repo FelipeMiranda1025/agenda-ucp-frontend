@@ -90,7 +90,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/70 font-semibold uppercase text-xs tracking-wider">
+          <SidebarGroupLabel className="font-semibold uppercase text-xs tracking-wider">
             {collapsed ? "A" : "Actividades Diferentes"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
