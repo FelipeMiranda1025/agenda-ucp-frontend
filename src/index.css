@@ -38,14 +38,14 @@
     --ucp-green: 125 53% 33%;
     --ucp-green-dark: 125 53% 26%;
 
-    --sidebar-background: 125 53% 33%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 125 53% 33%;
-    --sidebar-accent: 125 53% 28%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 125 53% 28%;
-    --sidebar-ring: 0 0% 100%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 15%;
+    --sidebar-primary: 125 53% 33%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 95%;
+    --sidebar-accent-foreground: 0 0% 15%;
+    --sidebar-border: 0 0% 90%;
+    --sidebar-ring: 125 53% 33%;
   }
 
   .dark {
