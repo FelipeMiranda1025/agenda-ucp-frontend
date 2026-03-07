@@ -12,7 +12,7 @@ export function MetricsFooter() {
 
   return (
     <footer className="border-t bg-card px-6 py-3">
-      <div className="flex flex-wrap items-center gap-6 text-sm">
+      <div className="flex flex-wrap items-center justify-center gap-6 text-sm">
         {items.map((item) => (
           <div key={item.label} className="flex items-center gap-2">
             <span className="text-muted-foreground">{item.label}:</span>
