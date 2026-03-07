@@ -82,7 +82,7 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sidebar-foreground/70 font-semibold uppercase text-xs tracking-wider">
+          <SidebarGroupLabel className="font-semibold uppercase text-xs tracking-wider">
             {collapsed ? "P" : "Producción"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
