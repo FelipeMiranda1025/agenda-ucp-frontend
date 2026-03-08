@@ -29,6 +29,7 @@ const iconMap: { [key: string]: React.ElementType } = {
   "complementarias": Lightbulb,
   "formacion-docentes": Brain,
   "administrativas": Building2,
+  "distribucion-horaria": Calendar,
 };
 
 export function AppSidebar() {
