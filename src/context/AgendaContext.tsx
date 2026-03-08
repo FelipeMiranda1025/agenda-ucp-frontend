@@ -2,6 +2,8 @@ import React, { createContext, useContext, useState, useCallback, useMemo } from
 import { DropdownOption, Record as AgendaRecord, MetricasPie } from "@/types/agenda";
 import { initialDropdownOptions } from "@/data/initialDropdownOptions";
 import { subfunctions } from "@/data/subfunctions";
+import { DocentePlanta } from "@/types/docentePlanta";
+import { docentesPlanta } from "@/data/docentesPlanta";
 
 interface AgendaContextType {
   dropdownOptions: DropdownOption[];
@@ -18,6 +20,9 @@ interface AgendaContextType {
   setActiveSubfunction: (id: string) => void;
   searchTerm: string;
   setSearchTerm: (t: string) => void;
+  selectedDocente: DocentePlanta | null;
+  setSelectedDocente: (d: DocentePlanta | null) => void;
+  docentesList: DocentePlanta[];
 }
 
 const AgendaContext = createContext<AgendaContextType | null>(null);
@@ -34,6 +39,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [horasSemestreDefecto, setHorasSemestreDefecto] = useState(920);
   const [activeSubfunction, setActiveSubfunction] = useState("docencia-directa");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedDocente, setSelectedDocente] = useState<DocentePlanta | null>(docentesPlanta[0]);
 
   const addDropdownOption = useCallback((category: string, value: string) => {
     setDropdownOptions((prev) => [
@@ -101,6 +107,9 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setActiveSubfunction,
         searchTerm,
         setSearchTerm,
+        selectedDocente,
+        setSelectedDocente,
+        docentesList: docentesPlanta,
       }}
     >
       {children}

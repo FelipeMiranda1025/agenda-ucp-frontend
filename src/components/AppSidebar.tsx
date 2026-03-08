@@ -1,5 +1,6 @@
 import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain, Building2, Lightbulb, Heart, Award } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Sidebar,
   SidebarContent,
@@ -10,10 +11,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
+  SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useAgenda } from "@/context/AgendaContext";
 import { subfunctions } from "@/data/subfunctions";
+import { getDocenteFullName } from "@/types/docentePlanta";
 import ucpLogo from "@/assets/ucp-logo.png";
 
 const iconMap: { [key: string]: React.ElementType } = {
@@ -31,7 +34,7 @@ const iconMap: { [key: string]: React.ElementType } = {
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const { activeSubfunction, setActiveSubfunction, searchTerm, setSearchTerm } = useAgenda();
+  const { activeSubfunction, setActiveSubfunction, searchTerm, setSearchTerm, selectedDocente, setSelectedDocente, docentesList } = useAgenda();
 
   const prodSubs = subfunctions.filter((s) => s.sectionId === "produccion");
   const actSubs = subfunctions.filter((s) => s.sectionId === "actividades");
@@ -98,6 +101,35 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="p-3 border-t border-sidebar-border">
+        {!collapsed ? (
+          <div className="space-y-1.5">
+            <p className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider">Docente de planta</p>
+            <Select
+              value={selectedDocente?.id || ""}
+              onValueChange={(val) => {
+                const d = docentesList.find((doc) => doc.id === val) || null;
+                setSelectedDocente(d);
+              }}
+            >
+              <SelectTrigger className="h-9 bg-sidebar-accent border-sidebar-border text-sidebar-foreground text-sm">
+                <SelectValue placeholder="Seleccionar docente..." />
+              </SelectTrigger>
+              <SelectContent>
+                {docentesList.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {getDocenteFullName(d)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : (
+          <div className="flex justify-center" title={selectedDocente ? getDocenteFullName(selectedDocente) : "Sin docente"}>
+            <Users className="h-4 w-4 text-sidebar-foreground/70" />
+          </div>
+        )}
+      </SidebarFooter>
     </Sidebar>
   );
 }

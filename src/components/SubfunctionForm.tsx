@@ -90,6 +90,11 @@ export function SubfunctionForm() {
     <div className="space-y-6">
       <div className="bg-ucp-red px-6 py-4 rounded-lg">
         <h1 className="text-xl font-bold text-primary-foreground">{config.title}</h1>
+        {selectedDocente && (
+          <p className="text-sm text-primary-foreground/80 mt-1">
+            Docente: {[selectedDocente.firstName, selectedDocente.secondName, selectedDocente.firstLastName, selectedDocente.secondLastName].filter(Boolean).join(' ')}
+          </p>
+        )}
       </div>
 
       <Card>
