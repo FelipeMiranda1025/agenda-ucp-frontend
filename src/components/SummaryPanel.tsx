@@ -64,7 +64,7 @@ export function SummaryPanel() {
                   Subtotal: {group.records.reduce((s, r) => s + r.totalHoras, 0)}h
                 </div>
               </div>
-            ))
+            ))}
           </div>
         )}
       </ScrollArea>
