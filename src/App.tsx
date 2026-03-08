@@ -9,6 +9,7 @@ import { AgendaProvider } from "@/context/AgendaContext";
 import { LoginDialog } from "@/components/LoginDialog";
 import Index from "./pages/Index";
 import Profile from "./pages/Profile";
+import ScheduleBuilder from "./pages/ScheduleBuilder";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
