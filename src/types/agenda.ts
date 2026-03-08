@@ -8,13 +8,13 @@ export interface SubfunctionField {
   name: string;
   label: string;
   type: "dropdown" | "number" | "calculated";
-  category?: string; // for dropdown - links to dropdown_options category
+  category?: string;
   calculatedFrom?: { field1: string; field2: string; operation: "multiply" };
 }
 
 export interface SubfunctionConfig {
   id: string;
-  sectionId: "produccion" | "actividades";
+  sectionId: "produccion" | "actividades" | "horario";
   title: string;
   shortTitle: string;
   fields: SubfunctionField[];
@@ -33,4 +33,20 @@ export interface MetricasPie {
   promedioHorasSemana: number;
   horasSemestreDefecto: number;
   horasFaltantes: number;
+}
+
+export interface ScheduleBlock {
+  id: string;
+  recordId: string;
+  subfunctionId: string;
+  label: string;
+  color: string;
+  day: number; // 0=Lunes, 5=Sábado
+  hour: number; // 8-21
+}
+
+export interface ScheduleData {
+  docenteId: string;
+  blocks: ScheduleBlock[];
+  lastModified: string;
 }

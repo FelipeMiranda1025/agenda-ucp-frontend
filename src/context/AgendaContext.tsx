@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
-import { DropdownOption, Record as AgendaRecord, MetricasPie } from "@/types/agenda";
+import { DropdownOption, Record as AgendaRecord, MetricasPie, ScheduleBlock, ScheduleData } from "@/types/agenda";
 import { initialDropdownOptions } from "@/data/initialDropdownOptions";
 import { subfunctions } from "@/data/subfunctions";
 import { DocentePlanta } from "@/types/docentePlanta";
@@ -23,6 +23,9 @@ interface AgendaContextType {
   selectedDocente: DocentePlanta | null;
   setSelectedDocente: (d: DocentePlanta | null) => void;
   docentesList: DocentePlanta[];
+  saveSchedule: (blocks: ScheduleBlock[]) => void;
+  getSchedule: () => ScheduleData | null;
+  hasSchedule: boolean;
 }
 
 const AgendaContext = createContext<AgendaContextType | null>(null);
@@ -36,6 +39,7 @@ export const useAgenda = () => {
 export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>(initialDropdownOptions);
   const [recordsByDocente, setRecordsByDocente] = useState<{ [docenteId: string]: AgendaRecord[] }>({});
+  const [scheduleByDocente, setScheduleByDocente] = useState<{ [docenteId: string]: ScheduleData }>({});
   const [horasSemestreDefecto, setHorasSemestreDefecto] = useState(920);
   const [activeSubfunction, setActiveSubfunction] = useState("docencia-directa");
   const [searchTerm, setSearchTerm] = useState("");
@@ -83,6 +87,27 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     [records]
   );
 
+  const saveSchedule = useCallback((blocks: ScheduleBlock[]) => {
+    if (!docenteId) return;
+    setScheduleByDocente((prev) => ({
+      ...prev,
+      [docenteId]: {
+        docenteId,
+        blocks,
+        lastModified: new Date().toISOString(),
+      },
+    }));
+  }, [docenteId]);
+
+  const getSchedule = useCallback(() => {
+    return scheduleByDocente[docenteId] || null;
+  }, [scheduleByDocente, docenteId]);
+
+  const hasSchedule = useMemo(() => {
+    const s = scheduleByDocente[docenteId];
+    return !!s && s.blocks.length > 0;
+  }, [scheduleByDocente, docenteId]);
+
   const metricas = useMemo<MetricasPie>(() => {
     const prodIds = subfunctions.filter((s) => s.sectionId === "produccion").map((s) => s.id);
     const actIds = subfunctions.filter((s) => s.sectionId === "actividades").map((s) => s.id);
@@ -123,6 +148,9 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         selectedDocente,
         setSelectedDocente,
         docentesList: docentesPlanta,
+        saveSchedule,
+        getSchedule,
+        hasSchedule,
       }}
     >
       {children}

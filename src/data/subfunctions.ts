@@ -116,4 +116,12 @@ export const subfunctions: SubfunctionConfig[] = [
       { name: "totalHoras", label: "Total de horas", type: "calculated", calculatedFrom: { field1: "horasSemana", field2: "cantidadSemanas", operation: "multiply" } },
     ],
   },
+  // === HORARIO PERMANENCIA ===
+  {
+    id: "distribucion-horaria",
+    sectionId: "horario",
+    title: "3.1 Distribución horaria",
+    shortTitle: "Distribución Horaria",
+    fields: [],
+  },
 ];
