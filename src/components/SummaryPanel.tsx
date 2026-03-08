@@ -8,8 +8,10 @@ import { useNavigate } from "react-router-dom";
 
 export function SummaryPanel() {
   const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, selectedDocente, setActiveSubfunction } = useAgenda();
+  const navigate = useNavigate();
 
   const grouped = subfunctions
+    .filter((sf) => sf.sectionId !== "horario")
     .map((sf) => ({
       ...sf,
       records: records.filter((r) => r.subfunctionId === sf.id),
