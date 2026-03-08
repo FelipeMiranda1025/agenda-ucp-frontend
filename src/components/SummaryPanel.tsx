@@ -2,11 +2,12 @@ import { useAgenda } from "@/context/AgendaContext";
 import { subfunctions } from "@/data/subfunctions";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
 import { CheckCircle, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 
 export function SummaryPanel() {
-  const { records, metricas } = useAgenda();
+  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto } = useAgenda();
 
   const grouped = subfunctions
     .map((sf) => ({
@@ -20,7 +21,7 @@ export function SummaryPanel() {
   };
 
   return (
-    <div className="w-80 shrink-0 flex flex-col bg-card border-l min-h-screen">
+    <div className="w-80 shrink-0 flex flex-col bg-card border-l">
       <div className="flex items-center justify-between px-4 py-3 border-b bg-ucp-red">
         <h2 className="text-sm font-bold text-primary-foreground">Resumen de Datos</h2>
       </div>
@@ -32,32 +33,30 @@ export function SummaryPanel() {
             <p className="text-sm text-center">No hay registros aún. Agrega datos desde el formulario.</p>
           </div>
         ) : (
-          <>
-            <div className="space-y-4">
-              {grouped.map((group) => (
-                <div key={group.id}>
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
-                    {group.shortTitle}
-                  </h3>
-                  {group.records.map((record, i) => {
-                    const label = Object.values(record.data).find((v) => typeof v === "string") || `Registro ${i + 1}`;
-                    return (
-                      <div
-                        key={record.id}
-                        className="flex items-center justify-between py-1 text-sm border-b border-border/50 last:border-0"
-                      >
-                        <span className="truncate flex-1 text-foreground">{String(label)}</span>
-                        <span className="font-semibold text-primary ml-2">{record.totalHoras}h</span>
-                      </div>
-                    );
-                  })}
-                  <div className="text-right text-xs font-medium text-muted-foreground mt-1">
-                    Subtotal: {group.records.reduce((s, r) => s + r.totalHoras, 0)}h
-                  </div>
+          <div className="space-y-4">
+            {grouped.map((group) => (
+              <div key={group.id}>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                  {group.shortTitle}
+                </h3>
+                {group.records.map((record, i) => {
+                  const label = Object.values(record.data).find((v) => typeof v === "string") || `Registro ${i + 1}`;
+                  return (
+                    <div
+                      key={record.id}
+                      className="flex items-center justify-between py-1 text-sm border-b border-border/50 last:border-0"
+                    >
+                      <span className="truncate flex-1 text-foreground">{String(label)}</span>
+                      <span className="font-semibold text-primary ml-2">{record.totalHoras}h</span>
+                    </div>
+                  );
+                })}
+                <div className="text-right text-xs font-medium text-muted-foreground mt-1">
+                  Subtotal: {group.records.reduce((s, r) => s + r.totalHoras, 0)}h
                 </div>
-              ))}
-            </div>
-          </>
+              </div>
+            ))}
+          </div>
         )}
       </ScrollArea>
 
@@ -73,6 +72,16 @@ export function SummaryPanel() {
         <div className="flex justify-between">
           <span className="text-muted-foreground">Horas faltantes</span>
           <span className="font-bold text-destructive">{metricas.horasFaltantes}h</span>
+        </div>
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-muted-foreground">Horas semestre/defecto</span>
+          <Input
+            type="number"
+            min={1}
+            className="w-20 h-7 text-sm"
+            value={horasSemestreDefecto}
+            onChange={(e) => setHorasSemestreDefecto(Number(e.target.value) || 920)}
+          />
         </div>
       </div>
 
