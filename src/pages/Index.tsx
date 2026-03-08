@@ -2,7 +2,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SubfunctionForm } from "@/components/SubfunctionForm";
 import { SummaryPanel } from "@/components/SummaryPanel";
-import { AgendaProvider } from "@/context/AgendaContext";
+
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
@@ -27,8 +27,7 @@ const Index = () => {
     : "U";
 
   return (
-    <AgendaProvider>
-      <SidebarProvider>
+    <SidebarProvider>
         <div className="min-h-screen flex w-full">
           <AppSidebar />
           <div className="flex-1 flex flex-col min-h-screen min-w-0">
@@ -83,7 +82,6 @@ const Index = () => {
           </div>
         </div>
       </SidebarProvider>
-    </AgendaProvider>
   );
 };
 
