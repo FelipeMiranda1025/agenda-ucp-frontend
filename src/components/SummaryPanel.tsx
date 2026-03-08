@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, ClipboardList } from "lucide-react";
-import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 export function SummaryPanel() {
   const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, selectedDocente, setActiveSubfunction } = useAgenda();
