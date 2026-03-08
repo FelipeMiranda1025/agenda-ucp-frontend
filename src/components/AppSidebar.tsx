@@ -39,6 +39,7 @@ export function AppSidebar() {
 
   const prodSubs = subfunctions.filter((s) => s.sectionId === "produccion");
   const actSubs = subfunctions.filter((s) => s.sectionId === "actividades");
+  const horSubs = subfunctions.filter((s) => s.sectionId === "horario");
 
   const filter = (items: typeof subfunctions) =>
     searchTerm
