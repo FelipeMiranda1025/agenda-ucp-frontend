@@ -57,29 +57,29 @@ export function SummaryPanel() {
                 </div>
               ))}
             </div>
-
-            <div className="mt-4 pt-3 border-t space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total semestral</span>
-                <span className="font-bold">{metricas.totalHorasSemestrales}h</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Promedio/semana</span>
-                <span className="font-bold">{metricas.promedioHorasSemana.toFixed(1)}h</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Horas faltantes</span>
-                <span className="font-bold text-destructive">{metricas.horasFaltantes}h</span>
-              </div>
-            </div>
           </>
         )}
       </ScrollArea>
 
+      <div className="border-t px-4 pt-3 pb-1 space-y-1 text-sm">
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Total semestral</span>
+          <span className="font-bold">{metricas.totalHorasSemestrales}h</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Promedio/semana</span>
+          <span className="font-bold">{metricas.promedioHorasSemana.toFixed(1)}h</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-muted-foreground">Horas faltantes</span>
+          <span className="font-bold text-destructive">{metricas.horasFaltantes}h</span>
+        </div>
+      </div>
+
       <div className="p-4 border-t">
         <Button
           onClick={handleConfirm}
-          className="w-full gap-2 bg-ucp-red hover:bg-ucp-red/90 text-primary-foreground"
+          className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
         >
           <CheckCircle className="h-4 w-4" />
           Confirmar datos
