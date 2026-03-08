@@ -13,7 +13,7 @@ import { Plus, Trash2, Pencil, Save, X } from "lucide-react";
 import { toast } from "sonner";
 
 export function SubfunctionForm() {
-  const { activeSubfunction, dropdownOptions, addDropdownOption, addRecord, updateRecord, deleteRecord, getRecordsBySubfunction } = useAgenda();
+  const { activeSubfunction, dropdownOptions, addDropdownOption, addRecord, updateRecord, deleteRecord, getRecordsBySubfunction, selectedDocente } = useAgenda();
   const [formData, setFormData] = useState<{ [key: string]: string | number }>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<{ [key: string]: string | number }>({});
