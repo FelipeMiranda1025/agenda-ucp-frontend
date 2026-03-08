@@ -102,6 +102,14 @@ export function AppSidebar() {
             <SidebarMenu>{renderItems(actSubs)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel className="font-semibold uppercase text-xs tracking-wider">
+            {collapsed ? "H" : "Horario Permanencia"}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>{renderItems(horSubs)}</SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="p-3 border-t border-sidebar-border">
         {!collapsed ? (

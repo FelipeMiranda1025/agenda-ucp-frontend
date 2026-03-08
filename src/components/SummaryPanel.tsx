@@ -19,7 +19,7 @@ export function SummaryPanel() {
     .filter((g) => g.records.length > 0);
 
   const handleConfirm = () => {
-    toast.success("Datos confirmados exitosamente. Listos para guardar en base de datos.");
+    navigate("/schedule");
   };
 
   return (

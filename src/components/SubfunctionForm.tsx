@@ -13,7 +13,7 @@ import { Plus, Trash2, Pencil, Save, X } from "lucide-react";
 import { toast } from "sonner";
 
 export function SubfunctionForm() {
-  const { activeSubfunction, dropdownOptions, addDropdownOption, addRecord, updateRecord, deleteRecord, getRecordsBySubfunction, selectedDocente } = useAgenda();
+  const { activeSubfunction, dropdownOptions, addDropdownOption, addRecord, updateRecord, deleteRecord, getRecordsBySubfunction, selectedDocente, hasSchedule, getSchedule } = useAgenda();
   const [formData, setFormData] = useState<{ [key: string]: string | number }>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<{ [key: string]: string | number }>({});
@@ -23,6 +23,11 @@ export function SubfunctionForm() {
 
   const config = subfunctions.find((s) => s.id === activeSubfunction);
   if (!config) return null;
+
+  // Special case: Distribución horaria view
+  if (activeSubfunction === "distribucion-horaria") {
+    return <ScheduleReadOnlyView hasSchedule={hasSchedule} getSchedule={getSchedule} selectedDocente={selectedDocente} />;
+  }
 
   const records = getRecordsBySubfunction(activeSubfunction);
   const calculatedFields = config.fields.filter((f) => f.type === "calculated");
