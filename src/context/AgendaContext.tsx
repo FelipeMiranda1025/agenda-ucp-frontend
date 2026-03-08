@@ -35,7 +35,10 @@ export const useAgenda = () => {
 
 export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>(initialDropdownOptions);
-  const [records, setRecords] = useState<AgendaRecord[]>([]);
+  const [recordsByDocente, setRecordsByDocente] = useState<{ [docenteId: string]: AgendaRecord[] }>({});
+
+  const docenteId = selectedDocente?.id ?? "";
+  const records = useMemo(() => recordsByDocente[docenteId] || [], [recordsByDocente, docenteId]);
   const [horasSemestreDefecto, setHorasSemestreDefecto] = useState(920);
   const [activeSubfunction, setActiveSubfunction] = useState("docencia-directa");
   const [searchTerm, setSearchTerm] = useState("");
