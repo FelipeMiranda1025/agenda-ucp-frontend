@@ -1,65 +1,73 @@
 
 
-## Plan: Header con perfil/dark mode, selector de docente y tabla docentePlanta
+## Plan: Sistema de Gestión de Agenda Docente - Universidad Católica de Pereira
 
-### 1. Header verde -- agregar dark mode toggle y menú de perfil
+### Identidad Visual
+- Paleta UCP: verde institucional (#2E7D32 nav), rojo/granate (#8B1A1A header), blanco, gris claro
+- Logo UCP en la barra lateral superior
+- Tipografía limpia sans-serif, bordes redondeados, estilo institucional
 
-**`src/pages/Index.tsx`** -- En el header, después de "Universidad Católica de Pereira":
-- Botón toggle dark mode (icono sol/luna) usando `next-themes` (ya instalado)
-- Avatar con iniciales del usuario logueado + flecha hacia abajo (`ChevronDown`)
-- DropdownMenu con opciones: "Ver perfil" y "Cerrar sesión"
+### Estructura de la Aplicación
 
-**`src/App.tsx`** -- Envolver con `ThemeProvider` de `next-themes`
+**Layout Principal:**
+- Barra lateral colapsable con logo UCP, campo de búsqueda y menú de navegación con las 2 secciones principales y sus subfunciones
+- Área principal de contenido donde se abren los formularios/tablas de cada subfunción
+- Pie de página fijo con métricas consolidadas en tiempo real
 
-### 2. Página de perfil
+**Sección 1: PRODUCCIÓN** (4 subfunciones)
+- 1.1 Docencia directa — formulario con dropdowns (Asignatura, Semestre, Facultad, Programa, Jornada, Nivel), campos numéricos (Horas/semana, Semanas), cálculos automáticos
+- 1.2 Docencia indirecta — dropdown Actividad, campos numéricos, cálculos
+- 1.3 Dirección/asesorías trabajos de grado — dropdown Tipo trabajo, campos numéricos, cálculos
+- 1.4 Asesorías prácticas académicas — dropdown Actividad, campos numéricos, cálculos
+- Subtotal: "Total horas semestrales de producción"
 
-**`src/pages/Profile.tsx`** (nuevo) -- Framework con:
-- Avatar grande a la izquierda (iniciales, circulo grande)
-- A la derecha: tabla/card con toda la info del usuario (nombre, apellido, email, cédula, rol, estado)
-- Botón "Editar perfil" en esquina superior derecha que habilita edición inline
-- Ruta `/profile` en App.tsx
+**Sección 2: ACTIVIDADES DIFERENTES A LA DOCENCIA** (5 subfunciones)
+- 2.1 Investigación y desarrollo tecnológico
+- 2.2 Proyección social
+- 2.3 Actividades complementarias
+- 2.4 Formación de docentes
+- 2.5 Actividades académico-administrativas
+- Cada una con dropdown de Actividad, campos numéricos y cálculos automáticos
+- Subtotal: "Total horas semestrales actividades diferentes"
 
-### 3. Selector de docente de planta en sidebar
+**Pie de página con métricas:**
+- Total horas semestrales (suma de ambas secciones)
+- Promedio horas/semana (÷18)
+- Horas semestre/defecto (configurable, default 920)
+- Horas faltantes (diferencia)
 
-**`src/types/docentePlanta.ts`** (nuevo) -- Interface `DocentePlanta` con id, firstName, secondName, firstLastName, secondLastName
+### Base de Datos (Lovable Cloud / Supabase)
 
-**`src/data/docentesPlanta.ts`** (nuevo) -- 3 docentes hardcodeados:
-- Mateo Jiménez Castañeda
-- Jorge Leonardo Bañol
-- Francy Nelly Largo Muñoz
+**Tablas principales:**
+- `dropdown_options` — almacena opciones dinámicas por categoría (asignatura, semestre, actividad, etc.)
+- `docencia_directa` — registros de la subfunción 1.1
+- `docencia_indirecta` — registros 1.2
+- `trabajos_grado` — registros 1.3
+- `practicas_academicas` — registros 1.4
+- `actividades_investigacion` — registros 2.1
+- `actividades_proyeccion` — registros 2.2
+- `actividades_complementarias` — registros 2.3
+- `formacion_docentes` — registros 2.4
+- `actividades_administrativas` — registros 2.5
+- `configuracion` — valores como horas semestre/defecto
 
-**`src/context/AgendaContext.tsx`** -- Agregar estado `selectedDocente` y `setSelectedDocente`
+**Autenticación:** Login con email/password para docentes administrativos. Sin necesidad de tabla de perfiles adicional por ahora.
 
-**`src/components/AppSidebar.tsx`** -- En la parte inferior (SidebarFooter), un Select para elegir docente de planta. Al cambiar docente, se cargan sus registros (si existen).
+### Funcionalidades Clave
+- CRUD completo en cada subfunción (crear, editar, eliminar registros)
+- Agregar nuevas opciones a cualquier dropdown dinámicamente (botón "+" junto a cada select)
+- Cálculos automáticos en cliente (JavaScript) con actualización en tiempo real
+- Validación: solo números positivos en campos numéricos
+- Búsqueda sistematizada en la barra lateral para filtrar subfunciones
+- Responsive para desktop y tablet
+- Tablas con los registros existentes debajo de cada formulario
 
-### 4. Nombre del docente en barra roja del formulario
-
-**`src/components/SubfunctionForm.tsx`** -- En el CardHeader rojo, debajo del título de la subfunción, mostrar el nombre del docente seleccionado.
-
-**`src/components/SummaryPanel.tsx`** -- En la barra roja del resumen, también mostrar nombre del docente.
-
-### 5. Estructura de datos docentePlanta
-
-```text
-┌─────────────────────────────┐
-│ docentePlanta               │
-├─────────────────────────────┤
-│ id: string (cédula, PK)    │
-│ firstName: string           │
-│ secondName: string          │
-│ firstLastName: string       │
-│ secondLastName: string      │
-└─────────────────────────────┘
-```
-
-### Archivos a crear/modificar
-- `src/App.tsx` -- ThemeProvider + ruta /profile
-- `src/pages/Index.tsx` -- dark mode toggle + avatar dropdown en header
-- `src/pages/Profile.tsx` -- nueva página de perfil
-- `src/types/docentePlanta.ts` -- interface
-- `src/data/docentesPlanta.ts` -- datos iniciales
-- `src/context/AgendaContext.tsx` -- selectedDocente state
-- `src/components/AppSidebar.tsx` -- selector docente en footer
-- `src/components/SubfunctionForm.tsx` -- nombre docente bajo título rojo
-- `src/components/SummaryPanel.tsx` -- nombre docente bajo título rojo
+### Flujo de Implementación
+1. Setup de identidad visual y layout con sidebar
+2. Base de datos: tablas y opciones iniciales de dropdowns
+3. Componente reutilizable de formulario con cálculos automáticos
+4. Implementar las 9 subfunciones usando el componente reutilizable
+5. Pie de página con métricas consolidadas en tiempo real
+6. Gestión dinámica de opciones de dropdowns
+7. Autenticación y protección de rutas
 

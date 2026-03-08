@@ -7,7 +7,7 @@ import { CheckCircle, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 
 export function SummaryPanel() {
-  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto } = useAgenda();
+  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, selectedDocente } = useAgenda();
 
   const grouped = subfunctions
     .map((sf) => ({
@@ -22,8 +22,13 @@ export function SummaryPanel() {
 
   return (
     <div className="w-80 shrink-0 flex flex-col bg-card border-l">
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-ucp-red">
+      <div className="px-4 py-3 border-b bg-ucp-red">
         <h2 className="text-sm font-bold text-primary-foreground">Resumen de Datos</h2>
+        {selectedDocente && (
+          <p className="text-xs text-primary-foreground/80 mt-0.5">
+            {[selectedDocente.firstName, selectedDocente.firstLastName].filter(Boolean).join(' ')}
+          </p>
+        )}
       </div>
 
       <ScrollArea className="flex-1 px-4 py-3">
