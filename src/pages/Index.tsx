@@ -1,7 +1,6 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SubfunctionForm } from "@/components/SubfunctionForm";
-import { MetricsFooter } from "@/components/MetricsFooter";
 import { SummaryPanel } from "@/components/SummaryPanel";
 import { AgendaProvider } from "@/context/AgendaContext";
 
@@ -21,12 +20,13 @@ const Index = () => {
                 Universidad Católica de Pereira
               </span>
             </header>
-            <main className="flex-1 p-6 overflow-auto">
-              <SubfunctionForm />
-            </main>
-            <MetricsFooter />
+            <div className="flex-1 flex min-h-0">
+              <main className="flex-1 p-6 overflow-auto">
+                <SubfunctionForm />
+              </main>
+              <SummaryPanel />
+            </div>
           </div>
-          <SummaryPanel />
         </div>
       </SidebarProvider>
     </AgendaProvider>
