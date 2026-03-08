@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAgenda } from "@/context/AgendaContext";
 import { subfunctions } from "@/data/subfunctions";
-import { Record as AgendaRecord } from "@/types/agenda";
+import { Record as AgendaRecord, ScheduleData } from "@/types/agenda";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,11 +9,90 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, Pencil, Save, X } from "lucide-react";
+import { Plus, Trash2, Pencil, Save, X, CalendarX } from "lucide-react";
 import { toast } from "sonner";
+import { SUBFUNCTION_COLORS, DAYS, HOURS, formatHour } from "@/data/scheduleConstants";
+import { DocentePlanta } from "@/types/docentePlanta";
+
+function ScheduleReadOnlyView({ hasSchedule, getSchedule, selectedDocente }: { hasSchedule: boolean; getSchedule: () => ScheduleData | null; selectedDocente: DocentePlanta | null }) {
+  if (!hasSchedule) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-ucp-red px-6 py-4 rounded-lg">
+          <h1 className="text-xl font-bold text-primary-foreground">3.1 Distribución horaria</h1>
+          {selectedDocente && (
+            <p className="text-sm text-primary-foreground/80 mt-1">
+              Docente: {[selectedDocente.firstName, selectedDocente.firstLastName].filter(Boolean).join(' ')}
+            </p>
+          )}
+        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <CalendarX className="h-12 w-12 text-muted-foreground/40 mb-4" />
+            <p className="text-muted-foreground text-center">
+              Aún no se ha creado horario. Confirma las asignaturas en el resumen de registros.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const schedule = getSchedule()!;
+  return (
+    <div className="space-y-6">
+      <div className="bg-ucp-red px-6 py-4 rounded-lg">
+        <h1 className="text-xl font-bold text-primary-foreground">3.1 Distribución horaria</h1>
+        {selectedDocente && (
+          <p className="text-sm text-primary-foreground/80 mt-1">
+            Docente: {[selectedDocente.firstName, selectedDocente.firstLastName].filter(Boolean).join(' ')}
+          </p>
+        )}
+        <p className="text-xs text-primary-foreground/60 mt-1">
+          Última modificación: {new Date(schedule.lastModified).toLocaleString("es-CO")}
+        </p>
+      </div>
+      <Card>
+        <CardContent className="pt-6 overflow-auto">
+          <table className="w-full border-collapse text-xs">
+            <thead>
+              <tr>
+                <th className="w-20 p-2 border bg-muted text-muted-foreground font-semibold">Hora</th>
+                {DAYS.map((day) => (
+                  <th key={day} className="p-2 border bg-muted text-muted-foreground font-semibold">{day}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {HOURS.map((hour) => (
+                <tr key={hour}>
+                  <td className="p-2 border bg-muted/50 text-muted-foreground font-medium text-center whitespace-nowrap">
+                    {formatHour(hour)}
+                  </td>
+                  {DAYS.map((_, dayIdx) => {
+                    const block = schedule.blocks.find((b) => b.day === dayIdx && b.hour === hour);
+                    return (
+                      <td key={dayIdx} className="border p-0.5 h-10">
+                        {block && (
+                          <div className={`${SUBFUNCTION_COLORS[block.subfunctionId] || "bg-gray-500"} text-white rounded px-1.5 py-1 text-[10px] leading-tight font-medium h-full flex items-center`}>
+                            <span className="truncate">{block.label}</span>
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export function SubfunctionForm() {
-  const { activeSubfunction, dropdownOptions, addDropdownOption, addRecord, updateRecord, deleteRecord, getRecordsBySubfunction, selectedDocente } = useAgenda();
+  const { activeSubfunction, dropdownOptions, addDropdownOption, addRecord, updateRecord, deleteRecord, getRecordsBySubfunction, selectedDocente, hasSchedule, getSchedule } = useAgenda();
   const [formData, setFormData] = useState<{ [key: string]: string | number }>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<{ [key: string]: string | number }>({});
@@ -23,6 +102,11 @@ export function SubfunctionForm() {
 
   const config = subfunctions.find((s) => s.id === activeSubfunction);
   if (!config) return null;
+
+  // Special case: Distribución horaria view
+  if (activeSubfunction === "distribucion-horaria") {
+    return <ScheduleReadOnlyView hasSchedule={hasSchedule} getSchedule={getSchedule} selectedDocente={selectedDocente} />;
+  }
 
   const records = getRecordsBySubfunction(activeSubfunction);
   const calculatedFields = config.fields.filter((f) => f.type === "calculated");

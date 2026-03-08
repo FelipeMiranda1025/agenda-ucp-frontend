@@ -1,4 +1,4 @@
-import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain, Building2, Lightbulb, Heart, Award } from "lucide-react";
+import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain, Building2, Lightbulb, Heart, Award, Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -29,6 +29,7 @@ const iconMap: { [key: string]: React.ElementType } = {
   "complementarias": Lightbulb,
   "formacion-docentes": Brain,
   "administrativas": Building2,
+  "distribucion-horaria": Calendar,
 };
 
 export function AppSidebar() {
@@ -38,6 +39,7 @@ export function AppSidebar() {
 
   const prodSubs = subfunctions.filter((s) => s.sectionId === "produccion");
   const actSubs = subfunctions.filter((s) => s.sectionId === "actividades");
+  const horSubs = subfunctions.filter((s) => s.sectionId === "horario");
 
   const filter = (items: typeof subfunctions) =>
     searchTerm
@@ -98,6 +100,14 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>{renderItems(actSubs)}</SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupLabel className="font-semibold uppercase text-xs tracking-wider">
+            {collapsed ? "H" : "Horario Permanencia"}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>{renderItems(horSubs)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>

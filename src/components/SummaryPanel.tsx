@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, ClipboardList } from "lucide-react";
-import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 export function SummaryPanel() {
   const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, selectedDocente, setActiveSubfunction } = useAgenda();
+  const navigate = useNavigate();
 
   const grouped = subfunctions
+    .filter((sf) => sf.sectionId !== "horario")
     .map((sf) => ({
       ...sf,
       records: records.filter((r) => r.subfunctionId === sf.id),
@@ -17,7 +19,7 @@ export function SummaryPanel() {
     .filter((g) => g.records.length > 0);
 
   const handleConfirm = () => {
-    toast.success("Datos confirmados exitosamente. Listos para guardar en base de datos.");
+    navigate("/schedule");
   };
 
   return (

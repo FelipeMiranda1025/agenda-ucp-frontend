@@ -1,63 +1,73 @@
 
 
-## Plan: Distribución Horaria con Drag & Drop
+## Plan: Sistema de Gestión de Agenda Docente - Universidad Católica de Pereira
 
-### Resumen
-Al confirmar datos, redirigir a una nueva vista de distribución horaria donde los registros del docente se convierten en bloques arrastrables (1 bloque = 1 hora semanal) que se colocan en una grilla de horario (Lunes-Sábado, 8:00am-10:00pm). Agregar sección "Horario Permanencia" en el sidebar con subfunción "Distribución horaria".
+### Identidad Visual
+- Paleta UCP: verde institucional (#2E7D32 nav), rojo/granate (#8B1A1A header), blanco, gris claro
+- Logo UCP en la barra lateral superior
+- Tipografía limpia sans-serif, bordes redondeados, estilo institucional
 
-### 1. Tipos nuevos (`src/types/agenda.ts`)
-- Agregar `ScheduleBlock`: `{ recordId, subfunctionId, label, color, day, hour }` 
-- Agregar `ScheduleData`: `{ docenteId, blocks: ScheduleBlock[], lastModified }` al contexto
-- Ampliar `sectionId` a `"produccion" | "actividades" | "horario"`
+### Estructura de la Aplicación
 
-### 2. Nueva subfunción en `src/data/subfunctions.ts`
-- Agregar entrada con `id: "distribucion-horaria"`, `sectionId: "horario"`, `title: "3.1 Distribución horaria"`, `shortTitle: "Distribución Horaria"`, sin fields
+**Layout Principal:**
+- Barra lateral colapsable con logo UCP, campo de búsqueda y menú de navegación con las 2 secciones principales y sus subfunciones
+- Área principal de contenido donde se abren los formularios/tablas de cada subfunción
+- Pie de página fijo con métricas consolidadas en tiempo real
 
-### 3. Sidebar (`src/components/AppSidebar.tsx`)
-- Agregar tercera sección "Horario Permanencia" con las subfunciones de `sectionId === "horario"`
-- Icono: `Calendar` de lucide
+**Sección 1: PRODUCCIÓN** (4 subfunciones)
+- 1.1 Docencia directa — formulario con dropdowns (Asignatura, Semestre, Facultad, Programa, Jornada, Nivel), campos numéricos (Horas/semana, Semanas), cálculos automáticos
+- 1.2 Docencia indirecta — dropdown Actividad, campos numéricos, cálculos
+- 1.3 Dirección/asesorías trabajos de grado — dropdown Tipo trabajo, campos numéricos, cálculos
+- 1.4 Asesorías prácticas académicas — dropdown Actividad, campos numéricos, cálculos
+- Subtotal: "Total horas semestrales de producción"
 
-### 4. AgendaContext -- estado del horario
-- Agregar `scheduleByDocente: { [docenteId]: ScheduleData }` al estado
-- Funciones: `saveSchedule(blocks)`, `getSchedule()` 
-- Flag `hasSchedule` derivado del docente seleccionado
+**Sección 2: ACTIVIDADES DIFERENTES A LA DOCENCIA** (5 subfunciones)
+- 2.1 Investigación y desarrollo tecnológico
+- 2.2 Proyección social
+- 2.3 Actividades complementarias
+- 2.4 Formación de docentes
+- 2.5 Actividades académico-administrativas
+- Cada una con dropdown de Actividad, campos numéricos y cálculos automáticos
+- Subtotal: "Total horas semestrales actividades diferentes"
 
-### 5. Nueva página `src/pages/ScheduleBuilder.tsx`
-- Layout: header verde igual al Index, contenido principal con grilla de horario, barra lateral derecha con bloques arrastrables
-- **Barra lateral derecha**: Genera bloques desde `records` del docente. Cada registro con `horasSemana` genera N bloques de 1 hora. Colores distintos por subfunción. Muestra nombre asignatura/actividad + "Xh restantes"
-- **Grilla horario**: Tabla con columnas Lun-Sáb, filas 8:00-22:00 (14 filas). Celdas droppable. Al soltar bloque se asigna día+hora
-- **Drag & Drop**: Usar HTML5 drag and drop nativo (`draggable`, `onDragStart`, `onDragOver`, `onDrop`) -- sin librería extra
-- Botón "Volver" navega a `/`
-- Botón "Guardar" guarda schedule en contexto y navega a `/`
-- Ruta `/schedule` en App.tsx
+**Pie de página con métricas:**
+- Total horas semestrales (suma de ambas secciones)
+- Promedio horas/semana (÷18)
+- Horas semestre/defecto (configurable, default 920)
+- Horas faltantes (diferencia)
 
-### 6. Confirmar datos redirige (`src/components/SummaryPanel.tsx`)
-- `handleConfirm` usa `useNavigate` para ir a `/schedule` en vez de mostrar toast
+### Base de Datos (Lovable Cloud / Supabase)
 
-### 7. SubfunctionForm -- caso "distribucion-horaria"
-- Cuando `activeSubfunction === "distribucion-horaria"`:
-  - Si hay horario guardado: mostrar grilla de solo lectura con los bloques
-  - Si no hay horario: mostrar mensaje "Aún no se ha creado horario. Confirma las asignaturas en el resumen de registros."
+**Tablas principales:**
+- `dropdown_options` — almacena opciones dinámicas por categoría (asignatura, semestre, actividad, etc.)
+- `docencia_directa` — registros de la subfunción 1.1
+- `docencia_indirecta` — registros 1.2
+- `trabajos_grado` — registros 1.3
+- `practicas_academicas` — registros 1.4
+- `actividades_investigacion` — registros 2.1
+- `actividades_proyeccion` — registros 2.2
+- `actividades_complementarias` — registros 2.3
+- `formacion_docentes` — registros 2.4
+- `actividades_administrativas` — registros 2.5
+- `configuracion` — valores como horas semestre/defecto
 
-### 8. Colores por subfunción
-Paleta fija mapeada por `subfunctionId`:
-- docencia-directa: blue
-- docencia-indirecta: emerald
-- trabajos-grado: amber
-- practicas-academicas: purple
-- investigacion: rose
-- proyeccion-social: orange
-- complementarias: teal
-- formacion-docentes: indigo
-- administrativas: slate
+**Autenticación:** Login con email/password para docentes administrativos. Sin necesidad de tabla de perfiles adicional por ahora.
 
-### Archivos a crear/modificar
-- `src/types/agenda.ts` -- tipos ScheduleBlock, ScheduleData
-- `src/data/subfunctions.ts` -- agregar distribucion-horaria
-- `src/context/AgendaContext.tsx` -- estado schedule, saveSchedule, getSchedule, hasSchedule
-- `src/components/AppSidebar.tsx` -- sección Horario Permanencia
-- `src/pages/ScheduleBuilder.tsx` -- nueva página drag & drop
-- `src/components/SummaryPanel.tsx` -- confirmar redirige a /schedule
-- `src/components/SubfunctionForm.tsx` -- caso distribucion-horaria (solo lectura o mensaje vacío)
-- `src/App.tsx` -- ruta /schedule
+### Funcionalidades Clave
+- CRUD completo en cada subfunción (crear, editar, eliminar registros)
+- Agregar nuevas opciones a cualquier dropdown dinámicamente (botón "+" junto a cada select)
+- Cálculos automáticos en cliente (JavaScript) con actualización en tiempo real
+- Validación: solo números positivos en campos numéricos
+- Búsqueda sistematizada en la barra lateral para filtrar subfunciones
+- Responsive para desktop y tablet
+- Tablas con los registros existentes debajo de cada formulario
+
+### Flujo de Implementación
+1. Setup de identidad visual y layout con sidebar
+2. Base de datos: tablas y opciones iniciales de dropdowns
+3. Componente reutilizable de formulario con cálculos automáticos
+4. Implementar las 9 subfunciones usando el componente reutilizable
+5. Pie de página con métricas consolidadas en tiempo real
+6. Gestión dinámica de opciones de dropdowns
+7. Autenticación y protección de rutas
 
