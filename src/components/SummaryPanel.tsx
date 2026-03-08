@@ -41,7 +41,10 @@ export function SummaryPanel() {
           <div className="space-y-4">
             {grouped.map((group) => (
               <div key={group.id}>
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">
+                <h3
+                  className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 cursor-pointer hover:text-primary transition-colors"
+                  onClick={() => setActiveSubfunction(group.id)}
+                >
                   {group.shortTitle}
                 </h3>
                 {group.records.map((record, i) => {
@@ -49,7 +52,8 @@ export function SummaryPanel() {
                   return (
                     <div
                       key={record.id}
-                      className="flex items-center justify-between py-1 text-sm border-b border-border/50 last:border-0"
+                      className="flex items-center justify-between py-1 text-sm border-b border-border/50 last:border-0 cursor-pointer hover:bg-accent/50 rounded px-1 transition-colors"
+                      onClick={() => setActiveSubfunction(group.id)}
                     >
                       <span className="truncate flex-1 text-foreground">{String(label)}</span>
                       <span className="font-semibold text-primary ml-2">{record.totalHoras}h</span>
@@ -60,7 +64,7 @@ export function SummaryPanel() {
                   Subtotal: {group.records.reduce((s, r) => s + r.totalHoras, 0)}h
                 </div>
               </div>
-            ))}
+            ))
           </div>
         )}
       </ScrollArea>
