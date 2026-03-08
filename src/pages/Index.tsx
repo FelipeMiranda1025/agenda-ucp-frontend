@@ -82,7 +82,6 @@ const Index = () => {
           </div>
         </div>
       </SidebarProvider>
-    </AgendaProvider>
   );
 };
 
