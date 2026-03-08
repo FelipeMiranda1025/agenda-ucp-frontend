@@ -35,11 +35,14 @@ export const useAgenda = () => {
 
 export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>(initialDropdownOptions);
-  const [records, setRecords] = useState<AgendaRecord[]>([]);
+  const [recordsByDocente, setRecordsByDocente] = useState<{ [docenteId: string]: AgendaRecord[] }>({});
   const [horasSemestreDefecto, setHorasSemestreDefecto] = useState(920);
   const [activeSubfunction, setActiveSubfunction] = useState("docencia-directa");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDocente, setSelectedDocente] = useState<DocentePlanta | null>(docentesPlanta[0]);
+
+  const docenteId = selectedDocente?.id ?? "";
+  const records = useMemo(() => recordsByDocente[docenteId] || [], [recordsByDocente, docenteId]);
 
   const addDropdownOption = useCallback((category: string, value: string) => {
     setDropdownOptions((prev) => [
@@ -49,21 +52,31 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, []);
 
   const addRecord = useCallback((record: Omit<AgendaRecord, "id" | "createdAt">) => {
-    setRecords((prev) => [
+    if (!docenteId) return;
+    setRecordsByDocente((prev) => ({
       ...prev,
-      { ...record, id: String(Date.now()), createdAt: new Date().toISOString() },
-    ]);
-  }, []);
+      [docenteId]: [
+        ...(prev[docenteId] || []),
+        { ...record, id: String(Date.now()), createdAt: new Date().toISOString() },
+      ],
+    }));
+  }, [docenteId]);
 
   const updateRecord = useCallback((id: string, data: AgendaRecord["data"], totalHoras: number) => {
-    setRecords((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, data, totalHoras } : r))
-    );
-  }, []);
+    if (!docenteId) return;
+    setRecordsByDocente((prev) => ({
+      ...prev,
+      [docenteId]: (prev[docenteId] || []).map((r) => (r.id === id ? { ...r, data, totalHoras } : r)),
+    }));
+  }, [docenteId]);
 
   const deleteRecord = useCallback((id: string) => {
-    setRecords((prev) => prev.filter((r) => r.id !== id));
-  }, []);
+    if (!docenteId) return;
+    setRecordsByDocente((prev) => ({
+      ...prev,
+      [docenteId]: (prev[docenteId] || []).filter((r) => r.id !== id),
+    }));
+  }, [docenteId]);
 
   const getRecordsBySubfunction = useCallback(
     (subfunctionId: string) => records.filter((r) => r.subfunctionId === subfunctionId),
