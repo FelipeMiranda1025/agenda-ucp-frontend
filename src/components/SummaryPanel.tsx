@@ -7,7 +7,7 @@ import { CheckCircle, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 
 export function SummaryPanel() {
-  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto } = useAgenda();
+  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, selectedDocente } = useAgenda();
 
   const grouped = subfunctions
     .map((sf) => ({
