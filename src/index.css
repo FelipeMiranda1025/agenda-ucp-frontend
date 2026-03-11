@@ -38,6 +38,15 @@
     --ucp-green: 125 53% 33%;
     --ucp-green-dark: 125 53% 26%;
 
+    --section-produccion: 25 95% 53%;
+    --section-produccion-foreground: 0 0% 100%;
+    --section-actividades: 210 70% 45%;
+    --section-actividades-foreground: 0 0% 100%;
+    --section-horario: 125 53% 33%;
+    --section-horario-foreground: 0 0% 100%;
+    --subfunction-header: 0 0% 92%;
+    --subfunction-header-foreground: 0 0% 20%;
+
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 15%;
     --sidebar-primary: 125 53% 33%;
