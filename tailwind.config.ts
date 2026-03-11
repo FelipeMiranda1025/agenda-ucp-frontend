@@ -60,6 +60,22 @@ export default {
         "ucp-red": "hsl(var(--ucp-red))",
         "ucp-green": "hsl(var(--ucp-green))",
         "ucp-green-dark": "hsl(var(--ucp-green-dark))",
+        "section-produccion": {
+          DEFAULT: "hsl(var(--section-produccion))",
+          foreground: "hsl(var(--section-produccion-foreground))",
+        },
+        "section-actividades": {
+          DEFAULT: "hsl(var(--section-actividades))",
+          foreground: "hsl(var(--section-actividades-foreground))",
+        },
+        "section-horario": {
+          DEFAULT: "hsl(var(--section-horario))",
+          foreground: "hsl(var(--section-horario-foreground))",
+        },
+        "subfunction-header": {
+          DEFAULT: "hsl(var(--subfunction-header))",
+          foreground: "hsl(var(--subfunction-header-foreground))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
