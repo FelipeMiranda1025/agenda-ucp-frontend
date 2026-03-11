@@ -79,6 +79,15 @@
     --ring: 125 53% 40%;
     --ucp-red: 0 72% 32%;
     --ucp-green: 125 53% 40%;
+
+    --section-produccion: 25 90% 50%;
+    --section-produccion-foreground: 0 0% 100%;
+    --section-actividades: 210 65% 50%;
+    --section-actividades-foreground: 0 0% 100%;
+    --section-horario: 125 53% 40%;
+    --section-horario-foreground: 0 0% 100%;
+    --subfunction-header: 0 0% 18%;
+    --subfunction-header-foreground: 0 0% 90%;
     --ucp-green-dark: 125 53% 33%;
     --sidebar-background: 0 0% 12%;
     --sidebar-foreground: 0 0% 90%;
