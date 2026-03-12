@@ -91,7 +91,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule, selectedDocente }: { h
   );
 }
 
-export function SubfunctionForm() {
+export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   const { activeSubfunction, dropdownOptions, addDropdownOption, addRecord, updateRecord, deleteRecord, getRecordsBySubfunction, selectedDocente, hasSchedule, getSchedule } = useAgenda();
   const [formData, setFormData] = useState<{ [key: string]: string | number }>({});
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -100,15 +100,16 @@ export function SubfunctionForm() {
   const [newOptionValue, setNewOptionValue] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
 
-  const config = subfunctions.find((s) => s.id === activeSubfunction);
+  const resolvedId = subfunctionId || activeSubfunction;
+  const config = subfunctions.find((s) => s.id === resolvedId);
   if (!config) return null;
 
   // Special case: Distribución horaria view
-  if (activeSubfunction === "distribucion-horaria") {
+  if (resolvedId === "distribucion-horaria") {
     return <ScheduleReadOnlyView hasSchedule={hasSchedule} getSchedule={getSchedule} selectedDocente={selectedDocente} />;
   }
 
-  const records = getRecordsBySubfunction(activeSubfunction);
+  const records = getRecordsBySubfunction(resolvedId);
   const calculatedFields = config.fields.filter((f) => f.type === "calculated");
   const inputFields = config.fields.filter((f) => f.type !== "calculated");
 
@@ -138,7 +139,7 @@ export function SubfunctionForm() {
       }
     }
     addRecord({
-      subfunctionId: activeSubfunction,
+      subfunctionId: resolvedId,
       data: { ...formData },
       totalHoras: currentTotal,
     });
