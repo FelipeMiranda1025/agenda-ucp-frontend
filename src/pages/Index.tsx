@@ -2,6 +2,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { SubfunctionForm } from "@/components/SubfunctionForm";
 import { SummaryPanel } from "@/components/SummaryPanel";
+import { subfunctions } from "@/data/subfunctions";
 
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
