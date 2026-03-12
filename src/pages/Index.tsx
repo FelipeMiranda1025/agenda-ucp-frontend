@@ -75,8 +75,14 @@ const Index = () => {
               </DropdownMenu>
             </header>
             <div className="flex-1 flex min-h-0">
-              <main className="flex-1 p-6 overflow-auto">
-                <SubfunctionForm />
+              <main className="flex-1 p-6 overflow-auto space-y-8">
+                {subfunctions
+                  .filter((s) => s.id !== "distribucion-horaria")
+                  .map((s) => (
+                    <section key={s.id} id={`section-${s.id}`}>
+                      <SubfunctionForm subfunctionId={s.id} />
+                    </section>
+                  ))}
               </main>
               <SummaryPanel />
             </div>

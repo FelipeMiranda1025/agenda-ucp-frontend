@@ -53,7 +53,11 @@ export function AppSidebar() {
       return (
         <SidebarMenuItem key={item.id}>
           <SidebarMenuButton
-            onClick={() => setActiveSubfunction(item.id)}
+            onClick={() => {
+              setActiveSubfunction(item.id);
+              const el = document.getElementById(`section-${item.id}`);
+              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
             className={isActive ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : ""}
             tooltip={collapsed ? item.shortTitle : undefined}
           >

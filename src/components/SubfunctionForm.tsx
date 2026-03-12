@@ -139,7 +139,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       }
     }
     addRecord({
-      subfunctionId: activeSubfunction,
+      subfunctionId: resolvedId,
       data: { ...formData },
       totalHoras: currentTotal,
     });
