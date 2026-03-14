@@ -52,6 +52,48 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const docenteId = selectedDocente?.id ?? "";
   const records = useMemo(() => recordsByDocente[docenteId] || [], [recordsByDocente, docenteId]);
 
+  // Helper: generate indirect teaching records from all docencia-directa records
+  const generateIndirectRecords = useCallback((allRecords: AgendaRecord[]): AgendaRecord[] => {
+    const directRecords = allRecords.filter((r) => r.subfunctionId === "docencia-directa");
+    // Remove existing auto-generated indirect records
+    const withoutAutoIndirect = allRecords.filter(
+      (r) => !(r.subfunctionId === "docencia-indirecta" && (r.data["_auto"] === true))
+    );
+
+    if (directRecords.length === 0) return withoutAutoIndirect;
+
+    // Sum all weekly hours from docencia-directa
+    const totalWeeklyHours = directRecords.reduce((sum, r) => sum + (Number(r.data["horasSemana"]) || 0), 0);
+
+    const prepWeekly = totalWeeklyHours * 0.5; // Preparación de clases
+    const asesWeekly = totalWeeklyHours * 1;   // Asesorías de estudiantes
+    const weeks = 18;
+
+    const autoRecords: AgendaRecord[] = [];
+
+    if (prepWeekly > 0) {
+      autoRecords.push({
+        id: `auto-prep-${docenteId}`,
+        subfunctionId: "docencia-indirecta",
+        data: { actividad: "Preparación de clases", horasSemana: prepWeekly, cantidadSemanas: weeks, _auto: true },
+        totalHoras: prepWeekly * weeks,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    if (asesWeekly > 0) {
+      autoRecords.push({
+        id: `auto-ases-${docenteId}`,
+        subfunctionId: "docencia-indirecta",
+        data: { actividad: "Asesorías de estudiantes", horasSemana: asesWeekly, cantidadSemanas: weeks, _auto: true },
+        totalHoras: asesWeekly * weeks,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    return [...withoutAutoIndirect, ...autoRecords];
+  }, [docenteId]);
+
   const addDropdownOption = useCallback((category: string, value: string) => {
     setDropdownOptions((prev) => [
       ...prev,
