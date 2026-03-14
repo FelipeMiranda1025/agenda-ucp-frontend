@@ -122,11 +122,17 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const deleteRecord = useCallback((id: string) => {
     if (!docenteId) return;
-    setRecordsByDocente((prev) => ({
-      ...prev,
-      [docenteId]: (prev[docenteId] || []).filter((r) => r.id !== id),
-    }));
-  }, [docenteId]);
+    setRecordsByDocente((prev) => {
+      const existing = prev[docenteId] || [];
+      const deletedRecord = existing.find((r) => r.id === id);
+      let filtered = existing.filter((r) => r.id !== id);
+      // Regenerate indirect records if a docencia-directa record was deleted
+      if (deletedRecord?.subfunctionId === "docencia-directa") {
+        filtered = generateIndirectRecords(filtered);
+      }
+      return { ...prev, [docenteId]: filtered };
+    });
+  }, [docenteId, generateIndirectRecords]);
 
   // Upsert: match by subfunctionId + ALL string values in data (composite key)
   const upsertRecord = useCallback((subfunctionId: string, data: AgendaRecord["data"], totalHoras: number) => {
