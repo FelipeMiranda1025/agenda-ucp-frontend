@@ -3,11 +3,11 @@ import { subfunctions } from "@/data/subfunctions";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { CheckCircle, ClipboardList } from "lucide-react";
+import { CheckCircle, ClipboardList, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export function SummaryPanel() {
-  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, selectedDocente, setActiveSubfunction } = useAgenda();
+  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, selectedDocente, setActiveSubfunction, setEditingRecord, deleteRecord } = useAgenda();
   const navigate = useNavigate();
 
   const grouped = subfunctions
@@ -26,6 +26,11 @@ export function SummaryPanel() {
     setActiveSubfunction(subfunctionId);
     const el = document.getElementById(`section-${subfunctionId}`);
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleRecordClick = (record: typeof records[0]) => {
+    setEditingRecord(record);
+    scrollToSection(record.subfunctionId);
   };
 
   return (
@@ -60,11 +65,21 @@ export function SummaryPanel() {
                   return (
                     <div
                       key={record.id}
-                      className="flex items-center justify-between py-1 text-sm border-b border-border/50 last:border-0 cursor-pointer hover:bg-accent/50 rounded px-1 transition-colors"
-                      onClick={() => scrollToSection(group.id)}
+                      className="flex items-center justify-between py-1 text-sm border-b border-border/50 last:border-0 cursor-pointer hover:bg-accent/50 rounded px-1 transition-colors group"
+                      onClick={() => handleRecordClick(record)}
                     >
                       <span className="truncate flex-1 text-foreground">{String(label)}</span>
                       <span className="font-semibold text-primary ml-2">{record.totalHoras}h</span>
+                      <button
+                        className="ml-1 p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteRecord(record.id);
+                        }}
+                        title="Eliminar registro"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   );
                 })}

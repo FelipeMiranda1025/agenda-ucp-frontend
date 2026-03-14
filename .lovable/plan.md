@@ -1,28 +1,73 @@
 
 
-## Plan: Cambios en formularios y panel de resumen
+## Plan: Sistema de Gestión de Agenda Docente - Universidad Católica de Pereira
 
-### Cambios
+### Identidad Visual
+- Paleta UCP: verde institucional (#2E7D32 nav), rojo/granate (#8B1A1A header), blanco, gris claro
+- Logo UCP en la barra lateral superior
+- Tipografía limpia sans-serif, bordes redondeados, estilo institucional
 
-#### 1. `src/components/SubfunctionForm.tsx` — Limpiar campos tras auto-guardar
-- Después del `upsertRecord` exitoso (cuando todos los campos están llenos), **limpiar el formData** a `{}` y limpiar el `formDataStore[resolvedId]`.
-- Cambiar la lógica de upsert: en vez de hacer upsert por clave primaria simple (primer string), usar una **clave compuesta** que incluya todos los campos dropdown. Para "docencia-directa" esto permite que la misma asignatura con diferente jornada sea un registro separado (ya que jornada es otro dropdown y será parte de la clave compuesta).
+### Estructura de la Aplicación
 
-#### 2. `src/context/AgendaContext.tsx` — Cambiar lógica de matching en upsertRecord
-- Modificar `upsertRecord` para que el match use **todos los valores string** del `data` (no solo el primero). Así, "Matemáticas + Diurna" y "Matemáticas + Nocturna" serán registros diferentes.
-- Alternativa más limpia: cambiar a `addRecord` simple (siempre crea nuevo) ya que el formulario se limpia tras guardar y no se edita in-place desde el formulario.
+**Layout Principal:**
+- Barra lateral colapsable con logo UCP, campo de búsqueda y menú de navegación con las 2 secciones principales y sus subfunciones
+- Área principal de contenido donde se abren los formularios/tablas de cada subfunción
+- Pie de página fijo con métricas consolidadas en tiempo real
 
-#### 3. `src/components/SummaryPanel.tsx` — Click carga datos en formulario + botón borrar
-- Al hacer click en un registro: scroll al formulario correspondiente **y cargar los datos del registro** en el `formDataStore` del formulario, luego forzar re-render.
-- Agregar un **botón/icono de borrar** (Trash2) al lado de cada registro. Al click, llamar `deleteRecord(record.id)`.
-- Necesitamos una forma de comunicar "cargar estos datos en el formulario". Opción: agregar al contexto `editingRecord: { subfunctionId: string, data: Record["data"] } | null` y `setEditingRecord`. El formulario escucha este estado y cuando cambia, carga los datos.
+**Sección 1: PRODUCCIÓN** (4 subfunciones)
+- 1.1 Docencia directa — formulario con dropdowns (Asignatura, Semestre, Facultad, Programa, Jornada, Nivel), campos numéricos (Horas/semana, Semanas), cálculos automáticos
+- 1.2 Docencia indirecta — dropdown Actividad, campos numéricos, cálculos
+- 1.3 Dirección/asesorías trabajos de grado — dropdown Tipo trabajo, campos numéricos, cálculos
+- 1.4 Asesorías prácticas académicas — dropdown Actividad, campos numéricos, cálculos
+- Subtotal: "Total horas semestrales de producción"
 
-#### 4. `src/context/AgendaContext.tsx` — Agregar estado editingRecord
-- Nuevo estado: `editingRecord` y `setEditingRecord` en el contexto.
-- El formulario (`SubfunctionForm`) detecta cuando `editingRecord` tiene su `subfunctionId` y carga los datos en el formData local.
+**Sección 2: ACTIVIDADES DIFERENTES A LA DOCENCIA** (5 subfunciones)
+- 2.1 Investigación y desarrollo tecnológico
+- 2.2 Proyección social
+- 2.3 Actividades complementarias
+- 2.4 Formación de docentes
+- 2.5 Actividades académico-administrativas
+- Cada una con dropdown de Actividad, campos numéricos y cálculos automáticos
+- Subtotal: "Total horas semestrales actividades diferentes"
 
-### Archivos a modificar
-- `src/context/AgendaContext.tsx` — agregar `editingRecord`/`setEditingRecord`, ajustar upsert matching
-- `src/components/SubfunctionForm.tsx` — limpiar campos tras guardar, escuchar `editingRecord`
-- `src/components/SummaryPanel.tsx` — click en registro carga datos, agregar botón borrar
+**Pie de página con métricas:**
+- Total horas semestrales (suma de ambas secciones)
+- Promedio horas/semana (÷18)
+- Horas semestre/defecto (configurable, default 920)
+- Horas faltantes (diferencia)
+
+### Base de Datos (Lovable Cloud / Supabase)
+
+**Tablas principales:**
+- `dropdown_options` — almacena opciones dinámicas por categoría (asignatura, semestre, actividad, etc.)
+- `docencia_directa` — registros de la subfunción 1.1
+- `docencia_indirecta` — registros 1.2
+- `trabajos_grado` — registros 1.3
+- `practicas_academicas` — registros 1.4
+- `actividades_investigacion` — registros 2.1
+- `actividades_proyeccion` — registros 2.2
+- `actividades_complementarias` — registros 2.3
+- `formacion_docentes` — registros 2.4
+- `actividades_administrativas` — registros 2.5
+- `configuracion` — valores como horas semestre/defecto
+
+**Autenticación:** Login con email/password para docentes administrativos. Sin necesidad de tabla de perfiles adicional por ahora.
+
+### Funcionalidades Clave
+- CRUD completo en cada subfunción (crear, editar, eliminar registros)
+- Agregar nuevas opciones a cualquier dropdown dinámicamente (botón "+" junto a cada select)
+- Cálculos automáticos en cliente (JavaScript) con actualización en tiempo real
+- Validación: solo números positivos en campos numéricos
+- Búsqueda sistematizada en la barra lateral para filtrar subfunciones
+- Responsive para desktop y tablet
+- Tablas con los registros existentes debajo de cada formulario
+
+### Flujo de Implementación
+1. Setup de identidad visual y layout con sidebar
+2. Base de datos: tablas y opciones iniciales de dropdowns
+3. Componente reutilizable de formulario con cálculos automáticos
+4. Implementar las 9 subfunciones usando el componente reutilizable
+5. Pie de página con métricas consolidadas en tiempo real
+6. Gestión dinámica de opciones de dropdowns
+7. Autenticación y protección de rutas
 

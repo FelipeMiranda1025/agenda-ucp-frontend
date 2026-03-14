@@ -27,6 +27,8 @@ interface AgendaContextType {
   saveSchedule: (blocks: ScheduleBlock[]) => void;
   getSchedule: () => ScheduleData | null;
   hasSchedule: boolean;
+  editingRecord: AgendaRecord | null;
+  setEditingRecord: (r: AgendaRecord | null) => void;
 }
 
 const AgendaContext = createContext<AgendaContextType | null>(null);
@@ -45,6 +47,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [activeSubfunction, setActiveSubfunction] = useState("docencia-directa");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDocente, setSelectedDocente] = useState<DocentePlanta | null>(docentesPlanta[0]);
+  const [editingRecord, setEditingRecord] = useState<AgendaRecord | null>(null);
 
   const docenteId = selectedDocente?.id ?? "";
   const records = useMemo(() => recordsByDocente[docenteId] || [], [recordsByDocente, docenteId]);
@@ -83,15 +86,24 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }));
   }, [docenteId]);
 
-  // Upsert: find existing record with same subfunctionId and same primary key (first string value in data), update or create
+  // Upsert: match by subfunctionId + ALL string values in data (composite key)
   const upsertRecord = useCallback((subfunctionId: string, data: AgendaRecord["data"], totalHoras: number) => {
     if (!docenteId) return;
     setRecordsByDocente((prev) => {
       const existing = prev[docenteId] || [];
-      // Find primary key: first string value in data
-      const primaryKey = Object.entries(data).find(([, v]) => typeof v === "string")?.[1] as string | undefined;
-      const match = primaryKey
-        ? existing.find((r) => r.subfunctionId === subfunctionId && Object.values(r.data).includes(primaryKey))
+      // Composite key: all string values from data
+      const stringValues = Object.entries(data)
+        .filter(([, v]) => typeof v === "string")
+        .map(([k, v]) => `${k}=${v}`);
+      
+      const match = stringValues.length > 0
+        ? existing.find((r) => {
+            if (r.subfunctionId !== subfunctionId) return false;
+            const rStringValues = Object.entries(r.data)
+              .filter(([, v]) => typeof v === "string")
+              .map(([k, v]) => `${k}=${v}`);
+            return stringValues.length === rStringValues.length && stringValues.every((sv) => rStringValues.includes(sv));
+          })
         : null;
 
       if (match) {
@@ -181,6 +193,8 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         saveSchedule,
         getSchedule,
         hasSchedule,
+        editingRecord,
+        setEditingRecord,
       }}
     >
       {children}
