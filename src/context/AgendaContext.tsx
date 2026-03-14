@@ -27,6 +27,8 @@ interface AgendaContextType {
   saveSchedule: (blocks: ScheduleBlock[]) => void;
   getSchedule: () => ScheduleData | null;
   hasSchedule: boolean;
+  editingRecord: AgendaRecord | null;
+  setEditingRecord: (r: AgendaRecord | null) => void;
 }
 
 const AgendaContext = createContext<AgendaContextType | null>(null);
