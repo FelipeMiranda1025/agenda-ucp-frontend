@@ -193,6 +193,8 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         saveSchedule,
         getSchedule,
         hasSchedule,
+        editingRecord,
+        setEditingRecord,
       }}
     >
       {children}
