@@ -86,15 +86,24 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }));
   }, [docenteId]);
 
-  // Upsert: find existing record with same subfunctionId and same primary key (first string value in data), update or create
+  // Upsert: match by subfunctionId + ALL string values in data (composite key)
   const upsertRecord = useCallback((subfunctionId: string, data: AgendaRecord["data"], totalHoras: number) => {
     if (!docenteId) return;
     setRecordsByDocente((prev) => {
       const existing = prev[docenteId] || [];
-      // Find primary key: first string value in data
-      const primaryKey = Object.entries(data).find(([, v]) => typeof v === "string")?.[1] as string | undefined;
-      const match = primaryKey
-        ? existing.find((r) => r.subfunctionId === subfunctionId && Object.values(r.data).includes(primaryKey))
+      // Composite key: all string values from data
+      const stringValues = Object.entries(data)
+        .filter(([, v]) => typeof v === "string")
+        .map(([k, v]) => `${k}=${v}`);
+      
+      const match = stringValues.length > 0
+        ? existing.find((r) => {
+            if (r.subfunctionId !== subfunctionId) return false;
+            const rStringValues = Object.entries(r.data)
+              .filter(([, v]) => typeof v === "string")
+              .map(([k, v]) => `${k}=${v}`);
+            return stringValues.length === rStringValues.length && stringValues.every((sv) => rStringValues.includes(sv));
+          })
         : null;
 
       if (match) {
