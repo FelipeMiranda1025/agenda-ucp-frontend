@@ -52,6 +52,48 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const docenteId = selectedDocente?.id ?? "";
   const records = useMemo(() => recordsByDocente[docenteId] || [], [recordsByDocente, docenteId]);
 
+  // Helper: generate indirect teaching records from all docencia-directa records
+  const generateIndirectRecords = useCallback((allRecords: AgendaRecord[]): AgendaRecord[] => {
+    const directRecords = allRecords.filter((r) => r.subfunctionId === "docencia-directa");
+    // Remove existing auto-generated indirect records
+    const withoutAutoIndirect = allRecords.filter(
+      (r) => !(r.subfunctionId === "docencia-indirecta" && (r.data["_auto"] === "1"))
+    );
+
+    if (directRecords.length === 0) return withoutAutoIndirect;
+
+    // Sum all weekly hours from docencia-directa
+    const totalWeeklyHours = directRecords.reduce((sum, r) => sum + (Number(r.data["horasSemana"]) || 0), 0);
+
+    const prepWeekly = totalWeeklyHours * 0.5; // Preparación de clases
+    const asesWeekly = totalWeeklyHours * 1;   // Asesorías de estudiantes
+    const weeks = 18;
+
+    const autoRecords: AgendaRecord[] = [];
+
+    if (prepWeekly > 0) {
+      autoRecords.push({
+        id: `auto-prep-${docenteId}`,
+        subfunctionId: "docencia-indirecta",
+        data: { actividad: "Preparación de clases", horasSemana: prepWeekly, cantidadSemanas: weeks, _auto: "1" },
+        totalHoras: prepWeekly * weeks,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    if (asesWeekly > 0) {
+      autoRecords.push({
+        id: `auto-ases-${docenteId}`,
+        subfunctionId: "docencia-indirecta",
+        data: { actividad: "Asesorías de estudiantes", horasSemana: asesWeekly, cantidadSemanas: weeks, _auto: "1" },
+        totalHoras: asesWeekly * weeks,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    return [...withoutAutoIndirect, ...autoRecords];
+  }, [docenteId]);
+
   const addDropdownOption = useCallback((category: string, value: string) => {
     setDropdownOptions((prev) => [
       ...prev,
@@ -80,11 +122,17 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const deleteRecord = useCallback((id: string) => {
     if (!docenteId) return;
-    setRecordsByDocente((prev) => ({
-      ...prev,
-      [docenteId]: (prev[docenteId] || []).filter((r) => r.id !== id),
-    }));
-  }, [docenteId]);
+    setRecordsByDocente((prev) => {
+      const existing = prev[docenteId] || [];
+      const deletedRecord = existing.find((r) => r.id === id);
+      let filtered = existing.filter((r) => r.id !== id);
+      // Regenerate indirect records if a docencia-directa record was deleted
+      if (deletedRecord?.subfunctionId === "docencia-directa") {
+        filtered = generateIndirectRecords(filtered);
+      }
+      return { ...prev, [docenteId]: filtered };
+    });
+  }, [docenteId, generateIndirectRecords]);
 
   // Upsert: match by subfunctionId + ALL string values in data (composite key)
   const upsertRecord = useCallback((subfunctionId: string, data: AgendaRecord["data"], totalHoras: number) => {
@@ -106,20 +154,22 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           })
         : null;
 
+      let newRecords: AgendaRecord[];
       if (match) {
-        return {
-          ...prev,
-          [docenteId]: existing.map((r) => (r.id === match.id ? { ...r, data, totalHoras } : r)),
-        };
+        newRecords = existing.map((r) => (r.id === match.id ? { ...r, data, totalHoras } : r));
       } else {
-        return {
-          ...prev,
-          [docenteId]: [
-            ...existing,
-            { id: String(Date.now()), subfunctionId, data, totalHoras, createdAt: new Date().toISOString() },
-          ],
-        };
+        newRecords = [
+          ...existing,
+          { id: String(Date.now()), subfunctionId, data, totalHoras, createdAt: new Date().toISOString() },
+        ];
       }
+
+      // Auto-generate docencia-indirecta records when docencia-directa changes
+      if (subfunctionId === "docencia-directa") {
+        newRecords = generateIndirectRecords(newRecords);
+      }
+
+      return { ...prev, [docenteId]: newRecords };
     });
   }, [docenteId]);
 
