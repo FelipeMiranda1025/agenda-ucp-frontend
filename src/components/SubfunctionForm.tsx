@@ -234,9 +234,19 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {inputFields.map((field) => {
-              const readOnlyFields = resolvedId === "docencia-directa"
-                ? ["semestre", "nivel", "horasSemana", "cantidadSemanas"]
-                : [];
+              const readOnlyFields = (() => {
+                switch (resolvedId) {
+                  case "docencia-directa": return ["semestre", "nivel", "horasSemana", "cantidadSemanas"];
+                  case "docencia-indirecta": return ["horasSemana", "cantidadSemanas"];
+                  case "trabajos-grado": return ["cantidadHoras"];
+                  case "practicas-academicas": return ["cantidadHoras"];
+                  case "investigacion":
+                  case "complementarias":
+                  case "formacion-docentes":
+                  case "administrativas": return ["cantidadSemanas"];
+                  default: return [];
+                }
+              })();
               const isReadOnly = readOnlyFields.includes(field.name);
 
               return (
