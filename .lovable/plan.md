@@ -1,73 +1,48 @@
 
 
-## Plan: Sistema de Gestión de Agenda Docente - Universidad Católica de Pereira
+## Plan: Validación inteligente al confirmar datos
 
-### Identidad Visual
-- Paleta UCP: verde institucional (#2E7D32 nav), rojo/granate (#8B1A1A header), blanco, gris claro
-- Logo UCP en la barra lateral superior
-- Tipografía limpia sans-serif, bordes redondeados, estilo institucional
+### Lógica de validación en `src/components/SummaryPanel.tsx`
 
-### Estructura de la Aplicación
+Modificar `handleConfirm` para ejecutar 3 validaciones en orden:
 
-**Layout Principal:**
-- Barra lateral colapsable con logo UCP, campo de búsqueda y menú de navegación con las 2 secciones principales y sus subfunciones
-- Área principal de contenido donde se abren los formularios/tablas de cada subfunción
-- Pie de página fijo con métricas consolidadas en tiempo real
+**1. Calcular horas semanales de docencia directa:**
+```ts
+const docDirectaRecords = records.filter(r => r.subfunctionId === "docencia-directa");
+const horasSemanalesDocDirecta = docDirectaRecords.reduce(
+  (sum, r) => sum + (Number(r.data["horasSemana"]) || 0), 0
+);
+```
 
-**Sección 1: PRODUCCIÓN** (4 subfunciones)
-- 1.1 Docencia directa — formulario con dropdowns (Asignatura, Semestre, Facultad, Programa, Jornada, Nivel), campos numéricos (Horas/semana, Semanas), cálculos automáticos
-- 1.2 Docencia indirecta — dropdown Actividad, campos numéricos, cálculos
-- 1.3 Dirección/asesorías trabajos de grado — dropdown Tipo trabajo, campos numéricos, cálculos
-- 1.4 Asesorías prácticas académicas — dropdown Actividad, campos numéricos, cálculos
-- Subtotal: "Total horas semestrales de producción"
+**2. Verificar si tiene actividades de investigacion:**
+```ts
+const tieneInvestigacion = records.some(r => r.subfunctionId === "investigacion");
+```
 
-**Sección 2: ACTIVIDADES DIFERENTES A LA DOCENCIA** (5 subfunciones)
-- 2.1 Investigación y desarrollo tecnológico
-- 2.2 Proyección social
-- 2.3 Actividades complementarias
-- 2.4 Formación de docentes
-- 2.5 Actividades académico-administrativas
-- Cada una con dropdown de Actividad, campos numéricos y cálculos automáticos
-- Subtotal: "Total horas semestrales actividades diferentes"
+**3. Reglas de validacion:**
 
-**Pie de página con métricas:**
-- Total horas semestrales (suma de ambas secciones)
-- Promedio horas/semana (÷18)
-- Horas semestre/defecto (configurable, default 920)
-- Horas faltantes (diferencia)
+- Si NO tiene investigacion Y las horas semanales de docencia directa no son exactamente 16 → toast de error bloqueante: _"El docente debe cumplir exactamente 16 horas semanales de Docencia Directa. Actualmente tiene X horas."_
+- Si tiene investigacion, se omite la validacion de 16 horas.
+- En ambos casos, el total semestral (`metricas.totalHorasSemestrales`) debe ser exactamente `horasSemestreDefecto` (920). Si se excede → toast de advertencia con sugerencias de donde redistribuir (listar las subfunciones con mas horas). Si es menor → toast indicando cuantas horas faltan. Ambos bloquean la navegacion.
 
-### Base de Datos (Lovable Cloud / Supabase)
+**Import necesario:**
+```ts
+import { toast } from "sonner";
+```
 
-**Tablas principales:**
-- `dropdown_options` — almacena opciones dinámicas por categoría (asignatura, semestre, actividad, etc.)
-- `docencia_directa` — registros de la subfunción 1.1
-- `docencia_indirecta` — registros 1.2
-- `trabajos_grado` — registros 1.3
-- `practicas_academicas` — registros 1.4
-- `actividades_investigacion` — registros 2.1
-- `actividades_proyeccion` — registros 2.2
-- `actividades_complementarias` — registros 2.3
-- `formacion_docentes` — registros 2.4
-- `actividades_administrativas` — registros 2.5
-- `configuracion` — valores como horas semestre/defecto
+### Mensaje cuando se exceden las 920 horas
 
-**Autenticación:** Login con email/password para docentes administrativos. Sin necesidad de tabla de perfiles adicional por ahora.
+Analizar los registros agrupados y sugerir donde reducir:
+```ts
+// Encontrar las 2 subfunciones con más horas para sugerir redistribucion
+const sugerencias = grouped
+  .sort((a, b) => b.records.reduce(...) - a.records.reduce(...))
+  .slice(0, 2)
+  .map(g => g.shortTitle);
 
-### Funcionalidades Clave
-- CRUD completo en cada subfunción (crear, editar, eliminar registros)
-- Agregar nuevas opciones a cualquier dropdown dinámicamente (botón "+" junto a cada select)
-- Cálculos automáticos en cliente (JavaScript) con actualización en tiempo real
-- Validación: solo números positivos en campos numéricos
-- Búsqueda sistematizada en la barra lateral para filtrar subfunciones
-- Responsive para desktop y tablet
-- Tablas con los registros existentes debajo de cada formulario
+toast.error(`Excede las ${horasSemestreDefecto}h por ${exceso}h. Considere reducir horas en: ${sugerencias.join(", ")}.`, { duration: 7000 });
+```
 
-### Flujo de Implementación
-1. Setup de identidad visual y layout con sidebar
-2. Base de datos: tablas y opciones iniciales de dropdowns
-3. Componente reutilizable de formulario con cálculos automáticos
-4. Implementar las 9 subfunciones usando el componente reutilizable
-5. Pie de página con métricas consolidadas en tiempo real
-6. Gestión dinámica de opciones de dropdowns
-7. Autenticación y protección de rutas
+### Sin cambios en otros archivos
+Solo se modifica `SummaryPanel.tsx`.
 
