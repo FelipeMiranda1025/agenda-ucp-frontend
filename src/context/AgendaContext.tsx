@@ -106,20 +106,22 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           })
         : null;
 
+      let newRecords: AgendaRecord[];
       if (match) {
-        return {
-          ...prev,
-          [docenteId]: existing.map((r) => (r.id === match.id ? { ...r, data, totalHoras } : r)),
-        };
+        newRecords = existing.map((r) => (r.id === match.id ? { ...r, data, totalHoras } : r));
       } else {
-        return {
-          ...prev,
-          [docenteId]: [
-            ...existing,
-            { id: String(Date.now()), subfunctionId, data, totalHoras, createdAt: new Date().toISOString() },
-          ],
-        };
+        newRecords = [
+          ...existing,
+          { id: String(Date.now()), subfunctionId, data, totalHoras, createdAt: new Date().toISOString() },
+        ];
       }
+
+      // Auto-generate docencia-indirecta records when docencia-directa changes
+      if (subfunctionId === "docencia-directa") {
+        newRecords = generateIndirectRecords(newRecords);
+      }
+
+      return { ...prev, [docenteId]: newRecords };
     });
   }, [docenteId]);
 

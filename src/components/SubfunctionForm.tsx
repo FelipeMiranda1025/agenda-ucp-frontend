@@ -105,6 +105,13 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const lastUpsertRef = useRef<string>("");
 
+  // DB hooks for auto-fill (only used for docencia-directa)
+  const { data: dbSubjects } = useSubjects();
+  const { data: dbSemesters } = useSemesters();
+  const { data: dbFaculties } = useFaculties();
+  const { data: dbEducationLevels } = useEducationLevels();
+  const { data: dbProfessionalCareers } = useProfessionalCareers();
+
   const config = subfunctions.find((s) => s.id === resolvedId);
 
   const calculatedFields = config?.fields.filter((f) => f.type === "calculated") || [];
@@ -124,6 +131,41 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   useEffect(() => {
     formDataStore[resolvedId] = formData;
   }, [formData, resolvedId]);
+
+  // Auto-fill fields when selecting a subject in docencia-directa
+  useEffect(() => {
+    if (resolvedId !== "docencia-directa") return;
+    const selectedSubjectName = formData["asignatura"];
+    if (!selectedSubjectName || typeof selectedSubjectName !== "string") return;
+    if (!dbSubjects) return;
+
+    const subject = dbSubjects.find((s) => s.name === selectedSubjectName);
+    if (!subject) return;
+
+    const semesterName = subject.id_semester
+      ? dbSemesters?.find((s) => s.id === subject.id_semester)?.number?.toString()
+      : undefined;
+    const facultyName = subject.id_faculty
+      ? dbFaculties?.find((f) => f.id === subject.id_faculty)?.name
+      : undefined;
+    const careerName = subject.id_professional_career
+      ? dbProfessionalCareers?.find((c) => c.id === subject.id_professional_career)?.name
+      : undefined;
+    const levelName = subject.id_education_level
+      ? dbEducationLevels?.find((l) => l.id === subject.id_education_level)?.name
+      : undefined;
+
+    setFormData((prev) => {
+      const updated = { ...prev };
+      if (semesterName) updated["semestre"] = semesterName;
+      if (facultyName) updated["facultad"] = facultyName;
+      if (careerName) updated["programa"] = careerName;
+      if (levelName) updated["nivel"] = levelName;
+      if (subject.weekly_hours) updated["horasSemana"] = subject.weekly_hours;
+      if (subject.number_weeks) updated["cantidadSemanas"] = subject.number_weeks;
+      return updated;
+    });
+  }, [formData["asignatura"], resolvedId, dbSubjects, dbSemesters, dbFaculties, dbEducationLevels, dbProfessionalCareers]);
 
   // Listen for editingRecord from context (click on summary panel record)
   useEffect(() => {
