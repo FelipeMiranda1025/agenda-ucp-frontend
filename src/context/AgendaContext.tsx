@@ -57,7 +57,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const directRecords = allRecords.filter((r) => r.subfunctionId === "docencia-directa");
     // Remove existing auto-generated indirect records
     const withoutAutoIndirect = allRecords.filter(
-      (r) => !(r.subfunctionId === "docencia-indirecta" && (r.data["_auto"] === true))
+      (r) => !(r.subfunctionId === "docencia-indirecta" && (r.data["_auto"] === "1"))
     );
 
     if (directRecords.length === 0) return withoutAutoIndirect;
