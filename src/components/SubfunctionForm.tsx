@@ -94,7 +94,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule, selectedDocente }: { h
 }
 
 export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
-  const { activeSubfunction, dropdownOptions, addDropdownOption, upsertRecord, selectedDocente, hasSchedule, getSchedule } = useAgenda();
+  const { activeSubfunction, dropdownOptions, addDropdownOption, upsertRecord, selectedDocente, hasSchedule, getSchedule, editingRecord, setEditingRecord } = useAgenda();
   const resolvedId = subfunctionId || activeSubfunction;
   const [formData, setFormData] = useState<{ [key: string]: string | number }>(() => {
     return formDataStore[resolvedId] || {};
@@ -124,7 +124,17 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     formDataStore[resolvedId] = formData;
   }, [formData, resolvedId]);
 
-  // Auto-upsert when all fields are filled
+  // Listen for editingRecord from context (click on summary panel record)
+  useEffect(() => {
+    if (editingRecord && editingRecord.subfunctionId === resolvedId) {
+      setFormData({ ...editingRecord.data });
+      formDataStore[resolvedId] = { ...editingRecord.data };
+      lastUpsertRef.current = JSON.stringify({ resolvedId, data: editingRecord.data, total: editingRecord.totalHoras });
+      setEditingRecord(null);
+    }
+  }, [editingRecord, resolvedId, setEditingRecord]);
+
+  // Auto-upsert when all fields are filled, then clear form
   useEffect(() => {
     if (!config || resolvedId === "distribucion-horaria") return;
 
@@ -139,9 +149,14 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     const total = computeTotal(formData);
     const sig = JSON.stringify({ resolvedId, data: formData, total });
     if (sig === lastUpsertRef.current) return;
-    lastUpsertRef.current = sig;
+    lastUpsertRef.current = "";
 
     upsertRecord(resolvedId, { ...formData }, total);
+    
+    // Clear form after saving
+    setFormData({});
+    formDataStore[resolvedId] = {};
+    toast.success("Registro guardado");
   }, [formData, resolvedId, config, inputFields, computeTotal, upsertRecord]);
 
   if (!config) return null;
