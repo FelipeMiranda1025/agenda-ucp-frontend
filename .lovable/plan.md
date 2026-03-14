@@ -1,35 +1,32 @@
 
 
-## Plan: Reiniciar datos de catálogos y asignaturas
+## Plan: Auto-llenado de Docencia Directa + Registros automáticos de Docencia Indirecta
 
-### Situacion actual
-- Las tablas `users` tienen FK a `states` (id_state=1) y `roles` (id_rol). Al borrar `states`, se romperían estas referencias.
-- `subjects` tiene FK a `semester`, `education_levels`, `states`, `faculties`, `professional_careers`.
-- `agendas` está vacía, no hay conflicto.
+### 1. Migración SQL
+- Cambiar `indirect_teaching.weekly_hours` de `integer` a `numeric(5,2)` para soportar 0.5
+- Borrar registros existentes e insertar:
+  - "Preparación de clases" (weekly_hours: 0.5, number_weeks: 18)
+  - "Asesorías de estudiantes" (weekly_hours: 1, number_weeks: 18)
 
-### Estrategia
-Ejecutar una migración de datos que:
-1. Borre `subjects` (depende de los catálogos)
-2. Borre `users` temporalmente (depende de `states`)
-3. Borre y reinicie las 5 tablas catálogo con `TRUNCATE ... RESTART IDENTITY CASCADE`
-4. Reinserte los catálogos con IDs predecibles (empezando desde 1)
-5. Reinserte los 2 usuarios originales (admin y docente administrativo)
-6. Inserte las 29 asignaturas con las FK correctas
+### 2. Auto-llenado en formulario de Docencia Directa (`SubfunctionForm.tsx`)
+- Importar hooks: `useSubjects`, `useSemesters`, `useFaculties`, `useEducationLevels`, `useProfessionalCareers`
+- Cuando el usuario selecciona una asignatura en el dropdown:
+  - Buscar el subject en la DB por nombre
+  - Resolver las FK (id_semester → nombre semestre, id_faculty → nombre facultad, etc.)
+  - Auto-llenar: semestre, facultad, programa, nivel, horasSemana, cantidadSemanas
+  - El campo "jornada" queda manual (no existe en subjects)
 
-### Datos a insertar
+### 3. Registros automáticos de Docencia Indirecta (`AgendaContext.tsx`)
+- Después de cada upsert exitoso en `docencia-directa`:
+  - Recopilar todas las asignaturas registradas en docencia directa
+  - Calcular **Preparación de clases**: sumar `horasSemana × 0.5` de cada asignatura → ese es el `horasSemana`, multiplicar por 18 semanas → `totalHoras`
+  - Calcular **Asesorías de estudiantes**: sumar `horasSemana × 1` de cada asignatura → ese es el `horasSemana`, multiplicar por 18 semanas → `totalHoras`
+  - Hacer upsert automático de ambos registros en la subfunción `docencia-indirecta`
+- Estos registros aparecerán automáticamente en el panel lateral derecho bajo "Docencia Indirecta"
+- Si se eliminan todas las asignaturas de docencia directa, se eliminan los registros de docencia indirecta
 
-**semester** (6 registros): 1-Primer semestre, 2-Segundo semestre, ..., 6-Sexto semestre
-
-**faculties** (1 registro): "Facultad de ciencias básicas e ingeniería"
-
-**professional_careers** (1 registro): "Tecnología en desarrollo de software"
-
-**education_levels** (4 registros): Pregrado, Especialización, Maestría, Doctorado
-
-**states** (2 registros): Activo, Inactivo
-
-**subjects** (29 registros): Todas las asignaturas indicadas, con sus horas semanales (2-6), 16 semanas, y FK apuntando al semestre correspondiente (1-6). Todas referencian education_level=1, state=1, faculty=1, professional_career=1.
-
-### Archivos que NO se modifican
-Solo se ejecutan operaciones de datos (INSERT/DELETE/TRUNCATE) en la base de datos. No hay cambios de código.
+### Archivos a modificar
+- **Migración SQL**: ALTER column + DELETE + INSERT en `indirect_teaching`
+- **`src/components/SubfunctionForm.tsx`**: Lógica de auto-llenado al seleccionar asignatura
+- **`src/context/AgendaContext.tsx`**: Auto-generación de 2 registros de docencia indirecta tras cada upsert de docencia directa
 
