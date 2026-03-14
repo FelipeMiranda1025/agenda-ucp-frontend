@@ -12,6 +12,7 @@ import { Plus, CalendarX } from "lucide-react";
 import { toast } from "sonner";
 import { SUBFUNCTION_COLORS, DAYS, HOURS, formatHour } from "@/data/scheduleConstants";
 import { DocentePlanta } from "@/types/docentePlanta";
+import { useSubjects, useSemesters, useFaculties, useEducationLevels, useProfessionalCareers } from "@/hooks/useDatabase";
 
 // Persistent form data across subfunctions
 const formDataStore: { [subfunctionId: string]: { [key: string]: string | number } } = {};
