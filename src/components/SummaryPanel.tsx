@@ -22,6 +22,12 @@ export function SummaryPanel() {
     navigate("/schedule");
   };
 
+  const scrollToSection = (subfunctionId: string) => {
+    setActiveSubfunction(subfunctionId);
+    const el = document.getElementById(`section-${subfunctionId}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   return (
     <div className="w-80 shrink-0 flex flex-col bg-card border-l">
       <div className="px-4 py-3 border-b bg-ucp-red">
@@ -37,7 +43,7 @@ export function SummaryPanel() {
         {grouped.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <ClipboardList className="h-10 w-10 mb-3 opacity-40" />
-            <p className="text-sm text-center">No hay registros aún. Agrega datos desde el formulario.</p>
+            <p className="text-sm text-center">No hay registros aún. Complete los campos del formulario.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -45,7 +51,7 @@ export function SummaryPanel() {
               <div key={group.id}>
                 <h3
                   className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 cursor-pointer hover:text-primary transition-colors"
-                  onClick={() => setActiveSubfunction(group.id)}
+                  onClick={() => scrollToSection(group.id)}
                 >
                   {group.shortTitle}
                 </h3>
@@ -55,7 +61,7 @@ export function SummaryPanel() {
                     <div
                       key={record.id}
                       className="flex items-center justify-between py-1 text-sm border-b border-border/50 last:border-0 cursor-pointer hover:bg-accent/50 rounded px-1 transition-colors"
-                      onClick={() => setActiveSubfunction(group.id)}
+                      onClick={() => scrollToSection(group.id)}
                     >
                       <span className="truncate flex-1 text-foreground">{String(label)}</span>
                       <span className="font-semibold text-primary ml-2">{record.totalHoras}h</span>

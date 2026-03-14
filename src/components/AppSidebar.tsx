@@ -1,19 +1,6 @@
 import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain, Building2, Lightbulb, Heart, Award, Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarHeader,
-  SidebarFooter,
-  useSidebar,
-} from "@/components/ui/sidebar";
 import { useAgenda } from "@/context/AgendaContext";
 import { subfunctions } from "@/data/subfunctions";
 import { getDocenteFullName } from "@/types/docentePlanta";
@@ -32,9 +19,11 @@ const iconMap: { [key: string]: React.ElementType } = {
   "distribucion-horaria": Calendar,
 };
 
-export function AppSidebar() {
-  const { state } = useSidebar();
-  const collapsed = state === "collapsed";
+interface AppSidebarProps {
+  onClose: () => void;
+}
+
+export function AppSidebar({ onClose }: AppSidebarProps) {
   const { activeSubfunction, setActiveSubfunction, searchTerm, setSearchTerm, selectedDocente, setSelectedDocente, docentesList } = useAgenda();
 
   const prodSubs = subfunctions.filter((s) => s.sectionId === "produccion");
@@ -46,104 +35,87 @@ export function AppSidebar() {
       ? items.filter((s) => s.title.toLowerCase().includes(searchTerm.toLowerCase()))
       : items;
 
+  const handleItemClick = (id: string) => {
+    setActiveSubfunction(id);
+    onClose();
+    setTimeout(() => {
+      const el = document.getElementById(`section-${id}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 100);
+  };
+
   const renderItems = (items: typeof subfunctions) =>
     filter(items).map((item) => {
       const Icon = iconMap[item.id] || Users;
       const isActive = activeSubfunction === item.id;
       return (
-        <SidebarMenuItem key={item.id}>
-          <SidebarMenuButton
-            onClick={() => {
-              setActiveSubfunction(item.id);
-              const el = document.getElementById(`section-${item.id}`);
-              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-            }}
-            className={isActive ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium" : ""}
-            tooltip={collapsed ? item.shortTitle : undefined}
-          >
-            <Icon className="h-4 w-4 shrink-0" />
-            {!collapsed && <span className="truncate">{item.shortTitle}</span>}
-          </SidebarMenuButton>
-        </SidebarMenuItem>
+        <button
+          key={item.id}
+          onClick={() => handleItemClick(item.id)}
+          className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+            isActive
+              ? "bg-accent text-accent-foreground font-medium"
+              : "text-foreground/80 hover:bg-accent/50"
+          }`}
+        >
+          <Icon className="h-4 w-4 shrink-0" />
+          <span className="truncate">{item.shortTitle}</span>
+        </button>
       );
     });
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader className="p-4">
-        <div className={collapsed ? "flex justify-center mb-2" : "mb-3"}>
-          <img src={ucpLogo} alt="Universidad Católica de Pereira" className={collapsed ? "h-8 w-auto" : "h-14 w-auto mb-1"} />
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="px-4 pb-3">
+        <img src={ucpLogo} alt="Universidad Católica de Pereira" className="h-14 w-auto mb-2" />
+        <p className="text-xs text-muted-foreground mb-2">Agenda Docente</p>
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8 h-9"
+          />
         </div>
-        {!collapsed && (
-          <p className="text-xs opacity-80">Agenda Docente</p>
-        )}
-        {!collapsed && (
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 opacity-60" />
-            <Input
-              placeholder="Buscar..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 bg-sidebar-accent border-sidebar-border text-sidebar-foreground placeholder:text-sidebar-foreground/60 h-9"
-            />
-          </div>
-        )}
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="font-semibold uppercase text-xs tracking-wider">
-            {collapsed ? "P" : "Producción"}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>{renderItems(prodSubs)}</SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel className="font-semibold uppercase text-xs tracking-wider">
-            {collapsed ? "A" : "Actividades Diferentes"}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>{renderItems(actSubs)}</SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel className="font-semibold uppercase text-xs tracking-wider">
-            {collapsed ? "H" : "Horario Permanencia"}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>{renderItems(horSubs)}</SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-      <SidebarFooter className="p-3 border-t border-sidebar-border">
-        {!collapsed ? (
-          <div className="space-y-1.5">
-            <p className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider">Docente de planta</p>
-            <Select
-              value={selectedDocente?.id || ""}
-              onValueChange={(val) => {
-                const d = docentesList.find((doc) => doc.id === val) || null;
-                setSelectedDocente(d);
-              }}
-            >
-              <SelectTrigger className="h-9 bg-sidebar-accent border-sidebar-border text-sidebar-foreground text-sm">
-                <SelectValue placeholder="Seleccionar docente..." />
-              </SelectTrigger>
-              <SelectContent>
-                {docentesList.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {getDocenteFullName(d)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        ) : (
-          <div className="flex justify-center" title={selectedDocente ? getDocenteFullName(selectedDocente) : "Sin docente"}>
-            <Users className="h-4 w-4 text-sidebar-foreground/70" />
-          </div>
-        )}
-      </SidebarFooter>
-    </Sidebar>
+      </div>
+
+      <div className="flex-1 overflow-auto px-4 space-y-4">
+        <div>
+          <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">Producción</p>
+          <div className="space-y-0.5">{renderItems(prodSubs)}</div>
+        </div>
+        <div>
+          <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">Actividades Diferentes</p>
+          <div className="space-y-0.5">{renderItems(actSubs)}</div>
+        </div>
+        <div>
+          <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">Horario Permanencia</p>
+          <div className="space-y-0.5">{renderItems(horSubs)}</div>
+        </div>
+      </div>
+
+      <div className="p-4 border-t">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Docente de planta</p>
+        <Select
+          value={selectedDocente?.id || ""}
+          onValueChange={(val) => {
+            const d = docentesList.find((doc) => doc.id === val) || null;
+            setSelectedDocente(d);
+          }}
+        >
+          <SelectTrigger className="h-9 text-sm">
+            <SelectValue placeholder="Seleccionar docente..." />
+          </SelectTrigger>
+          <SelectContent>
+            {docentesList.map((d) => (
+              <SelectItem key={d.id} value={d.id}>
+                {getDocenteFullName(d)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
   );
 }

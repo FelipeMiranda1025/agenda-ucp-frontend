@@ -1,18 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAgenda } from "@/context/AgendaContext";
 import { subfunctions } from "@/data/subfunctions";
-import { Record as AgendaRecord, ScheduleData } from "@/types/agenda";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ScheduleData } from "@/types/agenda";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, Pencil, Save, X, CalendarX } from "lucide-react";
+import { Plus, CalendarX } from "lucide-react";
 import { toast } from "sonner";
 import { SUBFUNCTION_COLORS, DAYS, HOURS, formatHour } from "@/data/scheduleConstants";
 import { DocentePlanta } from "@/types/docentePlanta";
+
+// Persistent form data across subfunctions
+const formDataStore: { [subfunctionId: string]: { [key: string]: string | number } } = {};
 
 function ScheduleReadOnlyView({ hasSchedule, getSchedule, selectedDocente }: { hasSchedule: boolean; getSchedule: () => ScheduleData | null; selectedDocente: DocentePlanta | null }) {
   if (!hasSchedule) {
@@ -92,76 +94,61 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule, selectedDocente }: { h
 }
 
 export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
-  const { activeSubfunction, dropdownOptions, addDropdownOption, addRecord, updateRecord, deleteRecord, getRecordsBySubfunction, selectedDocente, hasSchedule, getSchedule } = useAgenda();
-  const [formData, setFormData] = useState<{ [key: string]: string | number }>({});
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editData, setEditData] = useState<{ [key: string]: string | number }>({});
+  const { activeSubfunction, dropdownOptions, addDropdownOption, upsertRecord, selectedDocente, hasSchedule, getSchedule } = useAgenda();
+  const resolvedId = subfunctionId || activeSubfunction;
+  const [formData, setFormData] = useState<{ [key: string]: string | number }>(() => {
+    return formDataStore[resolvedId] || {};
+  });
   const [newOptionCategory, setNewOptionCategory] = useState("");
   const [newOptionValue, setNewOptionValue] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const lastUpsertRef = useRef<string>("");
 
-  const resolvedId = subfunctionId || activeSubfunction;
   const config = subfunctions.find((s) => s.id === resolvedId);
-  if (!config) return null;
 
-  // Special case: Distribución horaria view
-  if (resolvedId === "distribucion-horaria") {
-    return <ScheduleReadOnlyView hasSchedule={hasSchedule} getSchedule={getSchedule} selectedDocente={selectedDocente} />;
-  }
+  const calculatedFields = config?.fields.filter((f) => f.type === "calculated") || [];
+  const inputFields = config?.fields.filter((f) => f.type !== "calculated") || [];
 
-  const records = getRecordsBySubfunction(resolvedId);
-  const calculatedFields = config.fields.filter((f) => f.type === "calculated");
-  const inputFields = config.fields.filter((f) => f.type !== "calculated");
-
-  const computeTotal = (data: { [key: string]: string | number }) => {
+  const computeTotal = useCallback((data: { [key: string]: string | number }) => {
     const calc = calculatedFields[0];
     if (!calc?.calculatedFrom) return 0;
     const v1 = Number(data[calc.calculatedFrom.field1]) || 0;
     const v2 = Number(data[calc.calculatedFrom.field2]) || 0;
     return v1 * v2;
-  };
+  }, [calculatedFields]);
 
   const currentTotal = computeTotal(formData);
-  const totalSemestral = records.reduce((sum, r) => sum + r.totalHoras, 0);
 
-  const handleSubmit = () => {
-    for (const f of inputFields) {
-      if (f.type === "number") {
-        const val = Number(formData[f.name]);
-        if (!val || val <= 0) {
-          toast.error(`${f.label} debe ser un número positivo`);
-          return;
-        }
-      }
-      if (f.type === "dropdown" && !formData[f.name]) {
-        toast.error(`Seleccione ${f.label}`);
-        return;
-      }
-    }
-    addRecord({
-      subfunctionId: resolvedId,
-      data: { ...formData },
-      totalHoras: currentTotal,
+  // Persist formData to store
+  useEffect(() => {
+    formDataStore[resolvedId] = formData;
+  }, [formData, resolvedId]);
+
+  // Auto-upsert when all fields are filled
+  useEffect(() => {
+    if (!config || resolvedId === "distribucion-horaria") return;
+
+    const allFilled = inputFields.every((f) => {
+      if (f.type === "number") return Number(formData[f.name]) > 0;
+      if (f.type === "dropdown") return !!formData[f.name];
+      return true;
     });
-    setFormData({});
-    toast.success("Registro agregado");
-  };
 
-  const handleEdit = (record: AgendaRecord) => {
-    setEditingId(record.id);
-    setEditData({ ...record.data });
-  };
+    if (!allFilled) return;
 
-  const handleSaveEdit = (id: string) => {
-    updateRecord(id, { ...editData }, computeTotal(editData));
-    setEditingId(null);
-    toast.success("Registro actualizado");
-  };
+    const total = computeTotal(formData);
+    const sig = JSON.stringify({ resolvedId, data: formData, total });
+    if (sig === lastUpsertRef.current) return;
+    lastUpsertRef.current = sig;
 
-  const handleDelete = (id: string) => {
-    deleteRecord(id);
-    toast.success("Registro eliminado");
-  };
+    upsertRecord(resolvedId, { ...formData }, total);
+  }, [formData, resolvedId, config, inputFields, computeTotal, upsertRecord]);
+
+  if (!config) return null;
+
+  if (resolvedId === "distribucion-horaria") {
+    return <ScheduleReadOnlyView hasSchedule={hasSchedule} getSchedule={getSchedule} selectedDocente={selectedDocente} />;
+  }
 
   const handleAddOption = () => {
     if (!newOptionValue.trim()) return;
@@ -184,7 +171,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Nuevo registro</CardTitle>
+          <CardTitle className="text-base">Registro</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -252,97 +239,8 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
               </div>
             ))}
           </div>
-          <Button onClick={handleSubmit} className="mt-4">
-            <Plus className="h-4 w-4 mr-1" /> Agregar registro
-          </Button>
         </CardContent>
       </Card>
-
-      {records.length > 0 && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {config.fields.map((f) => (
-                      <TableHead key={f.name}>{f.label}</TableHead>
-                    ))}
-                    <TableHead className="w-24">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {records.map((record) => (
-                    <TableRow key={record.id}>
-                      {config.fields.map((f) => (
-                        <TableCell key={f.name}>
-                          {editingId === record.id && f.type !== "calculated" ? (
-                            f.type === "dropdown" ? (
-                              <Select
-                                value={String(editData[f.name] || "")}
-                                onValueChange={(v) => setEditData((p) => ({ ...p, [f.name]: v }))}
-                              >
-                                <SelectTrigger className="h-8">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {dropdownOptions
-                                    .filter((o) => o.category === f.category)
-                                    .map((o) => (
-                                      <SelectItem key={o.id} value={o.value}>{o.value}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <Input
-                                type="number"
-                                min={1}
-                                className="h-8"
-                                value={editData[f.name] || ""}
-                                onChange={(e) => setEditData((p) => ({ ...p, [f.name]: Number(e.target.value) }))}
-                              />
-                            )
-                          ) : f.type === "calculated" ? (
-                            editingId === record.id ? computeTotal(editData) : record.totalHoras
-                          ) : (
-                            String(record.data[f.name] || "")
-                          )}
-                        </TableCell>
-                      ))}
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {editingId === record.id ? (
-                            <>
-                              <Button size="icon" variant="ghost" onClick={() => handleSaveEdit(record.id)}>
-                                <Save className="h-4 w-4" />
-                              </Button>
-                              <Button size="icon" variant="ghost" onClick={() => setEditingId(null)}>
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button size="icon" variant="ghost" onClick={() => handleEdit(record)}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button size="icon" variant="ghost" onClick={() => handleDelete(record.id)}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            <div className="mt-4 text-right font-semibold text-sm">
-              Total horas semestrales: <span className="text-primary text-lg">{totalSemestral}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

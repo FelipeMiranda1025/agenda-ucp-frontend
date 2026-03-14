@@ -12,6 +12,7 @@ interface AgendaContextType {
   addRecord: (record: Omit<AgendaRecord, "id" | "createdAt">) => void;
   updateRecord: (id: string, data: AgendaRecord["data"], totalHoras: number) => void;
   deleteRecord: (id: string) => void;
+  upsertRecord: (subfunctionId: string, data: AgendaRecord["data"], totalHoras: number) => void;
   getRecordsBySubfunction: (subfunctionId: string) => AgendaRecord[];
   metricas: MetricasPie;
   horasSemestreDefecto: number;
@@ -82,6 +83,34 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }));
   }, [docenteId]);
 
+  // Upsert: find existing record with same subfunctionId and same primary key (first string value in data), update or create
+  const upsertRecord = useCallback((subfunctionId: string, data: AgendaRecord["data"], totalHoras: number) => {
+    if (!docenteId) return;
+    setRecordsByDocente((prev) => {
+      const existing = prev[docenteId] || [];
+      // Find primary key: first string value in data
+      const primaryKey = Object.entries(data).find(([, v]) => typeof v === "string")?.[1] as string | undefined;
+      const match = primaryKey
+        ? existing.find((r) => r.subfunctionId === subfunctionId && Object.values(r.data).includes(primaryKey))
+        : null;
+
+      if (match) {
+        return {
+          ...prev,
+          [docenteId]: existing.map((r) => (r.id === match.id ? { ...r, data, totalHoras } : r)),
+        };
+      } else {
+        return {
+          ...prev,
+          [docenteId]: [
+            ...existing,
+            { id: String(Date.now()), subfunctionId, data, totalHoras, createdAt: new Date().toISOString() },
+          ],
+        };
+      }
+    });
+  }, [docenteId]);
+
   const getRecordsBySubfunction = useCallback(
     (subfunctionId: string) => records.filter((r) => r.subfunctionId === subfunctionId),
     [records]
@@ -137,6 +166,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         addRecord,
         updateRecord,
         deleteRecord,
+        upsertRecord,
         getRecordsBySubfunction,
         metricas,
         horasSemestreDefecto,
