@@ -1,75 +1,73 @@
 
 
-## Plan: Activar Lovable Cloud y crear todas las tablas de la base de datos
+## Plan: Sistema de Gestión de Agenda Docente - Universidad Católica de Pereira
 
-### Tablas identificadas de las capturas MySQL
+### Identidad Visual
+- Paleta UCP: verde institucional (#2E7D32 nav), rojo/granate (#8B1A1A header), blanco, gris claro
+- Logo UCP en la barra lateral superior
+- Tipografía limpia sans-serif, bordes redondeados, estilo institucional
 
-**Catálogos:**
-1. `roles` — idRol (PK), name, description
-2. `states` — idState (PK), name, description
-3. `semester` — idSemester (PK), number, description
-4. `faculties` — idFaculty (PK), name, description
-5. `education_levels` — idEducationLevel (PK), name, description
-6. `professional_careers` — idProfessionalCareer (PK), name, description
+### Estructura de la Aplicación
 
-**Actividades (tablas de opciones con horas):**
-7. `indirect_teaching` — id (PK), name, weekly_hour, number_weeks
-8. `investigations` — id (PK), name, weekly_hour, number_weeks
-9. `social_projects` — id (PK), name, weekly_hour, number_weeks
-10. `teacher_training` — id (PK), name, weekly_hour, number_weeks
-11. `degree_works` — id (PK), name, weekly_hour, number_weeks
-12. `complementary_activities` — id (PK), name, weekly_hour, number_weeks
-13. `administrative_activities` — id (PK), name, weekly_hour, number_weeks
-14. `academic_practices` — id (PK), name, weekly_hour, number_weeks
+**Layout Principal:**
+- Barra lateral colapsable con logo UCP, campo de búsqueda y menú de navegación con las 2 secciones principales y sus subfunciones
+- Área principal de contenido donde se abren los formularios/tablas de cada subfunción
+- Pie de página fijo con métricas consolidadas en tiempo real
 
-**Entidades principales:**
-15. `subjects` — id (PK), id_semester (FK), id_education_level (FK), id_state (FK), id_faculty (FK), id_professional_career (FK), name, weekly_hour, number_weeks
-16. `users` — id (PK, auto), id_rol (FK), id_state (FK), first_name, second_name, first_last_name, second_last_name, password, cc, email
+**Sección 1: PRODUCCIÓN** (4 subfunciones)
+- 1.1 Docencia directa — formulario con dropdowns (Asignatura, Semestre, Facultad, Programa, Jornada, Nivel), campos numéricos (Horas/semana, Semanas), cálculos automáticos
+- 1.2 Docencia indirecta — dropdown Actividad, campos numéricos, cálculos
+- 1.3 Dirección/asesorías trabajos de grado — dropdown Tipo trabajo, campos numéricos, cálculos
+- 1.4 Asesorías prácticas académicas — dropdown Actividad, campos numéricos, cálculos
+- Subtotal: "Total horas semestrales de producción"
 
-**Nueva tabla:**
-17. `agendas` — Tabla para guardar registros confirmados desde el panel lateral derecho. Campos: id (PK), user_id (FK→users), docente_cc (cédula del docente), subfunction_id (texto: docencia-directa, investigacion, etc.), data (JSONB con los valores del formulario), total_horas (INT), confirmed_at (TIMESTAMP), semester_id (FK→semester)
+**Sección 2: ACTIVIDADES DIFERENTES A LA DOCENCIA** (5 subfunciones)
+- 2.1 Investigación y desarrollo tecnológico
+- 2.2 Proyección social
+- 2.3 Actividades complementarias
+- 2.4 Formación de docentes
+- 2.5 Actividades académico-administrativas
+- Cada una con dropdown de Actividad, campos numéricos y cálculos automáticos
+- Subtotal: "Total horas semestrales actividades diferentes"
 
-### Implementación
+**Pie de página con métricas:**
+- Total horas semestrales (suma de ambas secciones)
+- Promedio horas/semana (÷18)
+- Horas semestre/defecto (configurable, default 920)
+- Horas faltantes (diferencia)
 
-#### 1. Activar Lovable Cloud
-- Crear la base de datos PostgreSQL vía Lovable Cloud
+### Base de Datos (Lovable Cloud / Supabase)
 
-#### 2. Migraciones — Crear las 17 tablas
-- Una migración con todas las tablas, FKs, y constraints
-- Convención PostgreSQL: snake_case para columnas
-- `agendas.data` será JSONB para almacenar flexiblemente los campos de cada subfunción
+**Tablas principales:**
+- `dropdown_options` — almacena opciones dinámicas por categoría (asignatura, semestre, actividad, etc.)
+- `docencia_directa` — registros de la subfunción 1.1
+- `docencia_indirecta` — registros 1.2
+- `trabajos_grado` — registros 1.3
+- `practicas_academicas` — registros 1.4
+- `actividades_investigacion` — registros 2.1
+- `actividades_proyeccion` — registros 2.2
+- `actividades_complementarias` — registros 2.3
+- `formacion_docentes` — registros 2.4
+- `actividades_administrativas` — registros 2.5
+- `configuracion` — valores como horas semestre/defecto
 
-#### 3. Insertar datos iniciales
-- `roles`: admin, vicerrectoria, decanatura, docenteAdministrativo, docentePlanta
-- `states`: activo, inactivo
-- `semester`: 1-10
-- `faculties`: Facultad de ciencias básicas e ingeniería
-- `education_levels`: Pregrado, Especialización, Maestría, Doctorado
-- `professional_careers`: Tecnología en desarrollo de software
-- Actividades: poblar con los datos actuales de `initialDropdownOptions.ts`
-- `users`: admin y docente administrativo iniciales
-- `subjects`: las 9 asignaturas actuales
+**Autenticación:** Login con email/password para docentes administrativos. Sin necesidad de tabla de perfiles adicional por ahora.
 
-#### 4. Tipos TypeScript (`src/types/database.ts`)
-- Crear interfaces que reflejen exactamente las tablas para uso local y futura dockerización:
-```text
-Role, State, Semester, Faculty, EducationLevel, ProfessionalCareer,
-Subject, IndirectTeaching, Investigation, SocialProject, TeacherTraining,
-DegreeWork, ComplementaryActivity, AdministrativeActivity, AcademicPractice,
-User (DB version), Agenda
-```
+### Funcionalidades Clave
+- CRUD completo en cada subfunción (crear, editar, eliminar registros)
+- Agregar nuevas opciones a cualquier dropdown dinámicamente (botón "+" junto a cada select)
+- Cálculos automáticos en cliente (JavaScript) con actualización en tiempo real
+- Validación: solo números positivos en campos numéricos
+- Búsqueda sistematizada en la barra lateral para filtrar subfunciones
+- Responsive para desktop y tablet
+- Tablas con los registros existentes debajo de cada formulario
 
-#### 5. Conectar frontend con Supabase
-- Crear `src/integrations/supabase/client.ts` y types
-- Crear hooks `useSubjects`, `useRoles`, etc. con `@tanstack/react-query` para leer las tablas
-- Actualizar `AgendaContext` para que `upsertRecord` también persista en la tabla `agendas` al confirmar
-- Actualizar `AuthContext` para validar contra la tabla `users` de Supabase
-
-### Archivos a crear/modificar
-- **Crear**: `src/types/database.ts` (tipos TypeScript de todas las tablas)
-- **Crear**: Migración SQL con las 17 tablas
-- **Crear**: Inserts de datos iniciales
-- **Crear**: `src/hooks/useDatabase.ts` (hooks de consulta)
-- **Modificar**: `src/context/AgendaContext.tsx` — persistir en `agendas`
-- **Modificar**: `src/context/AuthContext.tsx` — validar contra DB
+### Flujo de Implementación
+1. Setup de identidad visual y layout con sidebar
+2. Base de datos: tablas y opciones iniciales de dropdowns
+3. Componente reutilizable de formulario con cálculos automáticos
+4. Implementar las 9 subfunciones usando el componente reutilizable
+5. Pie de página con métricas consolidadas en tiempo real
+6. Gestión dinámica de opciones de dropdowns
+7. Autenticación y protección de rutas
 

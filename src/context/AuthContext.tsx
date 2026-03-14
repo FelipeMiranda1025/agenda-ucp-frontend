@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { User, AuthState, getRoleName } from '@/types/auth';
+import { findUserByCredentials } from '@/hooks/useDatabase';
 
 interface AuthContextType extends AuthState {
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -15,35 +16,6 @@ async function hashPassword(password: string): Promise<string> {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
-
-// Pre-computed SHA-256 hashes
-const HASH_ADMIN = '698d5dd0fc584cc4060780e5a39f52e0c2cf90e678cd1afb1ee53e556d1ee20e'; // admin123*
-const HASH_DOCENTE = 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f'; // password123
-
-const INITIAL_USERS: User[] = [
-  {
-    id: 'admin',
-    email: 'admin@ucp.edu.co',
-    firstName: 'Administrador',
-    secondName: '',
-    firstLastName: 'Sistema',
-    secondLastName: '',
-    password: HASH_ADMIN,
-    rolId: 0, // admin
-    statusId: 1,
-  },
-  {
-    id: '1234567890',
-    email: 'docente.admin@ucp.edu.co',
-    firstName: 'Docente',
-    secondName: '',
-    firstLastName: 'Administrativo',
-    secondLastName: '',
-    password: HASH_DOCENTE,
-    rolId: 3, // docenteAdministrativo
-    statusId: 1,
-  },
-];
 
 const SESSION_KEY = 'ucp_session';
 
@@ -64,22 +36,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const login = useCallback(async (username: string, password: string) => {
-    const hashed = await hashPassword(password);
-    const user = INITIAL_USERS.find(
-      u => (u.id === username || u.email === username) && u.password === hashed && u.statusId === 1
-    );
+    try {
+      const hashed = await hashPassword(password);
+      const dbUser = await findUserByCredentials(username, hashed);
 
-    if (!user) {
-      return { success: false, error: 'Credenciales inválidas. Verifique su usuario y contraseña.' };
+      if (!dbUser) {
+        return { success: false, error: 'Credenciales inválidas. Verifique su usuario y contraseña.' };
+      }
+
+      // Map DB user to app User format (without password)
+      const appUser: Omit<User, 'password'> = {
+        id: dbUser.cc,
+        email: dbUser.email,
+        firstName: dbUser.first_name,
+        secondName: dbUser.second_name,
+        firstLastName: dbUser.first_last_name,
+        secondLastName: dbUser.second_last_name,
+        rolId: dbUser.id_rol,
+        statusId: dbUser.id_state,
+      };
+
+      const roleName = getRoleName(dbUser.id_rol);
+      setAuthState({ user: appUser, isAuthenticated: true, roleName });
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ user: appUser }));
+
+      return { success: true };
+    } catch (err) {
+      console.error('Login error:', err);
+      return { success: false, error: 'Error al conectar con el servidor. Intente de nuevo.' };
     }
-
-    const { password: _, ...safeUser } = user;
-    const roleName = getRoleName(user.rolId);
-
-    setAuthState({ user: safeUser, isAuthenticated: true, roleName });
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ user: safeUser }));
-
-    return { success: true };
   }, []);
 
   const logout = useCallback(() => {
