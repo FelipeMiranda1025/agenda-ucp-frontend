@@ -47,6 +47,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [activeSubfunction, setActiveSubfunction] = useState("docencia-directa");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDocente, setSelectedDocente] = useState<DocentePlanta | null>(docentesPlanta[0]);
+  const [editingRecord, setEditingRecord] = useState<AgendaRecord | null>(null);
 
   const docenteId = selectedDocente?.id ?? "";
   const records = useMemo(() => recordsByDocente[docenteId] || [], [recordsByDocente, docenteId]);
