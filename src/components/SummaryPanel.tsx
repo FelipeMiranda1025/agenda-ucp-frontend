@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, ClipboardList, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 export function SummaryPanel() {
   const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, selectedDocente, setActiveSubfunction, setEditingRecord, deleteRecord } = useAgenda();
@@ -19,6 +20,49 @@ export function SummaryPanel() {
     .filter((g) => g.records.length > 0);
 
   const handleConfirm = () => {
+    // 1. Check investigacion records
+    const tieneInvestigacion = records.some(r => r.subfunctionId === "investigacion");
+
+    // 2. Validate 16h weekly docencia directa (skip if has investigacion)
+    if (!tieneInvestigacion) {
+      const docDirectaRecords = records.filter(r => r.subfunctionId === "docencia-directa");
+      const horasSemanalesDocDirecta = docDirectaRecords.reduce(
+        (sum, r) => sum + (Number(r.data["horasSemana"]) || 0), 0
+      );
+      if (horasSemanalesDocDirecta !== 16) {
+        toast.error(
+          `El docente debe cumplir exactamente 16 horas semanales de Docencia Directa. Actualmente tiene ${horasSemanalesDocDirecta} horas.`,
+          { duration: 6000 }
+        );
+        return;
+      }
+    }
+
+    // 3. Validate total semestral = horasSemestreDefecto (920)
+    const total = metricas.totalHorasSemestrales;
+    if (total > horasSemestreDefecto) {
+      const exceso = total - horasSemestreDefecto;
+      const sugerencias = [...grouped]
+        .sort((a, b) =>
+          b.records.reduce((s, r) => s + r.totalHoras, 0) -
+          a.records.reduce((s, r) => s + r.totalHoras, 0)
+        )
+        .slice(0, 2)
+        .map(g => g.shortTitle);
+      toast.error(
+        `Excede las ${horasSemestreDefecto}h semestrales por ${exceso}h. Considere reducir horas en: ${sugerencias.join(", ")}.`,
+        { duration: 7000 }
+      );
+      return;
+    }
+    if (total < horasSemestreDefecto) {
+      toast.error(
+        `Faltan ${horasSemestreDefecto - total}h para completar las ${horasSemestreDefecto}h semestrales requeridas.`,
+        { duration: 6000 }
+      );
+      return;
+    }
+
     navigate("/schedule");
   };
 
