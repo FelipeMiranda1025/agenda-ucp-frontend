@@ -233,67 +233,78 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {inputFields.map((field) => (
-              <div key={field.name} className="space-y-1.5">
-                <Label className="text-sm font-medium">{field.label}</Label>
-                {field.type === "dropdown" ? (
-                  <div className="flex gap-1">
-                    <Select
-                      value={String(formData[field.name] || "")}
-                      onValueChange={(v) => setFormData((p) => ({ ...p, [field.name]: v }))}
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Seleccionar..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {field.category === "asignatura" && resolvedId === "docencia-directa" && dbSubjects
-                          ? dbSubjects.map((s) => (
-                              <SelectItem key={s.id} value={s.name}>
-                                {s.name}
-                              </SelectItem>
-                            ))
-                          : dropdownOptions
-                              .filter((o) => o.category === field.category)
-                              .map((o) => (
-                                <SelectItem key={o.id} value={o.value}>
-                                  {o.value}
+            {inputFields.map((field) => {
+              const readOnlyFields = resolvedId === "docencia-directa"
+                ? ["semestre", "nivel", "horasSemana", "cantidadSemanas"]
+                : [];
+              const isReadOnly = readOnlyFields.includes(field.name);
+
+              return (
+                <div key={field.name} className="space-y-1.5">
+                  <Label className="text-sm font-medium">{field.label}</Label>
+                  {isReadOnly ? (
+                    <div className="h-10 px-3 py-2 rounded-md bg-muted text-sm font-semibold flex items-center">
+                      {formData[field.name] || "—"}
+                    </div>
+                  ) : field.type === "dropdown" ? (
+                    <div className="flex gap-1">
+                      <Select
+                        value={String(formData[field.name] || "")}
+                        onValueChange={(v) => setFormData((p) => ({ ...p, [field.name]: v }))}
+                      >
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Seleccionar..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {field.category === "asignatura" && resolvedId === "docencia-directa" && dbSubjects
+                            ? dbSubjects.map((s) => (
+                                <SelectItem key={s.id} value={s.name}>
+                                  {s.name}
                                 </SelectItem>
-                              ))}
-                      </SelectContent>
-                    </Select>
-                    <Dialog open={dialogOpen && newOptionCategory === field.category} onOpenChange={(open) => { setDialogOpen(open); if (open) setNewOptionCategory(field.category!); }}>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="icon" className="shrink-0" onClick={() => setNewOptionCategory(field.category!)}>
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Agregar opción: {field.label}</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-3 pt-2">
-                          <Input
-                            placeholder="Nueva opción..."
-                            value={newOptionValue}
-                            onChange={(e) => setNewOptionValue(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && handleAddOption()}
-                          />
-                          <Button onClick={handleAddOption} className="w-full">Agregar</Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                ) : (
-                  <Input
-                    type="number"
-                    min={1}
-                    value={formData[field.name] || ""}
-                    onChange={(e) => setFormData((p) => ({ ...p, [field.name]: Number(e.target.value) }))}
-                    placeholder="0"
-                  />
-                )}
-              </div>
-            ))}
+                              ))
+                            : dropdownOptions
+                                .filter((o) => o.category === field.category)
+                                .map((o) => (
+                                  <SelectItem key={o.id} value={o.value}>
+                                    {o.value}
+                                  </SelectItem>
+                                ))}
+                        </SelectContent>
+                      </Select>
+                      <Dialog open={dialogOpen && newOptionCategory === field.category} onOpenChange={(open) => { setDialogOpen(open); if (open) setNewOptionCategory(field.category!); }}>
+                        <DialogTrigger asChild>
+                          <Button variant="outline" size="icon" className="shrink-0" onClick={() => setNewOptionCategory(field.category!)}>
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>Agregar opción: {field.label}</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-3 pt-2">
+                            <Input
+                              placeholder="Nueva opción..."
+                              value={newOptionValue}
+                              onChange={(e) => setNewOptionValue(e.target.value)}
+                              onKeyDown={(e) => e.key === "Enter" && handleAddOption()}
+                            />
+                            <Button onClick={handleAddOption} className="w-full">Agregar</Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  ) : (
+                    <Input
+                      type="number"
+                      min={1}
+                      value={formData[field.name] || ""}
+                      onChange={(e) => setFormData((p) => ({ ...p, [field.name]: Number(e.target.value) }))}
+                      placeholder="0"
+                    />
+                  )}
+                </div>
+              );
+            })}
             {calculatedFields.map((field) => (
               <div key={field.name} className="space-y-1.5">
                 <Label className="text-sm font-medium">{field.label}</Label>
