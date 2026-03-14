@@ -75,7 +75,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       autoRecords.push({
         id: `auto-prep-${docenteId}`,
         subfunctionId: "docencia-indirecta",
-        data: { actividad: "Preparación de clases", horasSemana: prepWeekly, cantidadSemanas: weeks, _auto: true },
+        data: { actividad: "Preparación de clases", horasSemana: prepWeekly, cantidadSemanas: weeks, _auto: "1" },
         totalHoras: prepWeekly * weeks,
         createdAt: new Date().toISOString(),
       });
