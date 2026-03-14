@@ -95,45 +95,39 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule, selectedDocente }: { h
 
 export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   const { activeSubfunction, dropdownOptions, addDropdownOption, upsertRecord, selectedDocente, hasSchedule, getSchedule } = useAgenda();
+  const resolvedId = subfunctionId || activeSubfunction;
   const [formData, setFormData] = useState<{ [key: string]: string | number }>(() => {
-    const id = subfunctionId || activeSubfunction;
-    return formDataStore[id] || {};
+    return formDataStore[resolvedId] || {};
   });
   const [newOptionCategory, setNewOptionCategory] = useState("");
   const [newOptionValue, setNewOptionValue] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const lastUpsertRef = useRef<string>("");
 
-  const resolvedId = subfunctionId || activeSubfunction;
   const config = subfunctions.find((s) => s.id === resolvedId);
-  if (!config) return null;
 
-  if (resolvedId === "distribucion-horaria") {
-    return <ScheduleReadOnlyView hasSchedule={hasSchedule} getSchedule={getSchedule} selectedDocente={selectedDocente} />;
-  }
+  const calculatedFields = config?.fields.filter((f) => f.type === "calculated") || [];
+  const inputFields = config?.fields.filter((f) => f.type !== "calculated") || [];
 
-  const calculatedFields = config.fields.filter((f) => f.type === "calculated");
-  const inputFields = config.fields.filter((f) => f.type !== "calculated");
-
-  const computeTotal = (data: { [key: string]: string | number }) => {
+  const computeTotal = useCallback((data: { [key: string]: string | number }) => {
     const calc = calculatedFields[0];
     if (!calc?.calculatedFrom) return 0;
     const v1 = Number(data[calc.calculatedFrom.field1]) || 0;
     const v2 = Number(data[calc.calculatedFrom.field2]) || 0;
     return v1 * v2;
-  };
+  }, [calculatedFields]);
 
   const currentTotal = computeTotal(formData);
 
   // Persist formData to store
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     formDataStore[resolvedId] = formData;
   }, [formData, resolvedId]);
 
   // Auto-upsert when all fields are filled
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
+    if (!config || resolvedId === "distribucion-horaria") return;
+
     const allFilled = inputFields.every((f) => {
       if (f.type === "number") return Number(formData[f.name]) > 0;
       if (f.type === "dropdown") return !!formData[f.name];
@@ -143,13 +137,18 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     if (!allFilled) return;
 
     const total = computeTotal(formData);
-    // Create a signature to avoid duplicate upserts
     const sig = JSON.stringify({ resolvedId, data: formData, total });
     if (sig === lastUpsertRef.current) return;
     lastUpsertRef.current = sig;
 
     upsertRecord(resolvedId, { ...formData }, total);
-  }, [formData, resolvedId]);
+  }, [formData, resolvedId, config, inputFields, computeTotal, upsertRecord]);
+
+  if (!config) return null;
+
+  if (resolvedId === "distribucion-horaria") {
+    return <ScheduleReadOnlyView hasSchedule={hasSchedule} getSchedule={getSchedule} selectedDocente={selectedDocente} />;
+  }
 
   const handleAddOption = () => {
     if (!newOptionValue.trim()) return;
