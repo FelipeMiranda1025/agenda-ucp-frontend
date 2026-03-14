@@ -246,13 +246,19 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                         <SelectValue placeholder="Seleccionar..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {dropdownOptions
-                          .filter((o) => o.category === field.category)
-                          .map((o) => (
-                            <SelectItem key={o.id} value={o.value}>
-                              {o.value}
-                            </SelectItem>
-                          ))}
+                        {field.category === "asignatura" && resolvedId === "docencia-directa" && dbSubjects
+                          ? dbSubjects.map((s) => (
+                              <SelectItem key={s.id} value={s.name}>
+                                {s.name}
+                              </SelectItem>
+                            ))
+                          : dropdownOptions
+                              .filter((o) => o.category === field.category)
+                              .map((o) => (
+                                <SelectItem key={o.id} value={o.value}>
+                                  {o.value}
+                                </SelectItem>
+                              ))}
                       </SelectContent>
                     </Select>
                     <Dialog open={dialogOpen && newOptionCategory === field.category} onOpenChange={(open) => { setDialogOpen(open); if (open) setNewOptionCategory(field.category!); }}>
