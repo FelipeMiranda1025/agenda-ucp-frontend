@@ -135,19 +135,19 @@ export type Database = {
         Row: {
           id: number
           name: string
-          number_projects: number
+          number_projects: number | null
           number_weeks: number
         }
         Insert: {
           id?: number
           name: string
-          number_projects?: number
+          number_projects?: number | null
           number_weeks?: number
         }
         Update: {
           id?: number
           name?: string
-          number_projects?: number
+          number_projects?: number | null
           number_weeks?: number
         }
         Relationships: []
