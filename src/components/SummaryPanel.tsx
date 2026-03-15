@@ -147,7 +147,7 @@ export function SummaryPanel() {
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">Horas faltantes</span>
-          <span className="font-bold text-destructive">{metricas.horasFaltantes}h</span>
+          <span className={`font-bold ${metricas.horasFaltantes > 0 ? 'text-destructive' : metricas.horasFaltantes < 0 ? 'text-yellow-500' : 'text-green-600'}`}>{metricas.horasFaltantes}h</span>
         </div>
         <div className="flex items-center justify-between pt-1">
           <span className="text-muted-foreground">Horas semestre/defecto</span>
