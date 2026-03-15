@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAgenda } from "@/context/AgendaContext";
+import { useAuth } from "@/context/AuthContext";
 import { subfunctions } from "@/data/subfunctions";
 import { ScheduleData } from "@/types/agenda";
 import { Label } from "@/components/ui/label";
