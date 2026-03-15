@@ -1,73 +1,70 @@
-# Welcome to your Lovable project
+# Sistema de Agenda Docente — UCP
 
-## Project info
+Aplicación web para la gestión de agendas y distribución horaria de docentes de planta de la Universidad Católica de Pereira.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Stack Tecnológico
 
-## How can I edit this code?
+- **Frontend:** React 18 + TypeScript + Vite
+- **UI:** Tailwind CSS + shadcn/ui
+- **Backend:** Lovable Cloud (Supabase)
+- **Routing:** React Router v6
+- **State:** React Context + TanStack Query
 
-There are several ways of editing your application.
+## Requisitos Previos
 
-**Use Lovable**
+- [Node.js](https://nodejs.org/) v18 o superior
+- npm (incluido con Node.js)
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## Instalación
 
-Changes made via Lovable will be committed automatically to this repo.
+```bash
+# 1. Clonar el repositorio
+git clone <URL_DEL_REPOSITORIO>
+cd <NOMBRE_DEL_PROYECTO>
 
-**Use your preferred IDE**
+# 2. Instalar dependencias
+npm install
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+# 3. Configurar variables de entorno
+# El archivo .env ya está incluido con las claves públicas.
+# Si no existe, copia el ejemplo:
+cp .env.example .env
+# y completa los valores con las claves del proyecto.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# 4. Iniciar el servidor de desarrollo
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+La aplicación estará disponible en `http://localhost:5173`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Scripts Disponibles
 
-**Use GitHub Codespaces**
+| Script           | Descripción                              |
+| ---------------- | ---------------------------------------- |
+| `npm run dev`    | Servidor de desarrollo con hot-reload    |
+| `npm run build`  | Build de producción                      |
+| `npm run preview`| Vista previa del build de producción     |
+| `npm run test`   | Ejecutar tests con Vitest                |
+| `npm run lint`   | Linter con ESLint                        |
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Estructura del Proyecto
 
-## What technologies are used for this project?
+```
+src/
+├── components/    # Componentes reutilizables y UI (shadcn)
+├── context/       # Contextos de React (Auth, Agenda)
+├── data/          # Datos estáticos y constantes
+├── hooks/         # Custom hooks
+├── integrations/  # Cliente de Supabase (auto-generado)
+├── pages/         # Páginas/rutas principales
+├── types/         # Tipos TypeScript
+└── assets/        # Imágenes y recursos estáticos
+```
 
-This project is built with:
+## Variables de Entorno
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Ver `.env.example` para referencia. Las variables requeridas son:
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- `VITE_SUPABASE_URL` — URL del proyecto backend
+- `VITE_SUPABASE_PUBLISHABLE_KEY` — Clave pública (anon key)
+- `VITE_SUPABASE_PROJECT_ID` — ID del proyecto
