@@ -105,7 +105,8 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
 }
 
 export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
-  const { activeSubfunction, dropdownOptions, addDropdownOption, upsertRecord, updateRecord, getRecordsBySubfunction, selectedDocente, hasSchedule, getSchedule, editingRecord, setEditingRecord } = useAgenda();
+  const { activeSubfunction, dropdownOptions, addDropdownOption, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord } = useAgenda();
+  const { user } = useAuth();
   const resolvedId = subfunctionId || activeSubfunction;
   const [formData, setFormData] = useState<{ [key: string]: string | number }>(() => {
     return formDataStore[resolvedId] || {};
