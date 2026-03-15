@@ -12,7 +12,7 @@ import { Plus, CalendarX, Eraser } from "lucide-react";
 import { toast } from "sonner";
 import { SUBFUNCTION_COLORS, DAYS, HOURS, formatHour } from "@/data/scheduleConstants";
 import { DocentePlanta } from "@/types/docentePlanta";
-import { useSubjects, useSemesters, useFaculties, useEducationLevels, useProfessionalCareers } from "@/hooks/useDatabase";
+import { useSubjects, useSemesters, useFaculties, useEducationLevels, useProfessionalCareers, useDegreeWorks, useAcademicPractices, useInvestigations, useSocialProjects, useComplementaryActivities, useTeacherTraining, useAdministrativeActivities, useIndirectTeaching } from "@/hooks/useDatabase";
 
 // Persistent form data across subfunctions
 const formDataStore: { [subfunctionId: string]: { [key: string]: string | number } } = {};
