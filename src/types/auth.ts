@@ -27,7 +27,7 @@ export interface AuthState {
 }
 
 export const ROLES: Role[] = [
-  { id: 1, name: 'docentePlanta' },
+  { id: 6, name: 'docentePlanta' },
 ];
 
 export const STATUSES: Status[] = [
