@@ -4,6 +4,7 @@ import type {
   DbRole, DbState, DbSemester, DbFaculty,
   DbEducationLevel, DbProfessionalCareer, DbSubject,
   DbActivityBase, DbAgenda, DbAgendaInsert,
+  DbDegreeWork, DbAcademicPractice,
 } from "@/types/database";
 
 // =============================================
