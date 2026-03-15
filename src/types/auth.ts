@@ -1,6 +1,6 @@
 export interface Role {
   id: number;
-  name: 'vicerrectoria' | 'decanatura' | 'docenteAdministrativo' | 'docentePlanta' | 'admin';
+  name: 'docentePlanta';
 }
 
 export interface Status {
@@ -27,11 +27,7 @@ export interface AuthState {
 }
 
 export const ROLES: Role[] = [
-  { id: 0, name: 'admin' },
-  { id: 1, name: 'vicerrectoria' },
-  { id: 2, name: 'decanatura' },
-  { id: 3, name: 'docenteAdministrativo' },
-  { id: 4, name: 'docentePlanta' },
+  { id: 1, name: 'docentePlanta' },
 ];
 
 export const STATUSES: Status[] = [
