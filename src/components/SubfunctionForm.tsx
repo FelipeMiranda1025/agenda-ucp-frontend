@@ -12,7 +12,7 @@ import { Plus, CalendarX, Eraser } from "lucide-react";
 import { toast } from "sonner";
 import { SUBFUNCTION_COLORS, DAYS, HOURS, formatHour } from "@/data/scheduleConstants";
 import { DocentePlanta } from "@/types/docentePlanta";
-import { useSubjects, useSemesters, useFaculties, useEducationLevels, useProfessionalCareers } from "@/hooks/useDatabase";
+import { useSubjects, useSemesters, useFaculties, useEducationLevels, useProfessionalCareers, useDegreeWorks, useAcademicPractices, useInvestigations, useSocialProjects, useComplementaryActivities, useTeacherTraining, useAdministrativeActivities, useIndirectTeaching } from "@/hooks/useDatabase";
 
 // Persistent form data across subfunctions
 const formDataStore: { [subfunctionId: string]: { [key: string]: string | number } } = {};
@@ -117,6 +117,14 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   const { data: dbFaculties } = useFaculties();
   const { data: dbEducationLevels } = useEducationLevels();
   const { data: dbProfessionalCareers } = useProfessionalCareers();
+  const { data: dbDegreeWorks } = useDegreeWorks();
+  const { data: dbAcademicPractices } = useAcademicPractices();
+  const { data: dbInvestigations } = useInvestigations();
+  const { data: dbSocialProjects } = useSocialProjects();
+  const { data: dbComplementaryActivities } = useComplementaryActivities();
+  const { data: dbTeacherTraining } = useTeacherTraining();
+  const { data: dbAdministrativeActivities } = useAdministrativeActivities();
+  const { data: dbIndirectTeaching } = useIndirectTeaching();
 
   const config = subfunctions.find((s) => s.id === resolvedId);
 
@@ -194,6 +202,47 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       return updated;
     });
   }, [formData["asignatura"], resolvedId, dbSubjects, dbSemesters, dbFaculties, dbEducationLevels, dbProfessionalCareers]);
+
+  // Auto-fill fields when selecting an activity in other subfunctions
+  useEffect(() => {
+    if (resolvedId === "docencia-directa" || resolvedId === "distribucion-horaria") return;
+
+    const AUTOFILL_MAP: { [subfId: string]: { dropdownField: string; data: any[] | undefined; targetField: string; weeklyHoursField?: string } } = {
+      "trabajos-grado": { dropdownField: "tipoTrabajo", data: dbDegreeWorks, targetField: "cantidadHoras" },
+      "practicas-academicas": { dropdownField: "actividad", data: dbAcademicPractices, targetField: "cantidadHoras" },
+      "docencia-indirecta": { dropdownField: "actividad", data: dbIndirectTeaching, targetField: "cantidadSemanas", weeklyHoursField: "horasSemana" },
+      "investigacion": { dropdownField: "actividad", data: dbInvestigations, targetField: "cantidadSemanas", weeklyHoursField: "horasSemana" },
+      "proyeccion-social": { dropdownField: "actividad", data: dbSocialProjects, targetField: "cantidadSemanas", weeklyHoursField: "horasSemana" },
+      "complementarias": { dropdownField: "actividad", data: dbComplementaryActivities, targetField: "cantidadSemanas", weeklyHoursField: "horasSemana" },
+      "formacion-docentes": { dropdownField: "actividad", data: dbTeacherTraining, targetField: "cantidadSemanas", weeklyHoursField: "horasSemana" },
+      "administrativas": { dropdownField: "actividad", data: dbAdministrativeActivities, targetField: "cantidadSemanas", weeklyHoursField: "horasSemana" },
+    };
+
+    const mapping = AUTOFILL_MAP[resolvedId];
+    if (!mapping || !mapping.data) return;
+
+    const selectedName = formData[mapping.dropdownField];
+    if (!selectedName || typeof selectedName !== "string") return;
+
+    const record = mapping.data.find((r: any) => r.name === selectedName);
+    if (!record) return;
+
+    setFormData((prev) => {
+      const updated = { ...prev };
+      updated[mapping.targetField] = record.number_weeks;
+      if (mapping.weeklyHoursField && record.weekly_hours !== undefined) {
+        updated[mapping.weeklyHoursField] = record.weekly_hours;
+      }
+      if (resolvedId === "practicas-academicas" && record.number_students !== undefined) {
+        updated["cantidadEstudiantes"] = record.number_students;
+      }
+      return updated;
+    });
+  }, [
+    formData["tipoTrabajo"], formData["actividad"], resolvedId,
+    dbDegreeWorks, dbAcademicPractices, dbIndirectTeaching, dbInvestigations,
+    dbSocialProjects, dbComplementaryActivities, dbTeacherTraining, dbAdministrativeActivities,
+  ]);
 
   // Listen for editingRecord from context (click on summary panel record)
   useEffect(() => {
@@ -324,19 +373,35 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                           <SelectValue placeholder="Seleccionar..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {field.category === "asignatura" && resolvedId === "docencia-directa" && dbSubjects
-                            ? dbSubjects.map((s) => (
-                                <SelectItem key={s.id} value={s.name}>
-                                  {s.name}
+                          {(() => {
+                            // Map categories to DB data sources
+                            const DB_CATEGORY_MAP: { [cat: string]: any[] | undefined } = {
+                              "asignatura": resolvedId === "docencia-directa" ? dbSubjects : undefined,
+                              "tipo_trabajo": dbDegreeWorks,
+                              "actividad_practicas": dbAcademicPractices,
+                              "actividad_indirecta": dbIndirectTeaching,
+                              "actividad_investigacion": dbInvestigations,
+                              "actividad_proyeccion": dbSocialProjects,
+                              "actividad_complementaria": dbComplementaryActivities,
+                              "actividad_formacion": dbTeacherTraining,
+                              "actividad_administrativa": dbAdministrativeActivities,
+                            };
+                            const dbData = DB_CATEGORY_MAP[field.category!];
+                            if (dbData) {
+                              return dbData.map((item) => (
+                                <SelectItem key={item.id} value={item.name}>
+                                  {item.name}
                                 </SelectItem>
-                              ))
-                            : dropdownOptions
-                                .filter((o) => o.category === field.category)
-                                .map((o) => (
-                                  <SelectItem key={o.id} value={o.value}>
-                                    {o.value}
-                                  </SelectItem>
-                                ))}
+                              ));
+                            }
+                            return dropdownOptions
+                              .filter((o) => o.category === field.category)
+                              .map((o) => (
+                                <SelectItem key={o.id} value={o.value}>
+                                  {o.value}
+                                </SelectItem>
+                              ));
+                          })()}
                         </SelectContent>
                       </Select>
                       <Dialog open={dialogOpen && newOptionCategory === field.category} onOpenChange={(open) => { setDialogOpen(open); if (open) setNewOptionCategory(field.category!); }}>

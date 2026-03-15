@@ -1,34 +1,73 @@
 
 
-## Plan: Auto-llenar `cantidadSemanas`/`cantidadHoras` al seleccionar actividad en 7 subfunciones
+## Plan: Sistema de Gestión de Agenda Docente - Universidad Católica de Pereira
 
-### Contexto
-Ya existe un patrón en `SubfunctionForm.tsx` que auto-llena campos cuando se selecciona una asignatura en "docencia-directa". Se replicará este patrón para las 7 subfunciones restantes, cargando `number_weeks` desde la tabla correspondiente en la base de datos al campo `cantidadSemanas` o `cantidadHoras` del formulario.
+### Identidad Visual
+- Paleta UCP: verde institucional (#2E7D32 nav), rojo/granate (#8B1A1A header), blanco, gris claro
+- Logo UCP en la barra lateral superior
+- Tipografía limpia sans-serif, bordes redondeados, estilo institucional
 
-### Mapeo subfunción → tabla → campo destino
+### Estructura de la Aplicación
 
-| Subfunción | Tabla DB | Campo dropdown | Campo a auto-llenar |
-|---|---|---|---|
-| trabajos-grado | degree_works | tipoTrabajo | cantidadHoras |
-| practicas-academicas | academic_practices | actividad | cantidadHoras |
-| investigacion | investigations | actividad | cantidadSemanas |
-| proyeccion-social | social_projects | actividad | cantidadSemanas |
-| complementarias | complementary_activities | actividad | cantidadSemanas |
-| formacion-docentes | teacher_training | actividad | cantidadSemanas |
-| administrativas | administrative_activities | actividad | cantidadSemanas |
+**Layout Principal:**
+- Barra lateral colapsable con logo UCP, campo de búsqueda y menú de navegación con las 2 secciones principales y sus subfunciones
+- Área principal de contenido donde se abren los formularios/tablas de cada subfunción
+- Pie de página fijo con métricas consolidadas en tiempo real
 
-### Cambios en `src/components/SubfunctionForm.tsx`
+**Sección 1: PRODUCCIÓN** (4 subfunciones)
+- 1.1 Docencia directa — formulario con dropdowns (Asignatura, Semestre, Facultad, Programa, Jornada, Nivel), campos numéricos (Horas/semana, Semanas), cálculos automáticos
+- 1.2 Docencia indirecta — dropdown Actividad, campos numéricos, cálculos
+- 1.3 Dirección/asesorías trabajos de grado — dropdown Tipo trabajo, campos numéricos, cálculos
+- 1.4 Asesorías prácticas académicas — dropdown Actividad, campos numéricos, cálculos
+- Subtotal: "Total horas semestrales de producción"
 
-1. **Importar los hooks de DB faltantes**: `useDegreeWorks`, `useAcademicPractices`, `useInvestigations`, `useSocialProjects`, `useComplementaryActivities`, `useTeacherTraining`, `useAdministrativeActivities`.
+**Sección 2: ACTIVIDADES DIFERENTES A LA DOCENCIA** (5 subfunciones)
+- 2.1 Investigación y desarrollo tecnológico
+- 2.2 Proyección social
+- 2.3 Actividades complementarias
+- 2.4 Formación de docentes
+- 2.5 Actividades académico-administrativas
+- Cada una con dropdown de Actividad, campos numéricos y cálculos automáticos
+- Subtotal: "Total horas semestrales actividades diferentes"
 
-2. **Llamar los hooks** dentro del componente para obtener los datos de cada tabla.
+**Pie de página con métricas:**
+- Total horas semestrales (suma de ambas secciones)
+- Promedio horas/semana (÷18)
+- Horas semestre/defecto (configurable, default 920)
+- Horas faltantes (diferencia)
 
-3. **Agregar un `useEffect`** que, al detectar un cambio en el campo dropdown de la subfunción activa, busque el registro correspondiente por `name` en los datos de la tabla y asigne `number_weeks` al campo `cantidadSemanas` o `cantidadHoras` según corresponda.
+### Base de Datos (Lovable Cloud / Supabase)
 
-4. **Usar los datos de DB como opciones del dropdown** para las categorías correspondientes (igual que se hace con `dbSubjects` para asignaturas), reemplazando las opciones manuales de `dropdownOptions`.
+**Tablas principales:**
+- `dropdown_options` — almacena opciones dinámicas por categoría (asignatura, semestre, actividad, etc.)
+- `docencia_directa` — registros de la subfunción 1.1
+- `docencia_indirecta` — registros 1.2
+- `trabajos_grado` — registros 1.3
+- `practicas_academicas` — registros 1.4
+- `actividades_investigacion` — registros 2.1
+- `actividades_proyeccion` — registros 2.2
+- `actividades_complementarias` — registros 2.3
+- `formacion_docentes` — registros 2.4
+- `actividades_administrativas` — registros 2.5
+- `configuracion` — valores como horas semestre/defecto
 
-### Archivos a modificar
-- **`src/components/SubfunctionForm.tsx`**: Agregar hooks, efecto de auto-llenado, y uso de datos DB en dropdowns.
+**Autenticación:** Login con email/password para docentes administrativos. Sin necesidad de tabla de perfiles adicional por ahora.
 
-No se requieren cambios en la base de datos ni en otros archivos.
+### Funcionalidades Clave
+- CRUD completo en cada subfunción (crear, editar, eliminar registros)
+- Agregar nuevas opciones a cualquier dropdown dinámicamente (botón "+" junto a cada select)
+- Cálculos automáticos en cliente (JavaScript) con actualización en tiempo real
+- Validación: solo números positivos en campos numéricos
+- Búsqueda sistematizada en la barra lateral para filtrar subfunciones
+- Responsive para desktop y tablet
+- Tablas con los registros existentes debajo de cada formulario
+
+### Flujo de Implementación
+1. Setup de identidad visual y layout con sidebar
+2. Base de datos: tablas y opciones iniciales de dropdowns
+3. Componente reutilizable de formulario con cálculos automáticos
+4. Implementar las 9 subfunciones usando el componente reutilizable
+5. Pie de página con métricas consolidadas en tiempo real
+6. Gestión dinámica de opciones de dropdowns
+7. Autenticación y protección de rutas
 
