@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAgenda } from "@/context/AgendaContext";
+import { useAuth } from "@/context/AuthContext";
 import { subfunctions } from "@/data/subfunctions";
 import { ScheduleData } from "@/types/agenda";
 import { Label } from "@/components/ui/label";
@@ -25,15 +26,16 @@ const WEEKLY_HOUR_REQUIREMENTS: { [subfunctionId: string]: number | null } = {
   "docencia-directa": 16,
 };
 
-function ScheduleReadOnlyView({ hasSchedule, getSchedule, selectedDocente }: { hasSchedule: boolean; getSchedule: () => ScheduleData | null; selectedDocente: DocentePlanta | null }) {
+function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boolean; getSchedule: () => ScheduleData | null }) {
+  const { user } = useAuth();
   if (!hasSchedule) {
     return (
       <div className="space-y-6">
         <div className="bg-ucp-red px-6 py-4 rounded-lg">
           <h1 className="text-xl font-bold text-primary-foreground">3.1 Distribución horaria</h1>
-          {selectedDocente && (
+          {user && (
             <p className="text-sm text-primary-foreground/80 mt-1">
-              Docente: {[selectedDocente.firstName, selectedDocente.firstLastName].filter(Boolean).join(' ')}
+              Docente: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
             </p>
           )}
         </div>
@@ -54,9 +56,9 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule, selectedDocente }: { h
     <div className="space-y-6">
       <div className="bg-ucp-red px-6 py-4 rounded-lg">
         <h1 className="text-xl font-bold text-primary-foreground">3.1 Distribución horaria</h1>
-        {selectedDocente && (
+        {user && (
           <p className="text-sm text-primary-foreground/80 mt-1">
-            Docente: {[selectedDocente.firstName, selectedDocente.firstLastName].filter(Boolean).join(' ')}
+            Docente: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
           </p>
         )}
         <p className="text-xs text-primary-foreground/60 mt-1">
@@ -103,7 +105,8 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule, selectedDocente }: { h
 }
 
 export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
-  const { activeSubfunction, dropdownOptions, addDropdownOption, upsertRecord, updateRecord, getRecordsBySubfunction, selectedDocente, hasSchedule, getSchedule, editingRecord, setEditingRecord } = useAgenda();
+  const { activeSubfunction, dropdownOptions, addDropdownOption, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord } = useAgenda();
+  const { user } = useAuth();
   const resolvedId = subfunctionId || activeSubfunction;
   const [formData, setFormData] = useState<{ [key: string]: string | number }>(() => {
     return formDataStore[resolvedId] || {};
@@ -300,7 +303,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   if (!config) return null;
 
   if (resolvedId === "distribucion-horaria") {
-    return <ScheduleReadOnlyView hasSchedule={hasSchedule} getSchedule={getSchedule} selectedDocente={selectedDocente} />;
+    return <ScheduleReadOnlyView hasSchedule={hasSchedule} getSchedule={getSchedule} />;
   }
 
   const handleAddOption = () => {
@@ -316,9 +319,9 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       <div className="bg-ucp-red px-6 py-4 rounded-lg flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-primary-foreground">{config.title}</h1>
-          {selectedDocente && (
+          {user && (
             <p className="text-sm text-primary-foreground/80 mt-1">
-              Docente: {[selectedDocente.firstName, selectedDocente.secondName, selectedDocente.firstLastName, selectedDocente.secondLastName].filter(Boolean).join(' ')}
+              Docente: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
             </p>
           )}
         </div>

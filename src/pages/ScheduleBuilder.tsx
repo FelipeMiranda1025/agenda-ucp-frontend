@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAgenda } from "@/context/AgendaContext";
+import { useAuth } from "@/context/AuthContext";
 import { subfunctions } from "@/data/subfunctions";
 import { ScheduleBlock } from "@/types/agenda";
 import { SUBFUNCTION_COLORS, SUBFUNCTION_BORDER_COLORS, DAYS, HOURS, formatHour } from "@/data/scheduleConstants";
@@ -20,7 +21,8 @@ interface DraggableItem {
 
 export default function ScheduleBuilder() {
   const navigate = useNavigate();
-  const { records, selectedDocente, saveSchedule, getSchedule } = useAgenda();
+  const { records, saveSchedule, getSchedule } = useAgenda();
+  const { user } = useAuth();
 
   const existingSchedule = getSchedule();
 
@@ -125,9 +127,9 @@ export default function ScheduleBuilder() {
         <h1 className="text-primary-foreground font-semibold text-lg">
           Distribución Horaria
         </h1>
-        {selectedDocente && (
+        {user && (
           <span className="text-primary-foreground/70 text-sm ml-2">
-            {[selectedDocente.firstName, selectedDocente.firstLastName].filter(Boolean).join(" ")}
+            {[user.firstName, user.firstLastName].filter(Boolean).join(" ")}
           </span>
         )}
         <div className="ml-auto">
