@@ -117,6 +117,14 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   const { data: dbFaculties } = useFaculties();
   const { data: dbEducationLevels } = useEducationLevels();
   const { data: dbProfessionalCareers } = useProfessionalCareers();
+  const { data: dbDegreeWorks } = useDegreeWorks();
+  const { data: dbAcademicPractices } = useAcademicPractices();
+  const { data: dbInvestigations } = useInvestigations();
+  const { data: dbSocialProjects } = useSocialProjects();
+  const { data: dbComplementaryActivities } = useComplementaryActivities();
+  const { data: dbTeacherTraining } = useTeacherTraining();
+  const { data: dbAdministrativeActivities } = useAdministrativeActivities();
+  const { data: dbIndirectTeaching } = useIndirectTeaching();
 
   const config = subfunctions.find((s) => s.id === resolvedId);
 
