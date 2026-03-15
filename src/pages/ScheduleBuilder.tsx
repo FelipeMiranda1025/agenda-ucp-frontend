@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAgenda } from "@/context/AgendaContext";
+import { useAuth } from "@/context/AuthContext";
 import { subfunctions } from "@/data/subfunctions";
 import { ScheduleBlock } from "@/types/agenda";
 import { SUBFUNCTION_COLORS, SUBFUNCTION_BORDER_COLORS, DAYS, HOURS, formatHour } from "@/data/scheduleConstants";
