@@ -61,7 +61,7 @@ export type DbTeacherTraining = DbActivityBase;
 export interface DbDegreeWork {
   id: number;
   name: string;
-  number_projects: number;
+  number_projects: number | null;
   number_weeks: number;
 }
 export type DbComplementaryActivity = DbActivityBase;
