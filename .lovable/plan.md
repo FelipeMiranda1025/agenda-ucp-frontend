@@ -1,47 +1,73 @@
 
 
-## Plan: Edición de registros, botón limpiar y total de horas semanales
+## Plan: Sistema de Gestión de Agenda Docente - Universidad Católica de Pereira
 
-### 1. Edición de registros sin crear duplicados (`SubfunctionForm.tsx` + `AgendaContext.tsx`)
+### Identidad Visual
+- Paleta UCP: verde institucional (#2E7D32 nav), rojo/granate (#8B1A1A header), blanco, gris claro
+- Logo UCP en la barra lateral superior
+- Tipografía limpia sans-serif, bordes redondeados, estilo institucional
 
-**Problema actual**: Cuando se carga un registro para edición y se modifica un campo dropdown, la clave compuesta cambia y `upsertRecord` crea un nuevo registro.
+### Estructura de la Aplicación
 
-**Solución**: Mantener el ID del registro en edición en un estado local (`editingRecordId`). Cuando el auto-save se dispara:
-- Si `editingRecordId` existe → llamar `updateRecord(editingRecordId, data, total)` en lugar de `upsertRecord`
-- Si no → comportamiento actual con `upsertRecord`
-- Al guardar exitosamente en modo edición, limpiar `editingRecordId` y el formulario
+**Layout Principal:**
+- Barra lateral colapsable con logo UCP, campo de búsqueda y menú de navegación con las 2 secciones principales y sus subfunciones
+- Área principal de contenido donde se abren los formularios/tablas de cada subfunción
+- Pie de página fijo con métricas consolidadas en tiempo real
 
-Cambios en `SubfunctionForm.tsx`:
-- Agregar estado `editingRecordId` 
-- En el `useEffect` que escucha `editingRecord`, guardar `editingRecord.id` en `editingRecordId`
-- En el `useEffect` de auto-save, usar `updateRecord` si hay `editingRecordId`, o `upsertRecord` si no
+**Sección 1: PRODUCCIÓN** (4 subfunciones)
+- 1.1 Docencia directa — formulario con dropdowns (Asignatura, Semestre, Facultad, Programa, Jornada, Nivel), campos numéricos (Horas/semana, Semanas), cálculos automáticos
+- 1.2 Docencia indirecta — dropdown Actividad, campos numéricos, cálculos
+- 1.3 Dirección/asesorías trabajos de grado — dropdown Tipo trabajo, campos numéricos, cálculos
+- 1.4 Asesorías prácticas académicas — dropdown Actividad, campos numéricos, cálculos
+- Subtotal: "Total horas semestrales de producción"
 
-### 2. Botón "Limpiar campos" en docencia-directa (`SubfunctionForm.tsx`)
+**Sección 2: ACTIVIDADES DIFERENTES A LA DOCENCIA** (5 subfunciones)
+- 2.1 Investigación y desarrollo tecnológico
+- 2.2 Proyección social
+- 2.3 Actividades complementarias
+- 2.4 Formación de docentes
+- 2.5 Actividades académico-administrativas
+- Cada una con dropdown de Actividad, campos numéricos y cálculos automáticos
+- Subtotal: "Total horas semestrales actividades diferentes"
 
-- Agregar un botón con icono `Eraser` o `X` en la esquina superior derecha del header rojo, solo visible cuando `resolvedId === "docencia-directa"`
-- Al hacer clic: `setFormData({})`, `formDataStore[resolvedId] = {}`, limpiar `editingRecordId`
+**Pie de página con métricas:**
+- Total horas semestrales (suma de ambas secciones)
+- Promedio horas/semana (÷18)
+- Horas semestre/defecto (configurable, default 920)
+- Horas faltantes (diferencia)
 
-### 3. Total de horas semanales por formulario (`SubfunctionForm.tsx`)
+### Base de Datos (Lovable Cloud / Supabase)
 
-Debajo de cada `Card` del formulario, mostrar un texto:
+**Tablas principales:**
+- `dropdown_options` — almacena opciones dinámicas por categoría (asignatura, semestre, actividad, etc.)
+- `docencia_directa` — registros de la subfunción 1.1
+- `docencia_indirecta` — registros 1.2
+- `trabajos_grado` — registros 1.3
+- `practicas_academicas` — registros 1.4
+- `actividades_investigacion` — registros 2.1
+- `actividades_proyeccion` — registros 2.2
+- `actividades_complementarias` — registros 2.3
+- `formacion_docentes` — registros 2.4
+- `actividades_administrativas` — registros 2.5
+- `configuracion` — valores como horas semestre/defecto
 
-```
-Total de horas semanales por todas las actividades: Xh
-```
+**Autenticación:** Login con email/password para docentes administrativos. Sin necesidad de tabla de perfiles adicional por ahora.
 
-**Lógica**:
-- Obtener todos los registros del subfunction actual via `getRecordsBySubfunction(resolvedId)`
-- Sumar `horasSemana` de cada registro (o el campo equivalente según el formulario)
-- Para docencia-directa: objetivo = 16h. Rojo si < 16, verde si = 16, amarillo si > 16
-- Para otros formularios sin requisito fijo: mostrar sin color especial (o definir reglas similares)
+### Funcionalidades Clave
+- CRUD completo en cada subfunción (crear, editar, eliminar registros)
+- Agregar nuevas opciones a cualquier dropdown dinámicamente (botón "+" junto a cada select)
+- Cálculos automáticos en cliente (JavaScript) con actualización en tiempo real
+- Validación: solo números positivos en campos numéricos
+- Búsqueda sistematizada en la barra lateral para filtrar subfunciones
+- Responsive para desktop y tablet
+- Tablas con los registros existentes debajo de cada formulario
 
-**Colores**:
-- Rojo: no cumple (menor al requisito)
-- Verde: cumple exactamente
-- Amarillo: se excede
-
-Se usará `getRecordsBySubfunction` del contexto (ya existe). El campo de horas semanales varía por formulario (`horasSemana` en la mayoría, pero en trabajos-grado y prácticas no hay "horasSemana" directamente). Para formularios sin requisito de horas semanales, se mostrará el total en color neutro.
-
-### Archivos a modificar
-- `src/components/SubfunctionForm.tsx` — los 3 cambios
+### Flujo de Implementación
+1. Setup de identidad visual y layout con sidebar
+2. Base de datos: tablas y opciones iniciales de dropdowns
+3. Componente reutilizable de formulario con cálculos automáticos
+4. Implementar las 9 subfunciones usando el componente reutilizable
+5. Pie de página con métricas consolidadas en tiempo real
+6. Gestión dinámica de opciones de dropdowns
+7. Autenticación y protección de rutas
 

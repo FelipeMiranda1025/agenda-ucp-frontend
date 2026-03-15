@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAgenda } from "@/context/AgendaContext";
 import { subfunctions } from "@/data/subfunctions";
 import { ScheduleData } from "@/types/agenda";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, CalendarX } from "lucide-react";
+import { Plus, CalendarX, Eraser } from "lucide-react";
 import { toast } from "sonner";
 import { SUBFUNCTION_COLORS, DAYS, HOURS, formatHour } from "@/data/scheduleConstants";
 import { DocentePlanta } from "@/types/docentePlanta";
@@ -16,6 +16,11 @@ import { useSubjects, useSemesters, useFaculties, useEducationLevels, useProfess
 
 // Persistent form data across subfunctions
 const formDataStore: { [subfunctionId: string]: { [key: string]: string | number } } = {};
+
+// Weekly hour requirements per subfunction (null = no specific requirement)
+const WEEKLY_HOUR_REQUIREMENTS: { [subfunctionId: string]: number | null } = {
+  "docencia-directa": 16,
+};
 
 function ScheduleReadOnlyView({ hasSchedule, getSchedule, selectedDocente }: { hasSchedule: boolean; getSchedule: () => ScheduleData | null; selectedDocente: DocentePlanta | null }) {
   if (!hasSchedule) {
@@ -95,7 +100,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule, selectedDocente }: { h
 }
 
 export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
-  const { activeSubfunction, dropdownOptions, addDropdownOption, upsertRecord, selectedDocente, hasSchedule, getSchedule, editingRecord, setEditingRecord } = useAgenda();
+  const { activeSubfunction, dropdownOptions, addDropdownOption, upsertRecord, updateRecord, getRecordsBySubfunction, selectedDocente, hasSchedule, getSchedule, editingRecord, setEditingRecord } = useAgenda();
   const resolvedId = subfunctionId || activeSubfunction;
   const [formData, setFormData] = useState<{ [key: string]: string | number }>(() => {
     return formDataStore[resolvedId] || {};
@@ -104,6 +109,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   const [newOptionValue, setNewOptionValue] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const lastUpsertRef = useRef<string>("");
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
 
   // DB hooks for auto-fill (only used for docencia-directa)
   const { data: dbSubjects } = useSubjects();
@@ -126,6 +132,28 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   }, [calculatedFields]);
 
   const currentTotal = computeTotal(formData);
+
+  // Calculate total weekly hours for all records in this subfunction
+  const totalWeeklyHours = useMemo(() => {
+    const records = getRecordsBySubfunction(resolvedId);
+    // Determine which field holds "weekly hours" based on subfunction
+    const weeklyField = resolvedId === "trabajos-grado" || resolvedId === "practicas-academicas"
+      ? null // These don't have a direct weekly hours concept
+      : "horasSemana";
+    
+    if (!weeklyField) return null;
+    
+    return records.reduce((sum, r) => sum + (Number(r.data[weeklyField]) || 0), 0);
+  }, [getRecordsBySubfunction, resolvedId]);
+
+  const requirement = WEEKLY_HOUR_REQUIREMENTS[resolvedId] ?? null;
+
+  const weeklyHoursColor = useMemo(() => {
+    if (totalWeeklyHours === null || requirement === null) return "text-muted-foreground";
+    if (totalWeeklyHours < requirement) return "text-destructive";
+    if (totalWeeklyHours === requirement) return "text-green-600";
+    return "text-yellow-600";
+  }, [totalWeeklyHours, requirement]);
 
   // Persist formData to store
   useEffect(() => {
@@ -172,6 +200,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     if (editingRecord && editingRecord.subfunctionId === resolvedId) {
       setFormData({ ...editingRecord.data });
       formDataStore[resolvedId] = { ...editingRecord.data };
+      setEditingRecordId(editingRecord.id);
       lastUpsertRef.current = JSON.stringify({ resolvedId, data: editingRecord.data, total: editingRecord.totalHoras });
       setEditingRecord(null);
     }
@@ -194,13 +223,26 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     if (sig === lastUpsertRef.current) return;
     lastUpsertRef.current = "";
 
-    upsertRecord(resolvedId, { ...formData }, total);
+    if (editingRecordId) {
+      updateRecord(editingRecordId, { ...formData }, total);
+      toast.success("Registro actualizado");
+    } else {
+      upsertRecord(resolvedId, { ...formData }, total);
+      toast.success("Registro guardado");
+    }
     
     // Clear form after saving
     setFormData({});
     formDataStore[resolvedId] = {};
-    toast.success("Registro guardado");
-  }, [formData, resolvedId, config, inputFields, computeTotal, upsertRecord]);
+    setEditingRecordId(null);
+  }, [formData, resolvedId, config, inputFields, computeTotal, upsertRecord, updateRecord, editingRecordId]);
+
+  const handleClearForm = () => {
+    setFormData({});
+    formDataStore[resolvedId] = {};
+    setEditingRecordId(null);
+    lastUpsertRef.current = "";
+  };
 
   if (!config) return null;
 
@@ -218,18 +260,34 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-ucp-red px-6 py-4 rounded-lg">
-        <h1 className="text-xl font-bold text-primary-foreground">{config.title}</h1>
-        {selectedDocente && (
-          <p className="text-sm text-primary-foreground/80 mt-1">
-            Docente: {[selectedDocente.firstName, selectedDocente.secondName, selectedDocente.firstLastName, selectedDocente.secondLastName].filter(Boolean).join(' ')}
-          </p>
+      <div className="bg-ucp-red px-6 py-4 rounded-lg flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-primary-foreground">{config.title}</h1>
+          {selectedDocente && (
+            <p className="text-sm text-primary-foreground/80 mt-1">
+              Docente: {[selectedDocente.firstName, selectedDocente.secondName, selectedDocente.firstLastName, selectedDocente.secondLastName].filter(Boolean).join(' ')}
+            </p>
+          )}
+        </div>
+        {resolvedId === "docencia-directa" && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClearForm}
+            className="text-primary-foreground hover:bg-primary-foreground/20"
+            title="Limpiar campos"
+          >
+            <Eraser className="h-4 w-4 mr-1" />
+            Limpiar
+          </Button>
         )}
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Registro</CardTitle>
+          <CardTitle className="text-base">
+            {editingRecordId ? "Editando registro" : "Registro"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -326,6 +384,18 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Total de horas semanales por todas las actividades */}
+      {totalWeeklyHours !== null && (
+        <div className="flex justify-end px-2">
+          <p className={`text-sm font-semibold ${weeklyHoursColor}`}>
+            Total de horas semanales por todas las actividades: {totalWeeklyHours}h
+            {requirement !== null && (
+              <span className="text-muted-foreground font-normal"> / {requirement}h requeridas</span>
+            )}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
