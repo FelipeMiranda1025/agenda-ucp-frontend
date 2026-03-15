@@ -127,9 +127,9 @@ export default function ScheduleBuilder() {
         <h1 className="text-primary-foreground font-semibold text-lg">
           Distribución Horaria
         </h1>
-        {selectedDocente && (
+        {user && (
           <span className="text-primary-foreground/70 text-sm ml-2">
-            {[selectedDocente.firstName, selectedDocente.firstLastName].filter(Boolean).join(" ")}
+            {[user.firstName, user.firstLastName].filter(Boolean).join(" ")}
           </span>
         )}
         <div className="ml-auto">
