@@ -303,7 +303,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   if (!config) return null;
 
   if (resolvedId === "distribucion-horaria") {
-    return <ScheduleReadOnlyView hasSchedule={hasSchedule} getSchedule={getSchedule} selectedDocente={selectedDocente} />;
+    return <ScheduleReadOnlyView hasSchedule={hasSchedule} getSchedule={getSchedule} />;
   }
 
   const handleAddOption = () => {
