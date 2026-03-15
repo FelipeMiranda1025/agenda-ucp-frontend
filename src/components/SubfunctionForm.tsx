@@ -369,66 +369,115 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                     </div>
                   ) : field.type === "dropdown" ? (
                     <div className="flex gap-1">
-                      <Select
-                        value={String(formData[field.name] || "")}
-                        onValueChange={(v) => setFormData((p) => ({ ...p, [field.name]: v }))}
-                      >
-                        <SelectTrigger className="flex-1">
-                          <SelectValue placeholder="Seleccionar..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(() => {
-                            // Map categories to DB data sources
-                            const DB_CATEGORY_MAP: { [cat: string]: any[] | undefined } = {
-                              "asignatura": resolvedId === "docencia-directa" ? dbSubjects : undefined,
-                              "tipo_trabajo": dbDegreeWorks,
-                              "actividad_practicas": dbAcademicPractices,
-                              "actividad_indirecta": dbIndirectTeaching,
-                              "actividad_investigacion": dbInvestigations,
-                              "actividad_proyeccion": dbSocialProjects,
-                              "actividad_complementaria": dbComplementaryActivities,
-                              "actividad_formacion": dbTeacherTraining,
-                              "actividad_administrativa": dbAdministrativeActivities,
-                            };
-                            const dbData = DB_CATEGORY_MAP[field.category!];
-                            if (dbData) {
-                              return dbData.map((item) => (
-                                <SelectItem key={item.id} value={item.name}>
-                                  {item.name}
-                                </SelectItem>
-                              ));
-                            }
-                            return dropdownOptions
-                              .filter((o) => o.category === field.category)
-                              .map((o) => (
-                                <SelectItem key={o.id} value={o.value}>
-                                  {o.value}
-                                </SelectItem>
-                              ));
-                          })()}
-                        </SelectContent>
-                      </Select>
-                      <Dialog open={dialogOpen && newOptionCategory === field.category} onOpenChange={(open) => { setDialogOpen(open); if (open) setNewOptionCategory(field.category!); }}>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="icon" className="shrink-0" onClick={() => setNewOptionCategory(field.category!)}>
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Agregar opción: {field.label}</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-3 pt-2">
-                            <Input
-                              placeholder="Nueva opción..."
-                              value={newOptionValue}
-                              onChange={(e) => setNewOptionValue(e.target.value)}
-                              onKeyDown={(e) => e.key === "Enter" && handleAddOption()}
-                            />
-                            <Button onClick={handleAddOption} className="w-full">Agregar</Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                      {field.category === "asignatura" && resolvedId === "docencia-directa" ? (
+                        <>
+                          <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                role="combobox"
+                                aria-expanded={comboboxOpen}
+                                className="flex-1 justify-between font-normal"
+                              >
+                                {formData[field.name]
+                                  ? String(formData[field.name])
+                                  : "Buscar asignatura..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                              <Command>
+                                <CommandInput placeholder="Escriba para filtrar..." />
+                                <CommandList>
+                                  <CommandEmpty>No se encontraron asignaturas.</CommandEmpty>
+                                  <CommandGroup>
+                                    {dbSubjects?.map((subject) => (
+                                      <CommandItem
+                                        key={subject.id}
+                                        value={subject.name}
+                                        onSelect={(value) => {
+                                          setFormData((p) => ({ ...p, [field.name]: value }));
+                                          setComboboxOpen(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            formData[field.name] === subject.name ? "opacity-100" : "opacity-0"
+                                          )}
+                                        />
+                                        {subject.name}
+                                      </CommandItem>
+                                    ))}
+                                  </CommandGroup>
+                                </CommandList>
+                              </Command>
+                            </PopoverContent>
+                          </Popover>
+                        </>
+                      ) : (
+                        <>
+                          <Select
+                            value={String(formData[field.name] || "")}
+                            onValueChange={(v) => setFormData((p) => ({ ...p, [field.name]: v }))}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Seleccionar..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(() => {
+                                const DB_CATEGORY_MAP: { [cat: string]: any[] | undefined } = {
+                                  "asignatura": resolvedId === "docencia-directa" ? dbSubjects : undefined,
+                                  "tipo_trabajo": dbDegreeWorks,
+                                  "actividad_practicas": dbAcademicPractices,
+                                  "actividad_indirecta": dbIndirectTeaching,
+                                  "actividad_investigacion": dbInvestigations,
+                                  "actividad_proyeccion": dbSocialProjects,
+                                  "actividad_complementaria": dbComplementaryActivities,
+                                  "actividad_formacion": dbTeacherTraining,
+                                  "actividad_administrativa": dbAdministrativeActivities,
+                                };
+                                const dbData = DB_CATEGORY_MAP[field.category!];
+                                if (dbData) {
+                                  return dbData.map((item) => (
+                                    <SelectItem key={item.id} value={item.name}>
+                                      {item.name}
+                                    </SelectItem>
+                                  ));
+                                }
+                                return dropdownOptions
+                                  .filter((o) => o.category === field.category)
+                                  .map((o) => (
+                                    <SelectItem key={o.id} value={o.value}>
+                                      {o.value}
+                                    </SelectItem>
+                                  ));
+                              })()}
+                            </SelectContent>
+                          </Select>
+                          <Dialog open={dialogOpen && newOptionCategory === field.category} onOpenChange={(open) => { setDialogOpen(open); if (open) setNewOptionCategory(field.category!); }}>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="icon" className="shrink-0" onClick={() => setNewOptionCategory(field.category!)}>
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Agregar opción: {field.label}</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-3 pt-2">
+                                <Input
+                                  placeholder="Nueva opción..."
+                                  value={newOptionValue}
+                                  onChange={(e) => setNewOptionValue(e.target.value)}
+                                  onKeyDown={(e) => e.key === "Enter" && handleAddOption()}
+                                />
+                                <Button onClick={handleAddOption} className="w-full">Agregar</Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <Input
