@@ -58,10 +58,20 @@ export type DbIndirectTeaching = DbActivityBase;
 export type DbInvestigation = DbActivityBase;
 export type DbSocialProject = DbActivityBase;
 export type DbTeacherTraining = DbActivityBase;
-export type DbDegreeWork = DbActivityBase;
+export interface DbDegreeWork {
+  id: number;
+  name: string;
+  number_projects: number;
+  number_weeks: number;
+}
 export type DbComplementaryActivity = DbActivityBase;
 export type DbAdministrativeActivity = DbActivityBase;
-export type DbAcademicPractice = DbActivityBase;
+export interface DbAcademicPractice {
+  id: number;
+  name: string;
+  number_students: number;
+  number_weeks: number;
+}
 
 // =============================================
 // ENTIDADES PRINCIPALES

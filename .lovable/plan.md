@@ -1,68 +1,73 @@
 
 
-## Plan: Reestructurar tablas y actualizar datos
+## Plan: Sistema de Gestión de Agenda Docente - Universidad Católica de Pereira
 
-### 1. Migración: Recrear `degree_works`
+### Identidad Visual
+- Paleta UCP: verde institucional (#2E7D32 nav), rojo/granate (#8B1A1A header), blanco, gris claro
+- Logo UCP en la barra lateral superior
+- Tipografía limpia sans-serif, bordes redondeados, estilo institucional
 
-La tabla actual tiene columnas `id, name, weekly_hours, number_weeks`. La imagen muestra que debe tener `id, name, number_projects (default 0), number_weeks` -- es decir, reemplazar `weekly_hours` por `number_projects`.
+### Estructura de la Aplicación
 
-```sql
-DROP TABLE IF EXISTS degree_works;
-CREATE TABLE degree_works (
-  id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  number_projects INTEGER NOT NULL DEFAULT 0,
-  number_weeks INTEGER NOT NULL DEFAULT 0
-);
-ALTER TABLE degree_works ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Anyone can read degree_works" ON degree_works FOR SELECT TO anon, authenticated USING (true);
-```
+**Layout Principal:**
+- Barra lateral colapsable con logo UCP, campo de búsqueda y menú de navegación con las 2 secciones principales y sus subfunciones
+- Área principal de contenido donde se abren los formularios/tablas de cada subfunción
+- Pie de página fijo con métricas consolidadas en tiempo real
 
-### 2. Migración: Recrear `academic_practices`
+**Sección 1: PRODUCCIÓN** (4 subfunciones)
+- 1.1 Docencia directa — formulario con dropdowns (Asignatura, Semestre, Facultad, Programa, Jornada, Nivel), campos numéricos (Horas/semana, Semanas), cálculos automáticos
+- 1.2 Docencia indirecta — dropdown Actividad, campos numéricos, cálculos
+- 1.3 Dirección/asesorías trabajos de grado — dropdown Tipo trabajo, campos numéricos, cálculos
+- 1.4 Asesorías prácticas académicas — dropdown Actividad, campos numéricos, cálculos
+- Subtotal: "Total horas semestrales de producción"
 
-La tabla actual tiene `id, name, weekly_hours, number_weeks`. La imagen muestra `id, name, number_students (default 0), number_weeks`.
+**Sección 2: ACTIVIDADES DIFERENTES A LA DOCENCIA** (5 subfunciones)
+- 2.1 Investigación y desarrollo tecnológico
+- 2.2 Proyección social
+- 2.3 Actividades complementarias
+- 2.4 Formación de docentes
+- 2.5 Actividades académico-administrativas
+- Cada una con dropdown de Actividad, campos numéricos y cálculos automáticos
+- Subtotal: "Total horas semestrales actividades diferentes"
 
-```sql
-DROP TABLE IF EXISTS academic_practices;
-CREATE TABLE academic_practices (
-  id SERIAL PRIMARY KEY,
-  name TEXT NOT NULL,
-  number_students INTEGER NOT NULL DEFAULT 0,
-  number_weeks INTEGER NOT NULL DEFAULT 0
-);
-ALTER TABLE academic_practices ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Anyone can read academic_practices" ON academic_practices FOR SELECT TO anon, authenticated USING (true);
-```
+**Pie de página con métricas:**
+- Total horas semestrales (suma de ambas secciones)
+- Promedio horas/semana (÷18)
+- Horas semestre/defecto (configurable, default 920)
+- Horas faltantes (diferencia)
 
-### 3. Insertar datos en `degree_works`
+### Base de Datos (Lovable Cloud / Supabase)
 
-4 registros: Trabajo pregrado (15 semanas), Trabajo especialización (15), Trabajo maestría (30), Trabajo doctorado (45).
+**Tablas principales:**
+- `dropdown_options` — almacena opciones dinámicas por categoría (asignatura, semestre, actividad, etc.)
+- `docencia_directa` — registros de la subfunción 1.1
+- `docencia_indirecta` — registros 1.2
+- `trabajos_grado` — registros 1.3
+- `practicas_academicas` — registros 1.4
+- `actividades_investigacion` — registros 2.1
+- `actividades_proyeccion` — registros 2.2
+- `actividades_complementarias` — registros 2.3
+- `formacion_docentes` — registros 2.4
+- `actividades_administrativas` — registros 2.5
+- `configuracion` — valores como horas semestre/defecto
 
-### 4. Insertar datos en `academic_practices`
+**Autenticación:** Login con email/password para docentes administrativos. Sin necesidad de tabla de perfiles adicional por ahora.
 
-1 registro: Práctica profesional (IST) (10 semanas).
+### Funcionalidades Clave
+- CRUD completo en cada subfunción (crear, editar, eliminar registros)
+- Agregar nuevas opciones a cualquier dropdown dinámicamente (botón "+" junto a cada select)
+- Cálculos automáticos en cliente (JavaScript) con actualización en tiempo real
+- Validación: solo números positivos en campos numéricos
+- Búsqueda sistematizada en la barra lateral para filtrar subfunciones
+- Responsive para desktop y tablet
+- Tablas con los registros existentes debajo de cada formulario
 
-### 5. Limpiar e insertar en `investigations`
-
-Borrar existentes, insertar 2 registros (Investigador principal, Coinvestigador) con weekly_hours=0 y number_weeks=23.
-
-### 6. Limpiar e insertar en `complementary_activities`
-
-Borrar existentes, insertar 3 registros con weekly_hours=0 y number_weeks=23.
-
-### 7. Limpiar e insertar en `teacher_training`
-
-Borrar existentes, insertar 3 registros con weekly_hours=0 y number_weeks=23.
-
-### 8. Limpiar e insertar en `administrative_activities`
-
-Borrar existentes, insertar 4 registros con weekly_hours=0 y number_weeks=23.
-
-### 9. Actualizar tipos TypeScript (`src/types/database.ts`)
-
-Actualizar `DbDegreeWork` para usar `number_projects` en vez de `weekly_hours`, y `DbAcademicPractice` para usar `number_students` en vez de `weekly_hours`.
-
-### 10. Actualizar código dependiente
-
-Revisar `SubfunctionForm.tsx`, `subfunctions.ts`, y `useDatabase.ts` para que reflejen los nuevos campos de las tablas modificadas.
+### Flujo de Implementación
+1. Setup de identidad visual y layout con sidebar
+2. Base de datos: tablas y opciones iniciales de dropdowns
+3. Componente reutilizable de formulario con cálculos automáticos
+4. Implementar las 9 subfunciones usando el componente reutilizable
+5. Pie de página con métricas consolidadas en tiempo real
+6. Gestión dinámica de opciones de dropdowns
+7. Autenticación y protección de rutas
 

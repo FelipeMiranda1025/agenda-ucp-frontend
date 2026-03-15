@@ -4,6 +4,7 @@ import type {
   DbRole, DbState, DbSemester, DbFaculty,
   DbEducationLevel, DbProfessionalCareer, DbSubject,
   DbActivityBase, DbAgenda, DbAgendaInsert,
+  DbDegreeWork, DbAcademicPractice,
 } from "@/types/database";
 
 // =============================================
@@ -37,10 +38,10 @@ export const useIndirectTeaching = () => useCatalog<DbActivityBase>("indirect_te
 export const useInvestigations = () => useCatalog<DbActivityBase>("investigations", "investigations");
 export const useSocialProjects = () => useCatalog<DbActivityBase>("social_projects", "social_projects");
 export const useTeacherTraining = () => useCatalog<DbActivityBase>("teacher_training", "teacher_training");
-export const useDegreeWorks = () => useCatalog<DbActivityBase>("degree_works", "degree_works");
+export const useDegreeWorks = () => useCatalog<DbDegreeWork>("degree_works", "degree_works");
 export const useComplementaryActivities = () => useCatalog<DbActivityBase>("complementary_activities", "complementary_activities");
 export const useAdministrativeActivities = () => useCatalog<DbActivityBase>("administrative_activities", "administrative_activities");
-export const useAcademicPractices = () => useCatalog<DbActivityBase>("academic_practices", "academic_practices");
+export const useAcademicPractices = () => useCatalog<DbAcademicPractice>("academic_practices", "academic_practices");
 
 // =============================================
 // Subjects
