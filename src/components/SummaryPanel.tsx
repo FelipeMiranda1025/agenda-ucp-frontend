@@ -78,7 +78,7 @@ export function SummaryPanel() {
   };
 
   return (
-    <div className="w-80 shrink-0 flex flex-col bg-card border-l">
+    <div className="w-96 shrink-0 flex flex-col bg-card border-l">
       <div className="px-4 py-3 border-b bg-ucp-red">
         <h2 className="text-sm font-bold text-primary-foreground">Resumen de Datos</h2>
         {selectedDocente && (
@@ -112,7 +112,7 @@ export function SummaryPanel() {
                       className="flex items-center justify-between py-1 text-sm border-b border-border/50 last:border-0 cursor-pointer hover:bg-accent/50 rounded px-1 transition-colors group"
                       onClick={() => handleRecordClick(record)}
                     >
-                      <span className="truncate flex-1 text-foreground">{String(label)}</span>
+                      <span className="flex-1 text-foreground break-words line-clamp-2" title={String(label)}>{String(label)}</span>
                       <span className="font-semibold text-primary ml-2">{record.totalHoras}h</span>
                       <button
                         className="ml-1 p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
