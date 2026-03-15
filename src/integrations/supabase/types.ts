@@ -18,20 +18,20 @@ export type Database = {
         Row: {
           id: number
           name: string
+          number_students: number
           number_weeks: number
-          weekly_hours: number
         }
         Insert: {
           id?: number
           name: string
+          number_students?: number
           number_weeks?: number
-          weekly_hours?: number
         }
         Update: {
           id?: number
           name?: string
+          number_students?: number
           number_weeks?: number
-          weekly_hours?: number
         }
         Relationships: []
       }
@@ -135,20 +135,20 @@ export type Database = {
         Row: {
           id: number
           name: string
+          number_projects: number
           number_weeks: number
-          weekly_hours: number
         }
         Insert: {
           id?: number
           name: string
+          number_projects?: number
           number_weeks?: number
-          weekly_hours?: number
         }
         Update: {
           id?: number
           name?: string
+          number_projects?: number
           number_weeks?: number
-          weekly_hours?: number
         }
         Relationships: []
       }
