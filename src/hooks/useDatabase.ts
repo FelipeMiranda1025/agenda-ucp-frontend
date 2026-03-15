@@ -40,7 +40,7 @@ export const useTeacherTraining = () => useCatalog<DbActivityBase>("teacher_trai
 export const useDegreeWorks = () => useCatalog<DbDegreeWork>("degree_works", "degree_works");
 export const useComplementaryActivities = () => useCatalog<DbActivityBase>("complementary_activities", "complementary_activities");
 export const useAdministrativeActivities = () => useCatalog<DbActivityBase>("administrative_activities", "administrative_activities");
-export const useAcademicPractices = () => useCatalog<DbActivityBase>("academic_practices", "academic_practices");
+export const useAcademicPractices = () => useCatalog<DbAcademicPractice>("academic_practices", "academic_practices");
 
 // =============================================
 // Subjects
