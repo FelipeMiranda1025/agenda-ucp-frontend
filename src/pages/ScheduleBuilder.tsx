@@ -21,7 +21,8 @@ interface DraggableItem {
 
 export default function ScheduleBuilder() {
   const navigate = useNavigate();
-  const { records, selectedDocente, saveSchedule, getSchedule } = useAgenda();
+  const { records, saveSchedule, getSchedule } = useAgenda();
+  const { user } = useAuth();
 
   const existingSchedule = getSchedule();
 
