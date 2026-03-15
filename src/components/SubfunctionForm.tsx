@@ -203,6 +203,47 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     });
   }, [formData["asignatura"], resolvedId, dbSubjects, dbSemesters, dbFaculties, dbEducationLevels, dbProfessionalCareers]);
 
+  // Auto-fill fields when selecting an activity in other subfunctions
+  useEffect(() => {
+    if (resolvedId === "docencia-directa" || resolvedId === "distribucion-horaria") return;
+
+    const AUTOFILL_MAP: { [subfId: string]: { dropdownField: string; data: any[] | undefined; targetField: string; weeklyHoursField?: string } } = {
+      "trabajos-grado": { dropdownField: "tipoTrabajo", data: dbDegreeWorks, targetField: "cantidadHoras" },
+      "practicas-academicas": { dropdownField: "actividad", data: dbAcademicPractices, targetField: "cantidadHoras" },
+      "docencia-indirecta": { dropdownField: "actividad", data: dbIndirectTeaching, targetField: "cantidadSemanas", weeklyHoursField: "horasSemana" },
+      "investigacion": { dropdownField: "actividad", data: dbInvestigations, targetField: "cantidadSemanas", weeklyHoursField: "horasSemana" },
+      "proyeccion-social": { dropdownField: "actividad", data: dbSocialProjects, targetField: "cantidadSemanas", weeklyHoursField: "horasSemana" },
+      "complementarias": { dropdownField: "actividad", data: dbComplementaryActivities, targetField: "cantidadSemanas", weeklyHoursField: "horasSemana" },
+      "formacion-docentes": { dropdownField: "actividad", data: dbTeacherTraining, targetField: "cantidadSemanas", weeklyHoursField: "horasSemana" },
+      "administrativas": { dropdownField: "actividad", data: dbAdministrativeActivities, targetField: "cantidadSemanas", weeklyHoursField: "horasSemana" },
+    };
+
+    const mapping = AUTOFILL_MAP[resolvedId];
+    if (!mapping || !mapping.data) return;
+
+    const selectedName = formData[mapping.dropdownField];
+    if (!selectedName || typeof selectedName !== "string") return;
+
+    const record = mapping.data.find((r: any) => r.name === selectedName);
+    if (!record) return;
+
+    setFormData((prev) => {
+      const updated = { ...prev };
+      updated[mapping.targetField] = record.number_weeks;
+      if (mapping.weeklyHoursField && record.weekly_hours !== undefined) {
+        updated[mapping.weeklyHoursField] = record.weekly_hours;
+      }
+      if (resolvedId === "practicas-academicas" && record.number_students !== undefined) {
+        updated["cantidadEstudiantes"] = record.number_students;
+      }
+      return updated;
+    });
+  }, [
+    formData["tipoTrabajo"], formData["actividad"], resolvedId,
+    dbDegreeWorks, dbAcademicPractices, dbIndirectTeaching, dbInvestigations,
+    dbSocialProjects, dbComplementaryActivities, dbTeacherTraining, dbAdministrativeActivities,
+  ]);
+
   // Listen for editingRecord from context (click on summary panel record)
   useEffect(() => {
     if (editingRecord && editingRecord.subfunctionId === resolvedId) {
