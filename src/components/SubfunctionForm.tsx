@@ -26,15 +26,16 @@ const WEEKLY_HOUR_REQUIREMENTS: { [subfunctionId: string]: number | null } = {
   "docencia-directa": 16,
 };
 
-function ScheduleReadOnlyView({ hasSchedule, getSchedule, selectedDocente }: { hasSchedule: boolean; getSchedule: () => ScheduleData | null; selectedDocente: DocentePlanta | null }) {
+function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boolean; getSchedule: () => ScheduleData | null }) {
+  const { user } = useAuth();
   if (!hasSchedule) {
     return (
       <div className="space-y-6">
         <div className="bg-ucp-red px-6 py-4 rounded-lg">
           <h1 className="text-xl font-bold text-primary-foreground">3.1 Distribución horaria</h1>
-          {selectedDocente && (
+          {user && (
             <p className="text-sm text-primary-foreground/80 mt-1">
-              Docente: {[selectedDocente.firstName, selectedDocente.firstLastName].filter(Boolean).join(' ')}
+              Docente: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
             </p>
           )}
         </div>
