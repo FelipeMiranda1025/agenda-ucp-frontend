@@ -9,7 +9,8 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 export function SummaryPanel() {
-  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, selectedDocente, setActiveSubfunction, setEditingRecord, deleteRecord } = useAgenda();
+  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord } = useAgenda();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const grouped = subfunctions
