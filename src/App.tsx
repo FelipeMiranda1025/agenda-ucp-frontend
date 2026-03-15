@@ -12,7 +12,9 @@ import Profile from "./pages/Profile";
 import ScheduleBuilder from "./pages/ScheduleBuilder";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1 } },
+});
 
 const AppContent = () => {
   const { isAuthenticated } = useAuth();
