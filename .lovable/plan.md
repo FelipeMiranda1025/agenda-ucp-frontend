@@ -1,34 +1,73 @@
 
 
-## Plan: Crear migración de seed con todos los datos existentes
+## Plan: Sistema de Gestión de Agenda Docente - Universidad Católica de Pereira
 
-### Qué se hará
-Crear un único archivo de migración SQL en `supabase/migrations/` que inserte todos los registros actuales de las 16 tablas de datos. Se usará `INSERT ... ON CONFLICT DO NOTHING` para que sea idempotente (no falle si los datos ya existen).
+### Identidad Visual
+- Paleta UCP: verde institucional (#2E7D32 nav), rojo/granate (#8B1A1A header), blanco, gris claro
+- Logo UCP en la barra lateral superior
+- Tipografía limpia sans-serif, bordes redondeados, estilo institucional
 
-### Archivo a crear
-**`supabase/migrations/20260316_seed_initial_data.sql`**
+### Estructura de la Aplicación
 
-Contendrá los INSERTs en orden correcto (respetando dependencias de foreign keys):
+**Layout Principal:**
+- Barra lateral colapsable con logo UCP, campo de búsqueda y menú de navegación con las 2 secciones principales y sus subfunciones
+- Área principal de contenido donde se abren los formularios/tablas de cada subfunción
+- Pie de página fijo con métricas consolidadas en tiempo real
 
-1. **roles** — 1 registro (id:6, Docente de planta)
-2. **states** — 2 registros (Activo, Inactivo)
-3. **semester** — 6 registros (semestres 1-6)
-4. **faculties** — 1 registro (Facultad de ciencias básicas e ingeniería)
-5. **education_levels** — 4 registros (Pregrado, Especialización, Maestría, Doctorado)
-6. **professional_careers** — 1 registro (Tecnología en desarrollo de software)
-7. **subjects** — 29 registros (todas las asignaturas con sus FK)
-8. **users** — 1 registro (Docente Planta Pruebas, cc:1234)
-9. **indirect_teaching** — 2 registros (Preparación de clases, Asesorías)
-10. **investigations** — 2 registros (Investigador principal, Coinvestigador)
-11. **social_projects** — 1 registro
-12. **teacher_training** — 3 registros (Estudios maestría/doctorado/otros)
-13. **degree_works** — 4 registros (Trabajo pregrado/especialización/maestría/doctorado)
-14. **complementary_activities** — 3 registros
-15. **administrative_activities** — 4 registros
-16. **academic_practices** — 1 registro
+**Sección 1: PRODUCCIÓN** (4 subfunciones)
+- 1.1 Docencia directa — formulario con dropdowns (Asignatura, Semestre, Facultad, Programa, Jornada, Nivel), campos numéricos (Horas/semana, Semanas), cálculos automáticos
+- 1.2 Docencia indirecta — dropdown Actividad, campos numéricos, cálculos
+- 1.3 Dirección/asesorías trabajos de grado — dropdown Tipo trabajo, campos numéricos, cálculos
+- 1.4 Asesorías prácticas académicas — dropdown Actividad, campos numéricos, cálculos
+- Subtotal: "Total horas semestrales de producción"
 
-Cada INSERT incluirá los IDs explícitos y reseteará las secuencias para evitar conflictos futuros.
+**Sección 2: ACTIVIDADES DIFERENTES A LA DOCENCIA** (5 subfunciones)
+- 2.1 Investigación y desarrollo tecnológico
+- 2.2 Proyección social
+- 2.3 Actividades complementarias
+- 2.4 Formación de docentes
+- 2.5 Actividades académico-administrativas
+- Cada una con dropdown de Actividad, campos numéricos y cálculos automáticos
+- Subtotal: "Total horas semestrales actividades diferentes"
 
-### Resultado
-Al clonar el repo y ejecutar las migraciones (`supabase db push` o al conectar con Lovable Cloud), todos los datos estarán disponibles automáticamente.
+**Pie de página con métricas:**
+- Total horas semestrales (suma de ambas secciones)
+- Promedio horas/semana (÷18)
+- Horas semestre/defecto (configurable, default 920)
+- Horas faltantes (diferencia)
+
+### Base de Datos (Lovable Cloud / Supabase)
+
+**Tablas principales:**
+- `dropdown_options` — almacena opciones dinámicas por categoría (asignatura, semestre, actividad, etc.)
+- `docencia_directa` — registros de la subfunción 1.1
+- `docencia_indirecta` — registros 1.2
+- `trabajos_grado` — registros 1.3
+- `practicas_academicas` — registros 1.4
+- `actividades_investigacion` — registros 2.1
+- `actividades_proyeccion` — registros 2.2
+- `actividades_complementarias` — registros 2.3
+- `formacion_docentes` — registros 2.4
+- `actividades_administrativas` — registros 2.5
+- `configuracion` — valores como horas semestre/defecto
+
+**Autenticación:** Login con email/password para docentes administrativos. Sin necesidad de tabla de perfiles adicional por ahora.
+
+### Funcionalidades Clave
+- CRUD completo en cada subfunción (crear, editar, eliminar registros)
+- Agregar nuevas opciones a cualquier dropdown dinámicamente (botón "+" junto a cada select)
+- Cálculos automáticos en cliente (JavaScript) con actualización en tiempo real
+- Validación: solo números positivos en campos numéricos
+- Búsqueda sistematizada en la barra lateral para filtrar subfunciones
+- Responsive para desktop y tablet
+- Tablas con los registros existentes debajo de cada formulario
+
+### Flujo de Implementación
+1. Setup de identidad visual y layout con sidebar
+2. Base de datos: tablas y opciones iniciales de dropdowns
+3. Componente reutilizable de formulario con cálculos automáticos
+4. Implementar las 9 subfunciones usando el componente reutilizable
+5. Pie de página con métricas consolidadas en tiempo real
+6. Gestión dinámica de opciones de dropdowns
+7. Autenticación y protección de rutas
 

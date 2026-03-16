@@ -61,6 +61,12 @@ src/
 └── assets/        # Imágenes y recursos estáticos
 ```
 
+## Datos Iniciales (Seed)
+
+El archivo `supabase/seed.sql` contiene todos los registros iniciales del sistema (roles, estados, semestres, facultades, niveles de educación, carreras, asignaturas, actividades, y el usuario de prueba). Los datos se insertan con `ON CONFLICT DO NOTHING` para ser idempotentes.
+
+Si necesitas reinicializar los datos en una nueva instancia de base de datos, ejecuta el contenido de `supabase/seed.sql` contra tu base de datos PostgreSQL.
+
 ## Variables de Entorno
 
 Ver `.env.example` para referencia. Las variables requeridas son:
