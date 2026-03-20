@@ -1,0 +1,188 @@
+# =============================================
+# Supabase Self-Hosted — Docker Compose
+# Sistema de Agenda Docente UCP
+# =============================================
+#
+# Uso:
+#   1. Copia .env.example a .env y completa los valores
+#   2. Ejecuta: docker compose up -d
+#   3. Accede a Studio en http://localhost:3000
+#
+# Para reinicializar la BD:
+#   docker compose down -v && docker compose up -d
+
+# ─── Variables que DEBES configurar en tu .env de Docker ───
+# (estas son independientes del .env de Vite/React)
+#
+# POSTGRES_PASSWORD=tu-password-seguro
+# JWT_SECRET=resultado-de-openssl-rand-base64-32
+# ANON_KEY=jwt-generado-con-role-anon
+# SERVICE_ROLE_KEY=jwt-generado-con-role-service_role
+# DASHBOARD_USERNAME=admin
+# DASHBOARD_PASSWORD=admin
+
+services:
+  # ─── PostgreSQL ───────────────────────────────────────────
+  db:
+    image: supabase/postgres:15.8.1.060
+    container_name: ucp-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: postgres
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXP: 3600
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─── GoTrue (Auth) ───────────────────────────────────────
+  auth:
+    image: supabase/gotrue:v2.168.0
+    container_name: ucp-auth
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: http://localhost:8000
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD:-postgres}@db:5432/postgres
+      GOTRUE_SITE_URL: http://localhost:5173
+      GOTRUE_URI_ALLOW_LIST: ""
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_MAILER_AUTOCONFIRM: "true"
+      GOTRUE_SMTP_ADMIN_EMAIL: noreply@ucp.edu.co
+      GOTRUE_RATE_LIMIT_EMAIL_SENT: 100
+    ports:
+      - "9999:9999"
+
+  # ─── PostgREST (API REST) ────────────────────────────────
+  rest:
+    image: postgrest/postgrest:v12.2.3
+    container_name: ucp-rest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD:-postgres}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
+      PGRST_APP_SETTINGS_JWT_EXP: 3600
+    ports:
+      - "3001:3000"
+
+  # ─── Realtime ─────────────────────────────────────────────
+  realtime:
+    image: supabase/realtime:v2.30.34
+    container_name: ucp-realtime
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: supabase_admin
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DB_NAME: postgres
+      DB_AFTER_CONNECT_QUERY: "SET search_path TO _realtime"
+      DB_ENC_KEY: supabaserealtime
+      API_JWT_SECRET: ${JWT_SECRET}
+      SECRET_KEY_BASE: ${JWT_SECRET}
+      ERL_AFLAGS: "-proto_dist inet_tcp"
+      DNS_NODES: "''"
+      RLIMIT_NOFILE: "10000"
+      APP_NAME: realtime
+      SEED_SELF_HOST: "true"
+    ports:
+      - "4000:4000"
+
+  # ─── Kong (API Gateway) ──────────────────────────────────
+  kong:
+    image: kong:2.8.1
+    container_name: ucp-kong
+    restart: unless-stopped
+    depends_on:
+      auth:
+        condition: service_started
+      rest:
+        condition: service_started
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+    volumes:
+      - ./docker/kong.yml:/var/lib/kong/kong.yml:ro
+    ports:
+      - "8000:8000"
+      - "8443:8443"
+
+  # ─── Supabase Studio (Panel Admin) ──────────────────────
+  studio:
+    image: supabase/studio:20241202-71e5240
+    container_name: ucp-studio
+    restart: unless-stopped
+    depends_on:
+      kong:
+        condition: service_started
+    environment:
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DEFAULT_ORGANIZATION_NAME: UCP
+      DEFAULT_PROJECT_NAME: "Agenda Docente"
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: http://localhost:8000
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
+      AUTH_JWT_SECRET: ${JWT_SECRET}
+      LOGFLARE_API_KEY: ""
+      LOGFLARE_URL: ""
+      NEXT_PUBLIC_ENABLE_LOGS: "false"
+      NEXT_ANALYTICS_BACKEND_PROVIDER: ""
+    ports:
+      - "3000:3000"
+
+  # ─── PG Meta (requerido por Studio) ─────────────────────
+  meta:
+    image: supabase/postgres-meta:v0.84.2
+    container_name: ucp-meta
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: postgres
+      PG_META_DB_USER: supabase_admin
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+
+volumes:
+  pgdata:
