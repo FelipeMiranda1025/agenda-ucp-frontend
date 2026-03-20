@@ -1,14 +1,14 @@
 
 
-## Plan: Agregar enlace "Olvidé mi contraseña" en el login
+## Plan: Cambiar enlace "Olvidé mi contraseña" para abrir Gmail directamente
 
 ### Cambio unico en `src/components/LoginDialog.tsx`
 
-Agregar un enlace `<a>` entre el campo de contraseña y el boton "Iniciar Sesion" que use un `mailto:` link con los parametros pre-llenados:
+Reemplazar el `mailto:` link actual por un enlace que abra directamente la ventana de redaccion de Gmail en el navegador usando la URL:
 
-- **Destinatario**: soporte@ucp.edu.co
-- **Asunto**: "Olvide mi contraseña para ingreso de agenda docente"
-- **Cuerpo**: El texto formal con los campos Correo, Nombre, CC
+```
+https://mail.google.com/mail/?view=cm&fs=1&to=soporte@ucp.edu.co&su=...&body=...
+```
 
-El enlace se mostrara alineado a la derecha, con estilo de texto pequeno y color primario, similar a un link convencional de "forgot password".
+Con `target="_blank"` para que abra en una nueva pestaña. El asunto y cuerpo del mensaje se mantienen exactamente igual que los actuales.
 
