@@ -121,8 +121,9 @@ export const LoginDialog: React.FC = () => {
     let hasError = false;
 
     // Validate username
-    if (!isValidUsername(trimmedUser)) {
-      setUsernameError('Usuario invalido. Intente nuevamente.');
+    const userError = getUsernameError(trimmedUser);
+    if (userError) {
+      setUsernameError(userError);
       hasError = true;
     }
 
