@@ -97,6 +97,14 @@ export const LoginDialog: React.FC = () => {
 
   const isLockedOut = lockoutUntil !== null && Date.now() < lockoutUntil;
 
+  const getPasswordError = (pwd: string): string => {
+    if (pwd.length < 8) return 'Mínimo de 8 caracteres.';
+    if (!/[A-Z]/.test(pwd) || !/[a-z]/.test(pwd) || !/[0-9]/.test(pwd) || !/[^A-Za-z0-9]/.test(pwd)) {
+      return 'Incluye mayúsculas, minúsculas, números y carácter especial (@ - $)';
+    }
+    return '';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setUsernameError('');
@@ -115,8 +123,9 @@ export const LoginDialog: React.FC = () => {
     }
 
     // Validate password
-    if (!isValidPassword(password)) {
-      setPasswordError('Contraseña invalida. Intente nuevamente.');
+    const pwdError = getPasswordError(password);
+    if (pwdError) {
+      setPasswordError(pwdError);
       hasError = true;
     }
 
