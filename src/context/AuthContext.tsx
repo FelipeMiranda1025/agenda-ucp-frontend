@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const dbUser = await findUserByCredentials(username, hashed);
 
       if (!dbUser) {
-        return { success: false, error: 'Credenciales inválidas. Verifique su usuario y contraseña.' };
+        return { success: false, error: 'Credenciales inválidas. Intente nuevamente.' };
       }
 
       // Map DB user to app User format (without password)
