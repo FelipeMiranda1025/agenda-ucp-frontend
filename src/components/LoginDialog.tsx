@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -6,17 +6,67 @@ import { Label } from '@/components/ui/label';
 import { Lock, User } from 'lucide-react';
 import ucpLogo from '@/assets/ucp-logo.png';
 
+const MAX_FAILED_ATTEMPTS = 3;
+const LOCKOUT_SECONDS = 30;
+
+function isValidUsername(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  // Cédula: solo dígitos, mínimo 8
+  if (/^\d+$/.test(trimmed)) return trimmed.length >= 8;
+  // Correo institucional
+  if (trimmed.includes('@ucp.edu.co')) return true;
+  return false;
+}
+
+function isValidPassword(value: string): boolean {
+  if (value.length < 8) return false;
+  if (!/[A-Z]/.test(value)) return false;
+  if (!/[a-z]/.test(value)) return false;
+  if (!/[0-9]/.test(value)) return false;
+  if (!/[^A-Za-z0-9]/.test(value)) return false;
+  return true;
+}
+
 export const LoginDialog: React.FC = () => {
   const { login } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [usernameError, setUsernameError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showMessage, setShowMessage] = useState(false);
   const [countdown, setCountdown] = useState(5);
-
   const [redirected, setRedirected] = useState(false);
 
+  // Rate limiting
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
+  const [lockoutCountdown, setLockoutCountdown] = useState(0);
+  const lockoutInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Lockout countdown timer
+  useEffect(() => {
+    if (lockoutUntil === null) return;
+    const tick = () => {
+      const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000);
+      if (remaining <= 0) {
+        setLockoutUntil(null);
+        setLockoutCountdown(0);
+        if (lockoutInterval.current) clearInterval(lockoutInterval.current);
+      } else {
+        setLockoutCountdown(remaining);
+      }
+    };
+    tick();
+    lockoutInterval.current = setInterval(tick, 1000);
+    return () => {
+      if (lockoutInterval.current) clearInterval(lockoutInterval.current);
+    };
+  }, [lockoutUntil]);
+
+  // Forgot password redirect logic
   useEffect(() => {
     if (!showMessage) return;
     if (redirected) return;
@@ -45,17 +95,46 @@ export const LoginDialog: React.FC = () => {
     setCountdown(5);
   };
 
+  const isLockedOut = lockoutUntil !== null && Date.now() < lockoutUntil;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !password.trim()) {
-      setError('Por favor complete todos los campos.');
-      return;
+    setUsernameError('');
+    setPasswordError('');
+    setServerError('');
+
+    if (isLockedOut) return;
+
+    const trimmedUser = username.trim();
+    let hasError = false;
+
+    // Validate username
+    if (!isValidUsername(trimmedUser)) {
+      setUsernameError('Usuario invalido. Intente nuevamente.');
+      hasError = true;
     }
+
+    // Validate password
+    if (!isValidPassword(password)) {
+      setPasswordError('Contraseña invalida. Intente nuevamente.');
+      hasError = true;
+    }
+
+    if (hasError) return;
+
     setLoading(true);
-    setError('');
-    const result = await login(username.trim(), password);
+    const result = await login(trimmedUser, password);
     if (!result.success) {
-      setError(result.error || 'Error al iniciar sesión');
+      setServerError(result.error || 'Credenciales inválidas. Intente nuevamente.');
+      setPassword('');
+      const newAttempts = failedAttempts + 1;
+      setFailedAttempts(newAttempts);
+      if (newAttempts >= MAX_FAILED_ATTEMPTS) {
+        setLockoutUntil(Date.now() + LOCKOUT_SECONDS * 1000);
+        setFailedAttempts(0);
+      }
+    } else {
+      setFailedAttempts(0);
     }
     setLoading(false);
   };
@@ -87,12 +166,20 @@ export const LoginDialog: React.FC = () => {
                 type="text"
                 placeholder="Ej: 1234567890 o correo@ucp.edu.co"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => {
+                  setUsername(e.target.value);
+                  setUsernameError('');
+                  setServerError('');
+                }}
                 className="pl-10"
                 autoComplete="username"
                 autoFocus
+                maxLength={50}
               />
             </div>
+            {usernameError && (
+              <p className="text-sm text-destructive text-left">{usernameError}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -106,12 +193,21 @@ export const LoginDialog: React.FC = () => {
                 type="password"
                 placeholder="Ingrese su contraseña"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setPasswordError('');
+                  setServerError('');
+                }}
                 className="pl-10"
                 autoComplete="current-password"
+                maxLength={128}
               />
             </div>
+            {passwordError && (
+              <p className="text-sm text-destructive text-left">{passwordError}</p>
+            )}
           </div>
+
           <div className="flex justify-center">
             <button
               type="button"
@@ -135,14 +231,24 @@ export const LoginDialog: React.FC = () => {
             </div>
           )}
 
-          {error && (
+          {serverError && (
             <p className="text-sm text-destructive font-medium bg-destructive/10 rounded-md px-3 py-2">
-              {error}
+              {serverError}
             </p>
           )}
 
-          <Button type="submit" className="w-full h-11 text-base font-semibold" disabled={loading}>
-            {loading ? 'Verificando...' : 'Iniciar Sesión'}
+          {isLockedOut && (
+            <p className="text-sm text-destructive font-medium bg-destructive/10 rounded-md px-3 py-2 text-center">
+              Demasiados intentos fallidos. Intente de nuevo en {lockoutCountdown}s.
+            </p>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full h-11 text-base font-semibold"
+            disabled={loading || isLockedOut}
+          >
+            {loading ? 'Verificando...' : isLockedOut ? `Bloqueado (${lockoutCountdown}s)` : 'Iniciar Sesión'}
           </Button>
         </form>
       </div>
