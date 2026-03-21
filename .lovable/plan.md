@@ -1,14 +1,16 @@
 
 
-## Plan: Cambiar enlace "Olvidé mi contraseña" para abrir Gmail directamente
+## Plan: "Olvidé mi contraseña" con mensaje y cuenta regresiva
 
-### Cambio unico en `src/components/LoginDialog.tsx`
+### Cambio único en `src/components/LoginDialog.tsx`
 
-Reemplazar el `mailto:` link actual por un enlace que abra directamente la ventana de redaccion de Gmail en el navegador usando la URL:
+1. **Reemplazar** el `<a>` actual (que abre Gmail compose) por un simple enlace de texto "Olvidé mi contraseña" sin href, alineado a la derecha como está ahora.
 
-```
-https://mail.google.com/mail/?view=cm&fs=1&to=soporte@ucp.edu.co&su=...&body=...
-```
+2. **Al hacer click**:
+   - Mostrar centrado el texto: **"Debes escribir a soporte@ucp.edu.co"**
+   - Debajo, mostrar cuenta regresiva de **5 a 1** segundos (ej: "Redirigiendo en 5...")
+   - Al llegar a 0, abrir `https://www.gmail.com` en nueva pestaña con `window.open()`
+   - Ocultar el mensaje después de la redirección
 
-Con `target="_blank"` para que abra en una nueva pestaña. El asunto y cuerpo del mensaje se mantienen exactamente igual que los actuales.
+3. **Implementación**: Agregar estados `showMessage` (boolean) y `countdown` (number). Usar `useEffect` con `setInterval` que decrementa cada segundo cuando `showMessage` es true. El texto y cuenta regresiva se renderizan centrados entre el enlace y el botón de login.
 
