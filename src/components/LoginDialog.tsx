@@ -127,9 +127,11 @@ export const LoginDialog: React.FC = () => {
               <p className="text-sm font-medium text-foreground">
                 Debes escribir a soporte@ucp.edu.co
               </p>
-              <p className="text-sm text-muted-foreground">
-                Redirigiendo en {countdown}...
-              </p>
+              {!redirected && (
+                <p className="text-sm text-muted-foreground">
+                  Redirigiendo en {countdown}...
+                </p>
+              )}
             </div>
           )}
 
