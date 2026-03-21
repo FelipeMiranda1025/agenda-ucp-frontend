@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,25 @@ export const LoginDialog: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showMessage, setShowMessage] = useState(false);
+  const [countdown, setCountdown] = useState(5);
+
+  useEffect(() => {
+    if (!showMessage) return;
+    if (countdown <= 0) {
+      window.open('https://www.gmail.com', '_blank');
+      setShowMessage(false);
+      setCountdown(5);
+      return;
+    }
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [showMessage, countdown]);
+
+  const handleForgotPassword = () => {
+    setShowMessage(true);
+    setCountdown(5);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,15 +100,25 @@ export const LoginDialog: React.FC = () => {
             </div>
           </div>
           <div className="flex justify-end">
-            <a
-              href={`https://mail.google.com/mail/?view=cm&fs=1&to=soporte@ucp.edu.co&su=${encodeURIComponent('Olvide mi contraseña para ingreso de agenda docente')}&body=${encodeURIComponent('Cordial saludo.\n\nSolicito encarecidamente por medio de la presente recuperar mi contraseña para realizar la gestión de mi agenda docente.\n\nCorreo:\nNombre:\nCC:\n\nFeliz día.')}`}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={handleForgotPassword}
               className="text-sm text-primary hover:underline"
             >
               Olvidé mi contraseña
-            </a>
+            </button>
           </div>
+
+          {showMessage && (
+            <div className="text-center space-y-1">
+              <p className="text-sm font-medium text-foreground">
+                Debes escribir a soporte@ucp.edu.co
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Redirigiendo en {countdown}...
+              </p>
+            </div>
+          )}
 
           {error && (
             <p className="text-sm text-destructive font-medium bg-destructive/10 rounded-md px-3 py-2">
