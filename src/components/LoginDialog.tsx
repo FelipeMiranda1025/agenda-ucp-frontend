@@ -82,7 +82,9 @@ export const LoginDialog: React.FC = () => {
           </div>
           <div className="flex justify-end">
             <a
-              href={`mailto:soporte@ucp.edu.co?subject=${encodeURIComponent('Olvide mi contraseña para ingreso de agenda docente')}&body=${encodeURIComponent('Cordial saludo.\n\nSolicito encarecidamente por medio de la presente recuperar mi contraseña para realizar la gestión de mi agenda docente.\n\nCorreo:\nNombre:\nCC:\n\nFeliz día.')}`}
+              href={`https://mail.google.com/mail/?view=cm&fs=1&to=soporte@ucp.edu.co&su=${encodeURIComponent('Olvide mi contraseña para ingreso de agenda docente')}&body=${encodeURIComponent('Cordial saludo.\n\nSolicito encarecidamente por medio de la presente recuperar mi contraseña para realizar la gestión de mi agenda docente.\n\nCorreo:\nNombre:\nCC:\n\nFeliz día.')}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="text-sm text-primary hover:underline"
             >
               Olvidé mi contraseña
