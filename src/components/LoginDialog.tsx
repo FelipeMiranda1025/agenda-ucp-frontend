@@ -15,17 +15,30 @@ export const LoginDialog: React.FC = () => {
   const [showMessage, setShowMessage] = useState(false);
   const [countdown, setCountdown] = useState(5);
 
+  const [redirected, setRedirected] = useState(false);
+
   useEffect(() => {
     if (!showMessage) return;
+    if (redirected) return;
     if (countdown <= 0) {
-      window.open('https://www.gmail.com', '_blank');
-      setShowMessage(false);
-      setCountdown(5);
-      return;
+      const link = document.createElement('a');
+      link.href = 'https://www.gmail.com';
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setRedirected(true);
+      const hideTimer = setTimeout(() => {
+        setShowMessage(false);
+        setRedirected(false);
+        setCountdown(5);
+      }, 120000);
+      return () => clearTimeout(hideTimer);
     }
     const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(timer);
-  }, [showMessage, countdown]);
+  }, [showMessage, countdown, redirected]);
 
   const handleForgotPassword = () => {
     setShowMessage(true);
@@ -99,7 +112,7 @@ export const LoginDialog: React.FC = () => {
               />
             </div>
           </div>
-          <div className="flex justify-end">
+          <div className="flex justify-center">
             <button
               type="button"
               onClick={handleForgotPassword}
@@ -114,9 +127,11 @@ export const LoginDialog: React.FC = () => {
               <p className="text-sm font-medium text-foreground">
                 Debes escribir a soporte@ucp.edu.co
               </p>
-              <p className="text-sm text-muted-foreground">
-                Redirigiendo en {countdown}...
-              </p>
+              {!redirected && (
+                <p className="text-sm text-muted-foreground">
+                  Redirigiendo en {countdown}...
+                </p>
+              )}
             </div>
           )}
 
