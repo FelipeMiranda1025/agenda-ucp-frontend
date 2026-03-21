@@ -112,7 +112,7 @@ export const LoginDialog: React.FC = () => {
               />
             </div>
           </div>
-          <div className="flex justify-end">
+          <div className="flex justify-center">
             <button
               type="button"
               onClick={handleForgotPassword}
