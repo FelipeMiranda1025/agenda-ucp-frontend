@@ -9,14 +9,18 @@ import ucpLogo from '@/assets/ucp-logo.png';
 const MAX_FAILED_ATTEMPTS = 3;
 const LOCKOUT_SECONDS = 30;
 
-function isValidUsername(value: string): boolean {
+function getUsernameError(value: string): string {
   const trimmed = value.trim();
-  if (!trimmed) return false;
-  // Cédula: solo dígitos, mínimo 8
-  if (/^\d+$/.test(trimmed)) return trimmed.length >= 8;
-  // Correo institucional
-  if (trimmed.includes('@ucp.edu.co')) return true;
-  return false;
+  if (!trimmed) return 'Usuario invalido. Intente nuevamente.';
+  // Si parece cédula (solo dígitos)
+  if (/^\d+$/.test(trimmed)) {
+    return trimmed.length >= 8 ? '' : 'Mínimo 8 caracteres';
+  }
+  // Si parece correo
+  if (trimmed.includes('@')) {
+    return trimmed.endsWith('@ucp.edu.co') ? '' : 'El correo debe de terminar con @ucp.edu.co';
+  }
+  return 'Usuario invalido. Intente nuevamente.';
 }
 
 function isValidPassword(value: string): boolean {
@@ -117,8 +121,9 @@ export const LoginDialog: React.FC = () => {
     let hasError = false;
 
     // Validate username
-    if (!isValidUsername(trimmedUser)) {
-      setUsernameError('Usuario invalido. Intente nuevamente.');
+    const userError = getUsernameError(trimmedUser);
+    if (userError) {
+      setUsernameError(userError);
       hasError = true;
     }
 
