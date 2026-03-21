@@ -1,15 +1,22 @@
 
 
-## Plan: Ajustes al enlace "Olvidé mi contraseña"
+## Plan: Actualizar usuario con id 1
 
-### Cambios en `src/components/LoginDialog.tsx`
+### Cambio único en la base de datos
 
-1. **Centrar el enlace** — Cambiar `flex justify-end` a `flex justify-center` en el contenedor del botón "Olvidé mi contraseña" (línea 102).
+Ejecutar un `UPDATE` en la tabla `users` para el registro con `id = 1`:
 
-2. **Abrir Gmail con `window.location.href`** — En lugar de `window.open('...', '_blank')`, usar un enlace `<a>` con `href="https://www.gmail.com"` y `target="_blank" rel="noopener noreferrer"`. Esto permite que el navegador predeterminado (o la app del navegador en móvil) maneje la apertura en nueva pestaña, igual que cuando se abre un PDF. Se usará `window.open` como fallback.
+- Cambiar `cc` a `'12345678'`
+- Cambiar `password` al hash SHA-256 de `"12345678"`
 
-3. **Mensaje visible por 2 minutos** — Después de abrir Gmail (cuando countdown llega a 0), en lugar de ocultar el mensaje inmediatamente (`setShowMessage(false)`), iniciar un temporizador de 2 minutos (120 segundos) que luego oculte el mensaje. Se cambiará la lógica del `useEffect` para:
-   - Countdown de 5 a 0 → abrir Gmail
-   - Mantener el texto "Debes escribir a soporte@ucp.edu.co" visible (sin el texto de cuenta regresiva)
-   - Después de 120 segundos → ocultar el mensaje
+El hash SHA-256 de "12345678" es: `ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f`
+
+### SQL a ejecutar
+
+```sql
+UPDATE users SET cc = '12345678', password = 'ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f' WHERE id = 1;
+```
+
+### Nota
+No se requieren cambios en el código frontend. El login seguirá funcionando igual ya que el sistema hashea la contraseña ingresada con SHA-256 antes de compararla.
 
