@@ -80,7 +80,7 @@ ON CONFLICT (id) DO NOTHING;
 -- 8. USERS (depende de roles y states)
 -- Password: SHA-256 de "1234"
 INSERT INTO users (id, first_name, second_name, first_last_name, second_last_name, cc, email, password, id_rol, id_state) VALUES
-  (3, 'Docente', '', 'Planta', 'Pruebas', '1234', 'docenteplanta.pruebas@ucp.edu.co', '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4', 6, 1)
+  (1, 'Docente', '', 'Planta', 'Pruebas', '12345678', 'docenteplanta.pruebas@ucp.edu.co', '74d18a339850e92425fe1c8b3efeddd5ff024d5291c629d79b35720c4bfe8e53', 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- 9. INDIRECT TEACHING
