@@ -13,7 +13,7 @@ import ScheduleBuilder from "./pages/ScheduleBuilder";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1 } },
+  defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 });
 
 const AppContent = () => {
