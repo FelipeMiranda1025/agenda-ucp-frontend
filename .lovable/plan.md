@@ -1,35 +1,34 @@
 
 
-## Plan: Fortalecer seguridad del Login
+## Plan: Migrar registros en tablas `roles` y `users`, actualizar referencias en código
 
-### Cambios en `src/components/LoginDialog.tsx`
+### 1. Operaciones en base de datos
 
-**1. Validación por campo con mensajes individuales**
+Se ejecutarán estas operaciones con la herramienta de inserción/actualización:
 
-Reemplazar el estado `error` (string único) por `usernameError` y `passwordError` (strings individuales), cada uno mostrado en rojo, alineado a la izquierda, debajo de su campo respectivo.
+**Tabla `roles`:**
+- INSERT id=1 con name='Docente de planta', description='rol encargado de hacer la diligencia del formulario'
+- DELETE id=6
 
-- **Usuario**: válido si es cédula (solo dígitos, mínimo 8) O correo con `@ucp.edu.co`. Si no cumple: "Usuario invalido. Intente nuevamente."
-- **Contraseña**: válido si tiene mínimo 8 caracteres, al menos 1 mayúscula, 1 minúscula, 1 número, 1 carácter especial. Si no cumple: "Contraseña invalida. Intente nuevamente."
+**Tabla `users`:**
+- INSERT id=1 copiando datos del id=3, pero cambiando `id_rol` de 6 a 1 (por la migración del rol), `cc` a `12345678`, y `password` al hash SHA-256 de `1234Ucp*` (`74d18a339850e92425fe1c8b3efeddd5ff024d5291c629d79b35720c4bfe8e53`)
+- DELETE id=3
 
-**2. Casos de submit**
-- Solo usuario sin contraseña → error de contraseña
-- Solo contraseña sin usuario → error de usuario  
-- Ambos vacíos → ambos errores
-- Ambos con formato válido → intentar login; si credenciales incorrectas, mostrar mensaje genérico "Credenciales inválidas" (sin revelar cuál campo falló)
+**Nota:** El usuario id=3 tiene `id_rol=6`. Como el rol se migra de id=6 a id=1, el nuevo usuario id=1 tendrá `id_rol=1`.
 
-**3. Eliminar mensaje actual** de "Por favor complete todos los campos" y el bloque `{error && ...}` general.
+### 2. Actualizar código fuente
 
-**4. Medidas de seguridad adicionales**
-- **Rate limiting**: Bloquear botón de login por 30 segundos tras 3 intentos fallidos consecutivos, mostrando cuenta regresiva. Estado `failedAttempts` y `lockoutUntil`.
-- **Sanitización de inputs**: Aplicar `trim()` y limitar longitud máxima (50 chars usuario, 128 chars contraseña) via `maxLength` en los inputs.
-- **Deshabilitar autocompletado de contraseña**: Mantener `autoComplete="current-password"` (estándar seguro).
-- **Limpiar contraseña en error**: Vaciar campo de contraseña tras intento fallido de login contra servidor.
+**`src/types/auth.ts`** — Cambiar la referencia del rol de id 6 a id 1:
+```typescript
+export const ROLES: Role[] = [
+  { id: 1, name: 'docentePlanta' },
+];
+```
 
-### Cambios en `src/context/AuthContext.tsx`
-
-- Cambiar el mensaje de error de credenciales inválidas a algo genérico que no revele si el usuario existe o no: "Credenciales inválidas. Intente nuevamente."
+**`supabase/seed.sql`** — Actualizar los INSERTs de roles (id=1) y users (id=1, cc=12345678, id_rol=1).
 
 ### Archivos modificados
-- `src/components/LoginDialog.tsx` — validaciones, rate limiting, mensajes por campo
-- `src/context/AuthContext.tsx` — mensaje de error genérico
+- `src/types/auth.ts`
+- `supabase/seed.sql`
+- Base de datos: tablas `roles` y `users`
 
