@@ -7,7 +7,7 @@
 
 -- 1. ROLES
 INSERT INTO roles (id, name, description) VALUES
-  (6, 'Docente de planta', 'rol encargado de hacer la diligencia del formulario')
+  (1, 'Docente de planta', 'rol encargado de hacer la diligencia del formulario')
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. STATES
