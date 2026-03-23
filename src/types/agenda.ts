@@ -7,6 +7,7 @@ export interface DropdownOption {
 export interface SubfunctionField {
   name: string;
   label: string;
+  labelKey?: string;
   type: "dropdown" | "number" | "calculated";
   category?: string;
   calculatedFrom?: { field1: string; field2: string; operation: "multiply" };
@@ -16,7 +17,9 @@ export interface SubfunctionConfig {
   id: string;
   sectionId: "produccion" | "actividades" | "horario";
   title: string;
+  titleKey?: string;
   shortTitle: string;
+  shortTitleKey?: string;
   fields: SubfunctionField[];
 }
 

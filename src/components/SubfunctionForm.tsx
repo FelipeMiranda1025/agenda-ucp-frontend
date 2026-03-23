@@ -15,7 +15,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Plus, CalendarX, Eraser, ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { SUBFUNCTION_COLORS, DAYS, HOURS, formatHour } from "@/data/scheduleConstants";
+import { SUBFUNCTION_COLORS, HOURS, formatHour, getTranslatedDays } from "@/data/scheduleConstants";
 import { DocentePlanta } from "@/types/docentePlanta";
 import { useSubjects, useSemesters, useFaculties, useEducationLevels, useProfessionalCareers, useDegreeWorks, useAcademicPractices, useInvestigations, useSocialProjects, useComplementaryActivities, useTeacherTraining, useAdministrativeActivities, useIndirectTeaching } from "@/hooks/useDatabase";
 
@@ -34,7 +34,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
     return (
       <div className="space-y-6">
         <div className="bg-ucp-red px-6 py-4 rounded-lg">
-          <h1 className="text-xl font-bold text-primary-foreground">{t("schedule.title")}</h1>
+           <h1 className="text-xl font-bold text-primary-foreground">{t("schedule.title")}</h1>
           {user && (
             <p className="text-sm text-primary-foreground/80 mt-1">
               {t("form.docente")}: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
@@ -73,7 +73,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
             <thead>
               <tr>
                 <th className="w-20 p-2 border bg-muted text-muted-foreground font-semibold">{t("schedule.hour")}</th>
-                {DAYS.map((day) => (
+                {getTranslatedDays(t).map((day) => (
                   <th key={day} className="p-2 border bg-muted text-muted-foreground font-semibold">{day}</th>
                 ))}
               </tr>
@@ -84,7 +84,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
                   <td className="p-2 border bg-muted/50 text-muted-foreground font-medium text-center whitespace-nowrap">
                     {formatHour(hour)}
                   </td>
-                  {DAYS.map((_, dayIdx) => {
+                  {getTranslatedDays(t).map((_, dayIdx) => {
                     const block = schedule.blocks.find((b) => b.day === dayIdx && b.hour === hour);
                     return (
                       <td key={dayIdx} className="border p-0.5 h-10">
@@ -321,7 +321,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     <div className="space-y-6">
       <div className="bg-ucp-red px-6 py-4 rounded-lg flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-primary-foreground">{config.title}</h1>
+          <h1 className="text-xl font-bold text-primary-foreground">{t(config.titleKey || config.title)}</h1>
           {user && (
             <p className="text-sm text-primary-foreground/80 mt-1">
               {t("form.docente")}: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
@@ -368,7 +368,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
 
               return (
                 <div key={field.name} className="space-y-1.5">
-                  <Label className="text-sm font-medium">{field.label}</Label>
+                  <Label className="text-sm font-medium">{t(field.labelKey || field.label)}</Label>
                   {isReadOnly ? (
                     <div className="h-10 px-3 py-2 rounded-md bg-muted text-sm font-semibold flex items-center">
                       {formData[field.name] || "—"}
@@ -469,7 +469,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                             </DialogTrigger>
                             <DialogContent>
                               <DialogHeader>
-                                <DialogTitle>{t("form.addOption")}: {field.label}</DialogTitle>
+                                <DialogTitle>{t("form.addOption")}: {t(field.labelKey || field.label)}</DialogTitle>
                               </DialogHeader>
                               <div className="space-y-3 pt-2">
                                 <Input
@@ -499,7 +499,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
             })}
             {calculatedFields.map((field) => (
               <div key={field.name} className="space-y-1.5">
-                <Label className="text-sm font-medium">{field.label}</Label>
+                <Label className="text-sm font-medium">{t(field.labelKey || field.label)}</Label>
                 <div className="h-10 px-3 py-2 rounded-md bg-muted text-sm font-semibold flex items-center">
                   {currentTotal}
                 </div>
