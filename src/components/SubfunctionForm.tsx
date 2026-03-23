@@ -124,6 +124,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
+  const [activityDialogOpen, setActivityDialogOpen] = useState<ActivityTableType | null>(null);
   // DB hooks for auto-fill (only used for docencia-directa)
   const { data: dbSubjects } = useSubjects();
   const { data: dbSemesters } = useSemesters();
