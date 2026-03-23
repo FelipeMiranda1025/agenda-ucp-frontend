@@ -372,7 +372,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                   <Label className="text-sm font-medium">{t(field.labelKey || field.label)}</Label>
                   {isReadOnly ? (
                     <div className="h-10 px-3 py-2 rounded-md bg-muted text-sm font-semibold flex items-center">
-                      {formData[field.name] || "—"}
+                      {translateOption(formData[field.name] || "—", language)}
                     </div>
                   ) : field.type === "dropdown" ? (
                     <div className="flex gap-1">
