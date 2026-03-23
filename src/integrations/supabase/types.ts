@@ -234,19 +234,30 @@ export type Database = {
         Row: {
           description: string | null
           id: number
+          id_faculty: number | null
           name: string
         }
         Insert: {
           description?: string | null
           id?: number
+          id_faculty?: number | null
           name: string
         }
         Update: {
           description?: string | null
           id?: number
+          id_faculty?: number | null
           name?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "professional_careers_id_faculty_fkey"
+            columns: ["id_faculty"]
+            isOneToOne: false
+            referencedRelation: "faculties"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       roles: {
         Row: {
