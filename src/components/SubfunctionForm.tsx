@@ -324,7 +324,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
           <h1 className="text-xl font-bold text-primary-foreground">{config.title}</h1>
           {user && (
             <p className="text-sm text-primary-foreground/80 mt-1">
-              Docente: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
+              {t("form.docente")}: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
             </p>
           )}
         </div>
