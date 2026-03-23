@@ -29,6 +29,7 @@ const WEEKLY_HOUR_REQUIREMENTS: { [subfunctionId: string]: number | null } = {
 
 function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boolean; getSchedule: () => ScheduleData | null }) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   if (!hasSchedule) {
     return (
       <div className="space-y-6">
