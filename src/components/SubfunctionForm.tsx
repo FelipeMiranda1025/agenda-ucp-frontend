@@ -471,19 +471,23 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                                 <CommandList>
                                   <CommandEmpty>{t("form.noSubjects")}</CommandEmpty>
                                   <CommandGroup>
-                                    {dbSubjects?.map((subject) => (
+                                    {uniqueSubjectNames.map((subject) => (
                                       <CommandItem
                                         key={subject.id}
                                         value={subject.name}
                                         onSelect={(value) => {
-                                          setFormData((p) => ({ ...p, [field.name]: value }));
+                                          setFormData((p) => {
+                                            // Clear faculty/program so auto-fill picks fresh values
+                                            const { facultad, programa, ...rest } = p;
+                                            return { ...rest, [field.name]: value };
+                                          });
                                           setComboboxOpen(false);
                                         }}
                                       >
                                         <Check
                                           className={cn(
                                             "mr-2 h-4 w-4",
-                                            formData[field.name] === subject.name ? "opacity-100" : "opacity-0"
+                                            String(formData[field.name]).toLowerCase() === subject.name.toLowerCase() ? "opacity-100" : "opacity-0"
                                           )}
                                         />
                                         {translateOption(subject.name, language)}
