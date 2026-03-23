@@ -90,7 +90,7 @@ export function SummaryPanel() {
         )}
       </div>
 
-      <ScrollArea className="flex-1 px-4 py-3 bg-white dark:bg-gray-900">
+      <ScrollArea className="flex-1 px-4 py-3 bg-white dark:bg-[#1f1f1f]">
         {grouped.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <ClipboardList className="h-10 w-10 mb-3 opacity-40" />
@@ -139,7 +139,7 @@ export function SummaryPanel() {
         )}
       </ScrollArea>
 
-      <div className="border-t px-4 pt-3 pb-1 space-y-1 text-sm bg-white dark:bg-gray-900">
+      <div className="border-t px-4 pt-3 pb-1 space-y-1 text-sm bg-white dark:bg-[#1f1f1f]">
         <div className="flex justify-between">
           <span className="text-muted-foreground">{t("summary.totalSemestral")}</span>
           <span className="font-bold">{metricas.totalHorasSemestrales}h</span>
