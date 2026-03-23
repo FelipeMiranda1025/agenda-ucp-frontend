@@ -448,7 +448,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                                 if (dbData) {
                                   return dbData.map((item) => (
                                     <SelectItem key={item.id} value={item.name}>
-                                      {item.name}
+                                      {translateOption(item.name, language)}
                                     </SelectItem>
                                   ));
                                 }
