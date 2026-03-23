@@ -413,7 +413,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                                             formData[field.name] === subject.name ? "opacity-100" : "opacity-0"
                                           )}
                                         />
-                                        {subject.name}
+                                        {translateOption(subject.name, language)}
                                       </CommandItem>
                                     ))}
                                   </CommandGroup>
