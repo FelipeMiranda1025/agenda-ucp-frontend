@@ -89,7 +89,7 @@ export function SummaryPanel() {
         )}
       </div>
 
-      <ScrollArea className="flex-1 px-4 py-3">
+      <ScrollArea className="flex-1 px-4 py-3 bg-white dark:bg-gray-900">
         {grouped.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <ClipboardList className="h-10 w-10 mb-3 opacity-40" />
