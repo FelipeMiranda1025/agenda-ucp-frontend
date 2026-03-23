@@ -73,7 +73,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
             <thead>
               <tr>
                 <th className="w-20 p-2 border bg-muted text-muted-foreground font-semibold">{t("schedule.hour")}</th>
-                {DAYS.map((day) => (
+                {getTranslatedDays(t).map((day) => (
                   <th key={day} className="p-2 border bg-muted text-muted-foreground font-semibold">{day}</th>
                 ))}
               </tr>
