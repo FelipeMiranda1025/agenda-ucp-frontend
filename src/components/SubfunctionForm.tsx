@@ -515,7 +515,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
           <p className={`text-sm font-semibold ${weeklyHoursColor}`}>
             {t("form.totalWeeklyHours")}: {totalWeeklyHours}h
             {requirement !== null && (
-              <span className="text-muted-foreground font-normal"> / {requirement}h requeridas</span>
+              <span className="text-muted-foreground font-normal"> / {requirement}h {t("form.required")}</span>
             )}
           </p>
         </div>
