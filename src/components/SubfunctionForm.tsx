@@ -15,7 +15,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Plus, CalendarX, Eraser, ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { SUBFUNCTION_COLORS, DAYS, HOURS, formatHour } from "@/data/scheduleConstants";
+import { SUBFUNCTION_COLORS, HOURS, formatHour, getTranslatedDays } from "@/data/scheduleConstants";
 import { DocentePlanta } from "@/types/docentePlanta";
 import { useSubjects, useSemesters, useFaculties, useEducationLevels, useProfessionalCareers, useDegreeWorks, useAcademicPractices, useInvestigations, useSocialProjects, useComplementaryActivities, useTeacherTraining, useAdministrativeActivities, useIndirectTeaching } from "@/hooks/useDatabase";
 
