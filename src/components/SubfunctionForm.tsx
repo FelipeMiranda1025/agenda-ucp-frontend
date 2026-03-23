@@ -334,10 +334,10 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
             size="sm"
             onClick={handleClearForm}
             className="text-primary-foreground hover:bg-primary-foreground/20"
-            title="Limpiar campos"
+            title={t("form.clearFields")}
           >
             <Eraser className="h-4 w-4 mr-1" />
-            Limpiar
+            {t("form.clear")}
           </Button>
         )}
       </div>
