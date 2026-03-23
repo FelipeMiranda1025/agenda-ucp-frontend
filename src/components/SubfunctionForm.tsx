@@ -12,7 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Plus, CalendarX, Eraser, ChevronsUpDown, Check } from "lucide-react";
+import { Plus, CalendarX, Eraser, ChevronsUpDown, Check, Pencil } from "lucide-react";
+import { SubjectManagementDialog } from "@/components/SubjectManagementDialog";
 import { cn } from "@/lib/utils";
 import { translateOption } from "@/i18n/optionTranslations";
 import { toast } from "sonner";
@@ -121,7 +122,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   const lastUpsertRef = useRef<string>("");
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [comboboxOpen, setComboboxOpen] = useState(false);
-
+  const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
   // DB hooks for auto-fill (only used for docencia-directa)
   const { data: dbSubjects } = useSubjects();
   const { data: dbSemesters } = useSemesters();
@@ -421,6 +422,16 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                               </Command>
                             </PopoverContent>
                           </Popover>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="shrink-0"
+                            onClick={() => setSubjectDialogOpen(true)}
+                            title={t("subject.manage")}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <SubjectManagementDialog open={subjectDialogOpen} onOpenChange={setSubjectDialogOpen} />
                         </>
                       ) : (
                         <>
