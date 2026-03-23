@@ -77,7 +77,7 @@ const Profile = () => {
                 <div className="text-center">
                   <p className="font-semibold text-lg">{user.firstName} {user.firstLastName}</p>
                   <p className="text-sm text-muted-foreground capitalize">{roleLabel}</p>
-                  <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${user.statusId === 1 ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'}`}>
+                  <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${user.statusId === 1 ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary' : 'bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive'}`}>
                     {statusLabel}
                   </span>
                 </div>

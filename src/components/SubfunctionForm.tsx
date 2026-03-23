@@ -169,7 +169,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   const weeklyHoursColor = useMemo(() => {
     if (totalWeeklyHours === null || requirement === null) return "text-muted-foreground";
     if (totalWeeklyHours < requirement) return "text-destructive";
-    if (totalWeeklyHours === requirement) return "text-green-600";
+    if (totalWeeklyHours === requirement) return "text-primary";
     return "text-yellow-600";
   }, [totalWeeklyHours, requirement]);
 

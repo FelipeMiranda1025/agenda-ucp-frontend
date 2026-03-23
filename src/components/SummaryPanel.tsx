@@ -148,7 +148,7 @@ export function SummaryPanel() {
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">{t("summary.missing")}</span>
-          <span className={`font-bold ${metricas.horasFaltantes > 0 ? 'text-destructive' : metricas.horasFaltantes < 0 ? 'text-yellow-500' : 'text-green-600'}`}>{metricas.horasFaltantes}h</span>
+          <span className={`font-bold ${metricas.horasFaltantes > 0 ? 'text-destructive' : metricas.horasFaltantes < 0 ? 'text-yellow-500' : 'text-primary'}`}>{metricas.horasFaltantes}h</span>
         </div>
         <div className="flex items-center justify-between pt-1">
           <span className="text-muted-foreground">{t("summary.defaultHours")}</span>
@@ -165,7 +165,7 @@ export function SummaryPanel() {
       <div className="p-4 border-t">
         <Button
           onClick={handleConfirm}
-          className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
+          className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
         >
           <CheckCircle className="h-4 w-4" />
           {t("summary.confirm")}

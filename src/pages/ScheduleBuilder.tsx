@@ -133,7 +133,7 @@ export default function ScheduleBuilder() {
           </span>
         )}
         <div className="ml-auto">
-          <Button onClick={handleSave} className="gap-2 bg-green-600 hover:bg-green-700 text-white">
+          <Button onClick={handleSave} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
             <Save className="h-4 w-4" />
             Guardar horario
           </Button>

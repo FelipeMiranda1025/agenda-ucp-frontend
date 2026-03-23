@@ -218,7 +218,7 @@ const Index = () => {
       {/* Floating hamburger button */}
       <button
         onClick={() => setMenuOpen(true)}
-        className="fixed bottom-6 left-6 z-50 h-14 w-14 rounded-full bg-green-600 hover:bg-green-700 text-white shadow-lg flex items-center justify-center transition-colors"
+        className="fixed bottom-6 left-6 z-50 h-14 w-14 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg flex items-center justify-center transition-colors"
         aria-label={t("menu.open")}
       >
         <Menu className="h-6 w-6" />
