@@ -518,6 +518,11 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                                 </>
                               );
                             }
+                            // No button for catalog-only categories
+                            const NO_BUTTON_CATEGORIES = ["facultad", "programa", "semestre", "jornada", "nivel"];
+                            if (NO_BUTTON_CATEGORIES.includes(field.category!)) {
+                              return null;
+                            }
                             return (
                               <Dialog open={dialogOpen && newOptionCategory === field.category} onOpenChange={(open) => { setDialogOpen(open); if (open) setNewOptionCategory(field.category!); }}>
                                 <DialogTrigger asChild>
