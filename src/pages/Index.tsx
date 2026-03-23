@@ -73,7 +73,7 @@ const Index = () => {
   return (
     <div className="h-screen flex flex-col">
       {/* Sticky header - white */}
-      <header className="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shrink-0">
+      <header className="sticky top-0 z-40 <header className="sticky top-0 z-40 bg-white dark:bg-[#1f1f1f] border-b border-gray-200 dark:border-gray-700 shrink-0"> border-gray-200 dark:border-gray-700 shrink-0">
         <div className="h-14 flex items-center gap-6 px-4">
           <img src={ucpLogo} alt="UCP" className="h-9 w-auto" />
           <div className="flex-1 min-w-0">
