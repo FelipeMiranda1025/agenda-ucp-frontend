@@ -469,16 +469,16 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                             </DialogTrigger>
                             <DialogContent>
                               <DialogHeader>
-                                <DialogTitle>Agregar opción: {field.label}</DialogTitle>
+                                <DialogTitle>{t("form.addOption")}: {field.label}</DialogTitle>
                               </DialogHeader>
                               <div className="space-y-3 pt-2">
                                 <Input
-                                  placeholder="Nueva opción..."
+                                  placeholder={t("form.newOption")}
                                   value={newOptionValue}
                                   onChange={(e) => setNewOptionValue(e.target.value)}
                                   onKeyDown={(e) => e.key === "Enter" && handleAddOption()}
                                 />
-                                <Button onClick={handleAddOption} className="w-full">Agregar</Button>
+                                <Button onClick={handleAddOption} className="w-full">{t("form.add")}</Button>
                               </div>
                             </DialogContent>
                           </Dialog>
