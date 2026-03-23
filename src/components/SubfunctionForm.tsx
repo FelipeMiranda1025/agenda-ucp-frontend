@@ -428,7 +428,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                             onValueChange={(v) => setFormData((p) => ({ ...p, [field.name]: v }))}
                           >
                             <SelectTrigger className="flex-1">
-                              <SelectValue placeholder="Seleccionar..." />
+                              <SelectValue placeholder={t("form.select")} />
                             </SelectTrigger>
                             <SelectContent>
                               {(() => {
