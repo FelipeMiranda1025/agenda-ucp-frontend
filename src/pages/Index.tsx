@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare } from "lucide-react";
 import ucpLogo from "@/assets/ucp-logo.png";
+import flagCol from "@/assets/flag-col.png";
+import flagUsa from "@/assets/flag-usa.png";
 
 const Index = () => {
   const { user, logout } = useAuth();
