@@ -1,34 +1,34 @@
 
 
-## Plan: Migrar registros en tablas `roles` y `users`, actualizar referencias en código
+## Plan: Rediseñar la barra de herramientas del header
 
-### 1. Operaciones en base de datos
+### Objetivo
+Reorganizar los iconos del header verde para que sigan el layout de la imagen de referencia: iconos alineados a la derecha del título, separados por divisores verticales, en este orden:
 
-Se ejecutarán estas operaciones con la herramienta de inserción/actualización:
-
-**Tabla `roles`:**
-- INSERT id=1 con name='Docente de planta', description='rol encargado de hacer la diligencia del formulario'
-- DELETE id=6
-
-**Tabla `users`:**
-- INSERT id=1 copiando datos del id=3, pero cambiando `id_rol` de 6 a 1 (por la migración del rol), `cc` a `12345678`, y `password` al hash SHA-256 de `1234Ucp*` (`74d18a339850e92425fe1c8b3efeddd5ff024d5291c629d79b35720c4bfe8e53`)
-- DELETE id=3
-
-**Nota:** El usuario id=3 tiene `id_rol=6`. Como el rol se migra de id=6 a id=1, el nuevo usuario id=1 tendrá `id_rol=1`.
-
-### 2. Actualizar código fuente
-
-**`src/types/auth.ts`** — Cambiar la referencia del rol de id 6 a id 1:
-```typescript
-export const ROLES: Role[] = [
-  { id: 1, name: 'docentePlanta' },
-];
+```text
+[Logo + Título] ......... [🔔 Notificaciones] [💬 Mensajería] | [Avatar ▼] | [🌙 Modo oscuro] [🌐 Idioma]
 ```
 
-**`supabase/seed.sql`** — Actualizar los INSERTs de roles (id=1) y users (id=1, cc=12345678, id_rol=1).
+### Cambios en `src/pages/Index.tsx`
+
+1. **Campanita de notificaciones** (`Bell` de lucide-react): botón con badge rojo para indicar notificaciones pendientes (aprobación/rechazo de agenda). Al hacer clic abre un dropdown con lista de notificaciones (placeholder por ahora).
+
+2. **Icono de mensajería** (`MessageSquare` de lucide-react): botón que abrirá un dropdown con observaciones/peticiones de otros roles (director, decanatura, vicerrectoría). Placeholder por ahora.
+
+3. **Separador vertical** — línea `|` usando un `div` con `w-px h-6 bg-primary-foreground/30`.
+
+4. **Dropdown de perfil** — Avatar con iniciales + chevron (ya existe), se mantiene igual.
+
+5. **Segundo separador vertical**.
+
+6. **Toggle modo oscuro** — se mueve aquí (ya existe, solo se reubica).
+
+7. **Selector de idioma** (`Globe` de lucide-react): dropdown con opciones "Español" e "Inglés". Se almacena en estado local por ahora (la internacionalización real se implementará después).
+
+### Estado nuevo
+- `notificationCount: number` — contador de notificaciones no leídas (hardcoded a 0 por ahora).
+- `language: 'es' | 'en'` — idioma seleccionado (solo visual por ahora).
 
 ### Archivos modificados
-- `src/types/auth.ts`
-- `supabase/seed.sql`
-- Base de datos: tablas `roles` y `users`
+- `src/pages/Index.tsx` — reestructuración del header con los nuevos iconos y separadores.
 
