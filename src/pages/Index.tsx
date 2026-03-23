@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sun, Moon, ChevronDown, User, LogOut, Menu, X } from "lucide-react";
+import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, Globe } from "lucide-react";
 import ucpLogoWhite from "@/assets/ucp-logo-white.png";
 
 const Index = () => {
@@ -25,13 +25,14 @@ const Index = () => {
   const { theme, setTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [visibleSection, setVisibleSection] = useState<string>("Producción");
+  const [notificationCount] = useState(0);
+  const [language, setLanguage] = useState<"es" | "en">("es");
   const mainRef = useRef<HTMLDivElement>(null);
 
   const initials = user
     ? `${user.firstName?.[0] || ""}${user.firstLastName?.[0] || ""}`.toUpperCase()
     : "U";
 
-  // IntersectionObserver for dynamic subtitle
   useEffect(() => {
     const main = mainRef.current;
     if (!main) return;
@@ -77,36 +78,119 @@ const Index = () => {
             <p className="text-primary-foreground/80 text-sm leading-tight">{visibleSection}</p>
           </div>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="text-primary-foreground hover:bg-primary-foreground/10 shrink-0"
-          >
-            {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button>
+          {/* Right-side toolbar */}
+          <div className="flex items-center gap-1">
+            {/* Notifications */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative text-primary-foreground hover:bg-primary-foreground/10 shrink-0"
+                >
+                  <Bell className="h-5 w-5" />
+                  {notificationCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                      {notificationCount}
+                    </span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                <div className="px-3 py-2 text-sm font-semibold">Notificaciones</div>
+                <DropdownMenuSeparator />
+                <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                  No hay notificaciones nuevas
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-1.5 text-primary-foreground hover:bg-primary-foreground/10 px-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="bg-primary-foreground/20 text-primary-foreground text-xs font-bold">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => navigate("/profile")} className="gap-2 cursor-pointer">
-                <User className="h-4 w-4" /> Ver perfil
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={logout} className="gap-2 cursor-pointer text-destructive">
-                <LogOut className="h-4 w-4" /> Cerrar sesión
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            {/* Messaging */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-primary-foreground hover:bg-primary-foreground/10 shrink-0"
+                >
+                  <MessageSquare className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                <div className="px-3 py-2 text-sm font-semibold">Mensajes</div>
+                <DropdownMenuSeparator />
+                <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                  No hay mensajes
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Separator */}
+            <div className="w-px h-6 bg-primary-foreground/30 mx-1" />
+
+            {/* Profile dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center gap-1.5 text-primary-foreground hover:bg-primary-foreground/10 px-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-primary-foreground/20 text-primary-foreground text-xs font-bold">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={() => navigate("/profile")} className="gap-2 cursor-pointer">
+                  <User className="h-4 w-4" /> Ver perfil
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logout} className="gap-2 cursor-pointer text-destructive">
+                  <LogOut className="h-4 w-4" /> Cerrar sesión
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Separator */}
+            <div className="w-px h-6 bg-primary-foreground/30 mx-1" />
+
+            {/* Dark mode toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="text-primary-foreground hover:bg-primary-foreground/10 shrink-0"
+            >
+              {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+
+            {/* Language selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-primary-foreground hover:bg-primary-foreground/10 shrink-0"
+                >
+                  <Globe className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                <DropdownMenuItem
+                  onClick={() => setLanguage("es")}
+                  className={`gap-2 cursor-pointer ${language === "es" ? "font-bold" : ""}`}
+                >
+                  🇪🇸 Español
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setLanguage("en")}
+                  className={`gap-2 cursor-pointer ${language === "en" ? "font-bold" : ""}`}
+                >
+                  🇺🇸 English
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </header>
 
