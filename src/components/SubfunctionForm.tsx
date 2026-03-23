@@ -387,7 +387,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                               >
                                 {formData[field.name]
                                   ? String(formData[field.name])
-                                  : "Buscar asignatura..."}
+                                  : t("form.searchSubject")}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
                             </PopoverTrigger>
