@@ -57,14 +57,14 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
   return (
     <div className="space-y-6">
       <div className="bg-ucp-red px-6 py-4 rounded-lg">
-        <h1 className="text-xl font-bold text-primary-foreground">3.1 Distribución horaria</h1>
+        <h1 className="text-xl font-bold text-primary-foreground">{t("schedule.title")}</h1>
         {user && (
           <p className="text-sm text-primary-foreground/80 mt-1">
-            Docente: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
+            {t("form.docente")}: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
           </p>
         )}
         <p className="text-xs text-primary-foreground/60 mt-1">
-          Última modificación: {new Date(schedule.lastModified).toLocaleString("es-CO")}
+          {t("schedule.lastModified")}: {new Date(schedule.lastModified).toLocaleString("es-CO")}
         </p>
       </div>
       <Card>
