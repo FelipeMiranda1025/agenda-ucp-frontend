@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { AgendaProvider } from "@/context/AgendaContext";
+import { LanguageProvider } from "@/i18n/LanguageContext";
 import { LoginDialog } from "@/components/LoginDialog";
 import Index from "./pages/Index";
 import Profile from "./pages/Profile";
@@ -40,13 +41,15 @@ const AppContent = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-      <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <AppContent />
-        </TooltipProvider>
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <AppContent />
+          </TooltipProvider>
+        </AuthProvider>
+      </LanguageProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );

@@ -2,6 +2,7 @@ import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain,
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAgenda } from "@/context/AgendaContext";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { subfunctions } from "@/data/subfunctions";
 import { getDocenteFullName } from "@/types/docentePlanta";
 import ucpLogo from "@/assets/ucp-logo.png";
@@ -25,6 +26,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({ onClose }: AppSidebarProps) {
   const { activeSubfunction, setActiveSubfunction, searchTerm, setSearchTerm, selectedDocente, setSelectedDocente, docentesList } = useAgenda();
+  const { t } = useLanguage();
 
   const prodSubs = subfunctions.filter((s) => s.sectionId === "produccion");
   const actSubs = subfunctions.filter((s) => s.sectionId === "actividades");
@@ -68,11 +70,11 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-4 pb-3">
         <img src={ucpLogo} alt="Universidad Católica de Pereira" className="h-14 w-auto mb-2" />
-        <p className="text-xs text-muted-foreground mb-2">Agenda Docente</p>
+        <p className="text-xs text-muted-foreground mb-2">{t("sidebar.agendaDocente")}</p>
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar..."
+            placeholder={t("sidebar.search")}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-8 h-9"
@@ -82,21 +84,21 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
 
       <div className="flex-1 overflow-auto px-4 space-y-4">
         <div>
-          <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">Producción</p>
+          <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">{t("sidebar.production")}</p>
           <div className="space-y-0.5">{renderItems(prodSubs)}</div>
         </div>
         <div>
-          <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">Actividades Diferentes</p>
+          <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">{t("sidebar.activities")}</p>
           <div className="space-y-0.5">{renderItems(actSubs)}</div>
         </div>
         <div>
-          <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">Horario Permanencia</p>
+          <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">{t("sidebar.schedule")}</p>
           <div className="space-y-0.5">{renderItems(horSubs)}</div>
         </div>
       </div>
 
       <div className="p-4 border-t">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Docente de planta</p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{t("sidebar.docente")}</p>
         <Select
           value={selectedDocente?.id || ""}
           onValueChange={(val) => {
@@ -105,7 +107,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
           }}
         >
           <SelectTrigger className="h-9 text-sm">
-            <SelectValue placeholder="Seleccionar docente..." />
+            <SelectValue placeholder={t("sidebar.selectDocente")} />
           </SelectTrigger>
           <SelectContent>
             {docentesList.map((d) => (

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAgenda } from "@/context/AgendaContext";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { subfunctions } from "@/data/subfunctions";
 import { ScheduleData } from "@/types/agenda";
 import { Label } from "@/components/ui/label";
@@ -28,14 +29,15 @@ const WEEKLY_HOUR_REQUIREMENTS: { [subfunctionId: string]: number | null } = {
 
 function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boolean; getSchedule: () => ScheduleData | null }) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   if (!hasSchedule) {
     return (
       <div className="space-y-6">
         <div className="bg-ucp-red px-6 py-4 rounded-lg">
-          <h1 className="text-xl font-bold text-primary-foreground">3.1 Distribución horaria</h1>
+          <h1 className="text-xl font-bold text-primary-foreground">{t("schedule.title")}</h1>
           {user && (
             <p className="text-sm text-primary-foreground/80 mt-1">
-              Docente: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
+              {t("form.docente")}: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
             </p>
           )}
         </div>
@@ -43,7 +45,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
           <CardContent className="flex flex-col items-center justify-center py-16">
             <CalendarX className="h-12 w-12 text-muted-foreground/40 mb-4" />
             <p className="text-muted-foreground text-center">
-              Aún no se ha creado horario. Confirma las asignaturas en el resumen de registros.
+              {t("schedule.noSchedule")}
             </p>
           </CardContent>
         </Card>
@@ -55,14 +57,14 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
   return (
     <div className="space-y-6">
       <div className="bg-ucp-red px-6 py-4 rounded-lg">
-        <h1 className="text-xl font-bold text-primary-foreground">3.1 Distribución horaria</h1>
+        <h1 className="text-xl font-bold text-primary-foreground">{t("schedule.title")}</h1>
         {user && (
           <p className="text-sm text-primary-foreground/80 mt-1">
-            Docente: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
+            {t("form.docente")}: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
           </p>
         )}
         <p className="text-xs text-primary-foreground/60 mt-1">
-          Última modificación: {new Date(schedule.lastModified).toLocaleString("es-CO")}
+          {t("schedule.lastModified")}: {new Date(schedule.lastModified).toLocaleString("es-CO")}
         </p>
       </div>
       <Card>
@@ -70,7 +72,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
           <table className="w-full border-collapse text-xs">
             <thead>
               <tr>
-                <th className="w-20 p-2 border bg-muted text-muted-foreground font-semibold">Hora</th>
+                <th className="w-20 p-2 border bg-muted text-muted-foreground font-semibold">{t("schedule.hour")}</th>
                 {DAYS.map((day) => (
                   <th key={day} className="p-2 border bg-muted text-muted-foreground font-semibold">{day}</th>
                 ))}
@@ -107,6 +109,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
 export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   const { activeSubfunction, dropdownOptions, addDropdownOption, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord } = useAgenda();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const resolvedId = subfunctionId || activeSubfunction;
   const [formData, setFormData] = useState<{ [key: string]: string | number }>(() => {
     return formDataStore[resolvedId] || {};
@@ -281,10 +284,10 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
 
     if (editingRecordId) {
       updateRecord(editingRecordId, { ...formData }, total);
-      toast.success("Registro actualizado");
+      toast.success(t("form.updatedRecord"));
     } else {
       upsertRecord(resolvedId, { ...formData }, total);
-      toast.success("Registro guardado");
+      toast.success(t("form.savedRecord"));
     }
     
     // Clear form after saving
@@ -311,7 +314,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     addDropdownOption(newOptionCategory, newOptionValue.trim());
     setNewOptionValue("");
     setDialogOpen(false);
-    toast.success("Opción agregada");
+    toast.success(t("form.optionAdded"));
   };
 
   return (
@@ -321,7 +324,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
           <h1 className="text-xl font-bold text-primary-foreground">{config.title}</h1>
           {user && (
             <p className="text-sm text-primary-foreground/80 mt-1">
-              Docente: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
+              {t("form.docente")}: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
             </p>
           )}
         </div>
@@ -331,10 +334,10 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
             size="sm"
             onClick={handleClearForm}
             className="text-primary-foreground hover:bg-primary-foreground/20"
-            title="Limpiar campos"
+            title={t("form.clearFields")}
           >
             <Eraser className="h-4 w-4 mr-1" />
-            Limpiar
+            {t("form.clear")}
           </Button>
         )}
       </div>
@@ -342,7 +345,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            {editingRecordId ? "Editando registro" : "Registro"}
+            {editingRecordId ? t("form.editing") : t("form.record")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -384,15 +387,15 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                               >
                                 {formData[field.name]
                                   ? String(formData[field.name])
-                                  : "Buscar asignatura..."}
+                                  : t("form.searchSubject")}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                               <Command>
-                                <CommandInput placeholder="Escriba para filtrar..." />
+                                <CommandInput placeholder={t("form.filterType")} />
                                 <CommandList>
-                                  <CommandEmpty>No se encontraron asignaturas.</CommandEmpty>
+                                  <CommandEmpty>{t("form.noSubjects")}</CommandEmpty>
                                   <CommandGroup>
                                     {dbSubjects?.map((subject) => (
                                       <CommandItem
@@ -425,7 +428,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                             onValueChange={(v) => setFormData((p) => ({ ...p, [field.name]: v }))}
                           >
                             <SelectTrigger className="flex-1">
-                              <SelectValue placeholder="Seleccionar..." />
+                              <SelectValue placeholder={t("form.select")} />
                             </SelectTrigger>
                             <SelectContent>
                               {(() => {
@@ -466,16 +469,16 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                             </DialogTrigger>
                             <DialogContent>
                               <DialogHeader>
-                                <DialogTitle>Agregar opción: {field.label}</DialogTitle>
+                                <DialogTitle>{t("form.addOption")}: {field.label}</DialogTitle>
                               </DialogHeader>
                               <div className="space-y-3 pt-2">
                                 <Input
-                                  placeholder="Nueva opción..."
+                                  placeholder={t("form.newOption")}
                                   value={newOptionValue}
                                   onChange={(e) => setNewOptionValue(e.target.value)}
                                   onKeyDown={(e) => e.key === "Enter" && handleAddOption()}
                                 />
-                                <Button onClick={handleAddOption} className="w-full">Agregar</Button>
+                                <Button onClick={handleAddOption} className="w-full">{t("form.add")}</Button>
                               </div>
                             </DialogContent>
                           </Dialog>
@@ -510,9 +513,9 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       {totalWeeklyHours !== null && (
         <div className="flex justify-end px-2">
           <p className={`text-sm font-semibold ${weeklyHoursColor}`}>
-            Total de horas semanales por todas las actividades: {totalWeeklyHours}h
+            {t("form.totalWeeklyHours")}: {totalWeeklyHours}h
             {requirement !== null && (
-              <span className="text-muted-foreground font-normal"> / {requirement}h requeridas</span>
+              <span className="text-muted-foreground font-normal"> / {requirement}h {t("form.required")}</span>
             )}
           </p>
         </div>

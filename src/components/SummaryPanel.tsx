@@ -1,5 +1,6 @@
 import { useAgenda } from "@/context/AgendaContext";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { subfunctions } from "@/data/subfunctions";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,6 +12,7 @@ import { toast } from "sonner";
 export function SummaryPanel() {
   const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord } = useAgenda();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const grouped = subfunctions
@@ -22,10 +24,8 @@ export function SummaryPanel() {
     .filter((g) => g.records.length > 0);
 
   const handleConfirm = () => {
-    // 1. Check investigacion records
     const tieneInvestigacion = records.some(r => r.subfunctionId === "investigacion");
 
-    // 2. Validate 16h weekly docencia directa (skip if has investigacion)
     if (!tieneInvestigacion) {
       const docDirectaRecords = records.filter(r => r.subfunctionId === "docencia-directa");
       const horasSemanalesDocDirecta = docDirectaRecords.reduce(
@@ -33,14 +33,13 @@ export function SummaryPanel() {
       );
       if (horasSemanalesDocDirecta !== 16) {
         toast.error(
-          `El docente debe cumplir exactamente 16 horas semanales de Docencia Directa. Actualmente tiene ${horasSemanalesDocDirecta} horas.`,
+          t("validation.16hours", { hours: horasSemanalesDocDirecta }),
           { duration: 6000 }
         );
         return;
       }
     }
 
-    // 3. Validate total semestral = horasSemestreDefecto (920)
     const total = metricas.totalHorasSemestrales;
     if (total > horasSemestreDefecto) {
       const exceso = total - horasSemestreDefecto;
@@ -52,14 +51,14 @@ export function SummaryPanel() {
         .slice(0, 2)
         .map(g => g.shortTitle);
       toast.error(
-        `Excede las ${horasSemestreDefecto}h semestrales por ${exceso}h. Considere reducir horas en: ${sugerencias.join(", ")}.`,
+        t("validation.exceeds", { max: horasSemestreDefecto, excess: exceso, suggestions: sugerencias.join(", ") }),
         { duration: 7000 }
       );
       return;
     }
     if (total < horasSemestreDefecto) {
       toast.error(
-        `Faltan ${horasSemestreDefecto - total}h para completar las ${horasSemestreDefecto}h semestrales requeridas.`,
+        t("validation.missing", { missing: horasSemestreDefecto - total, max: horasSemestreDefecto }),
         { duration: 6000 }
       );
       return;
@@ -82,7 +81,7 @@ export function SummaryPanel() {
   return (
     <div className="w-96 shrink-0 flex flex-col bg-card border-l">
       <div className="px-4 py-3 border-b bg-ucp-red">
-        <h2 className="text-sm font-bold text-primary-foreground">Resumen de Datos</h2>
+        <h2 className="text-sm font-bold text-primary-foreground">{t("summary.title")}</h2>
         {user && (
           <p className="text-xs text-primary-foreground/80 mt-0.5">
             {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
@@ -94,7 +93,7 @@ export function SummaryPanel() {
         {grouped.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <ClipboardList className="h-10 w-10 mb-3 opacity-40" />
-            <p className="text-sm text-center">No hay registros aún. Complete los campos del formulario.</p>
+            <p className="text-sm text-center">{t("summary.empty")}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -107,7 +106,7 @@ export function SummaryPanel() {
                   {group.shortTitle}
                 </h3>
                 {group.records.map((record, i) => {
-                  const label = Object.values(record.data).find((v) => typeof v === "string") || `Registro ${i + 1}`;
+                  const label = Object.values(record.data).find((v) => typeof v === "string") || `${t("form.record")} ${i + 1}`;
                   return (
                     <div
                       key={record.id}
@@ -122,7 +121,7 @@ export function SummaryPanel() {
                           e.stopPropagation();
                           deleteRecord(record.id);
                         }}
-                        title="Eliminar registro"
+                        title={t("summary.deleteRecord")}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -130,7 +129,7 @@ export function SummaryPanel() {
                   );
                 })}
                 <div className="text-right text-xs font-medium text-muted-foreground mt-1">
-                  Subtotal: {group.records.reduce((s, r) => s + r.totalHoras, 0)}h
+                  {t("summary.subtotal")}: {group.records.reduce((s, r) => s + r.totalHoras, 0)}h
                 </div>
               </div>
             ))}
@@ -140,19 +139,19 @@ export function SummaryPanel() {
 
       <div className="border-t px-4 pt-3 pb-1 space-y-1 text-sm">
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Total semestral</span>
+          <span className="text-muted-foreground">{t("summary.totalSemestral")}</span>
           <span className="font-bold">{metricas.totalHorasSemestrales}h</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Promedio/semana</span>
+          <span className="text-muted-foreground">{t("summary.avgWeek")}</span>
           <span className="font-bold">{metricas.promedioHorasSemana.toFixed(1)}h</span>
         </div>
         <div className="flex justify-between">
-          <span className="text-muted-foreground">Horas faltantes</span>
+          <span className="text-muted-foreground">{t("summary.missing")}</span>
           <span className={`font-bold ${metricas.horasFaltantes > 0 ? 'text-destructive' : metricas.horasFaltantes < 0 ? 'text-yellow-500' : 'text-green-600'}`}>{metricas.horasFaltantes}h</span>
         </div>
         <div className="flex items-center justify-between pt-1">
-          <span className="text-muted-foreground">Horas semestre/defecto</span>
+          <span className="text-muted-foreground">{t("summary.defaultHours")}</span>
           <Input
             type="number"
             min={1}
@@ -169,7 +168,7 @@ export function SummaryPanel() {
           className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
         >
           <CheckCircle className="h-4 w-4" />
-          Confirmar datos
+          {t("summary.confirm")}
         </Button>
       </div>
     </div>
