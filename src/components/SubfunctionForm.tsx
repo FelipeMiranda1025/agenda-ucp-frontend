@@ -422,8 +422,6 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                               </Command>
                             </PopoverContent>
                           </Popover>
-                        </>
-                          </Popover>
                           <Button
                             variant="outline"
                             size="icon"
@@ -434,8 +432,9 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                             <Pencil className="h-4 w-4" />
                           </Button>
                           <SubjectManagementDialog open={subjectDialogOpen} onOpenChange={setSubjectDialogOpen} />
+                        </>
+                      ) : (
                         <>
-                          <Select
                             value={String(formData[field.name] || "")}
                             onValueChange={(v) => setFormData((p) => ({ ...p, [field.name]: v }))}
                           >
