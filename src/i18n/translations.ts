@@ -144,6 +144,27 @@ const translations: Record<string, Record<Language, string>> = {
   "subject.updated": { es: "Asignatura actualizada", en: "Subject updated" },
   "subject.deleted": { es: "Asignatura eliminada", en: "Subject deleted" },
 
+  // Activity management (generic)
+  "activity.manage": { es: "Gestionar actividades", en: "Manage activities" },
+  "activity.add": { es: "Agregar actividad", en: "Add activity" },
+  "activity.edit": { es: "Editar actividad", en: "Edit activity" },
+  "activity.delete": { es: "Eliminar actividad", en: "Delete activity" },
+  "activity.name": { es: "Nombre de la actividad", en: "Activity name" },
+  "activity.nameRequired": { es: "El nombre es obligatorio", en: "Name is required" },
+  "activity.fieldInvalid": { es: "Debe ser un número válido", en: "Must be a valid number" },
+  "activity.added": { es: "Actividad agregada", en: "Activity added" },
+  "activity.updated": { es: "Actividad actualizada", en: "Activity updated" },
+  "activity.deleted": { es: "Actividad eliminada", en: "Activity deleted" },
+  "activity.noItems": { es: "No se encontraron actividades.", en: "No activities found." },
+  "activity.manage.indirect_teaching": { es: "Gestionar docencia indirecta", en: "Manage indirect teaching" },
+  "activity.manage.degree_works": { es: "Gestionar trabajos de grado", en: "Manage degree works" },
+  "activity.manage.academic_practices": { es: "Gestionar prácticas académicas", en: "Manage academic practices" },
+  "activity.manage.investigations": { es: "Gestionar investigación", en: "Manage research" },
+  "activity.manage.social_projects": { es: "Gestionar proyección social", en: "Manage social projects" },
+  "activity.manage.complementary_activities": { es: "Gestionar actividades complementarias", en: "Manage complementary activities" },
+  "activity.manage.teacher_training": { es: "Gestionar formación de docentes", en: "Manage teacher training" },
+  "activity.manage.administrative_activities": { es: "Gestionar actividades administrativas", en: "Manage administrative activities" },
+
   // Days
   "day.monday": { es: "Lunes", en: "Monday" },
   "day.tuesday": { es: "Martes", en: "Tuesday" },
