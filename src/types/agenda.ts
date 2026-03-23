@@ -17,7 +17,9 @@ export interface SubfunctionConfig {
   id: string;
   sectionId: "produccion" | "actividades" | "horario";
   title: string;
+  titleKey?: string;
   shortTitle: string;
+  shortTitleKey?: string;
   fields: SubfunctionField[];
 }
 

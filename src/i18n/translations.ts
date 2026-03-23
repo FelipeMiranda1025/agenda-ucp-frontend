@@ -27,7 +27,7 @@ const translations: Record<string, Record<Language, string>> = {
   // Sidebar
   "sidebar.search": { es: "Buscar...", en: "Search..." },
   "sidebar.production": { es: "Producción", en: "Production" },
-  "sidebar.activities": { es: "Actividades Diferentes", en: "Different Activities" },
+  "sidebar.activities": { es: "Actividades Diferentes", en: "Non-teaching Activities" },
   "sidebar.schedule": { es: "Horario Permanencia", en: "Permanence Schedule" },
   "sidebar.docente": { es: "Docente de planta", en: "Full-time Teacher" },
   "sidebar.selectDocente": { es: "Seleccionar docente...", en: "Select teacher..." },
@@ -88,6 +88,52 @@ const translations: Record<string, Record<Language, string>> = {
   "validation.16hours": { es: "El docente debe cumplir exactamente 16 horas semanales de Docencia Directa. Actualmente tiene {hours} horas.", en: "The teacher must complete exactly 16 weekly hours of Direct Teaching. Currently has {hours} hours." },
   "validation.exceeds": { es: "Excede las {max}h semestrales por {excess}h. Considere reducir horas en: {suggestions}.", en: "Exceeds {max}h semester limit by {excess}h. Consider reducing hours in: {suggestions}." },
   "validation.missing": { es: "Faltan {missing}h para completar las {max}h semestrales requeridas.", en: "Missing {missing}h to complete the required {max}h semester hours." },
+
+  // Subfunction titles
+  "sub.docencia-directa.title": { es: "1.1 Docencia Directa", en: "1.1 Direct Teaching" },
+  "sub.docencia-directa.short": { es: "Docencia Directa", en: "Direct Teaching" },
+  "sub.docencia-indirecta.title": { es: "1.2 Docencia Indirecta", en: "1.2 Indirect Teaching" },
+  "sub.docencia-indirecta.short": { es: "Docencia Indirecta", en: "Indirect Teaching" },
+  "sub.trabajos-grado.title": { es: "1.3 Dirección y asesorías en trabajos de grado", en: "1.3 Direction and advisory for degree works" },
+  "sub.trabajos-grado.short": { es: "Trabajos de Grado", en: "Degree Works" },
+  "sub.practicas-academicas.title": { es: "1.4 Asesorías de prácticas académicas", en: "1.4 Academic practices advisory" },
+  "sub.practicas-academicas.short": { es: "Prácticas Académicas", en: "Academic Practices" },
+  "sub.investigacion.title": { es: "2.1 Investigación y desarrollo tecnológico", en: "2.1 Research and technological development" },
+  "sub.investigacion.short": { es: "Investigación", en: "Research" },
+  "sub.proyeccion-social.title": { es: "2.2 Actividades de proyección social", en: "2.2 Social outreach activities" },
+  "sub.proyeccion-social.short": { es: "Proyección Social", en: "Social Outreach" },
+  "sub.complementarias.title": { es: "2.3 Actividades complementarias", en: "2.3 Complementary activities" },
+  "sub.complementarias.short": { es: "Complementarias", en: "Complementary" },
+  "sub.formacion-docentes.title": { es: "2.4 Formación de docentes", en: "2.4 Teacher training" },
+  "sub.formacion-docentes.short": { es: "Formación Docentes", en: "Teacher Training" },
+  "sub.administrativas.title": { es: "2.5 Actividades académico-administrativas", en: "2.5 Academic-administrative activities" },
+  "sub.administrativas.short": { es: "Administrativas", en: "Administrative" },
+  "sub.distribucion-horaria.title": { es: "3.1 Distribución horaria", en: "3.1 Schedule Distribution" },
+  "sub.distribucion-horaria.short": { es: "Distribución Horaria", en: "Schedule Distribution" },
+
+  // Field labels
+  "field.asignatura": { es: "Asignatura", en: "Subject" },
+  "field.semestre": { es: "Semestre", en: "Semester" },
+  "field.facultad": { es: "Facultad", en: "Faculty" },
+  "field.programa": { es: "Programa", en: "Program" },
+  "field.jornada": { es: "Jornada", en: "Schedule shift" },
+  "field.nivel": { es: "Nivel de formación", en: "Education level" },
+  "field.horasSemana": { es: "Horas a la semana", en: "Hours per week" },
+  "field.cantidadSemanas": { es: "Cantidad de semanas", en: "Number of weeks" },
+  "field.totalHoras": { es: "Total de horas", en: "Total hours" },
+  "field.actividad": { es: "Actividad", en: "Activity" },
+  "field.tipoTrabajo": { es: "Tipo de trabajo", en: "Type of work" },
+  "field.cantidadProyectos": { es: "Cantidad de proyectos", en: "Number of projects" },
+  "field.cantidadHoras": { es: "Cantidad de horas", en: "Number of hours" },
+  "field.cantidadEstudiantes": { es: "Cantidad de estudiantes", en: "Number of students" },
+
+  // Days
+  "day.monday": { es: "Lunes", en: "Monday" },
+  "day.tuesday": { es: "Martes", en: "Tuesday" },
+  "day.wednesday": { es: "Miércoles", en: "Wednesday" },
+  "day.thursday": { es: "Jueves", en: "Thursday" },
+  "day.friday": { es: "Viernes", en: "Friday" },
+  "day.saturday": { es: "Sábado", en: "Saturday" },
 };
 
 export function getTranslation(key: string, lang: Language): string {
