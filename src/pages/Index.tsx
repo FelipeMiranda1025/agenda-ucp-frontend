@@ -68,7 +68,7 @@ const Index = () => {
 
   const handleMenuClose = useCallback(() => setMenuOpen(false), []);
 
-  const flagEmoji = language === "es" ? "🇨🇴" : "🇺🇸";
+  const currentFlag = language === "es" ? flagCol : flagUsa;
 
   return (
     <div className="h-screen flex flex-col">
