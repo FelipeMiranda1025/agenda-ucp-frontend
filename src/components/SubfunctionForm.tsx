@@ -469,7 +469,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                             </DialogTrigger>
                             <DialogContent>
                               <DialogHeader>
-                                <DialogTitle>{t("form.addOption")}: {field.label}</DialogTitle>
+                                <DialogTitle>{t("form.addOption")}: {t(field.labelKey || field.label)}</DialogTitle>
                               </DialogHeader>
                               <div className="space-y-3 pt-2">
                                 <Input
