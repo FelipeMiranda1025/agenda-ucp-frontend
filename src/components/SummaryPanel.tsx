@@ -139,7 +139,7 @@ export function SummaryPanel() {
         )}
       </ScrollArea>
 
-      <div className="border-t px-4 pt-3 pb-1 space-y-1 text-sm bg-white dark:bg-gray-900">
+      <div className="border-t px-4 pt-3 pb-1 space-y-1 text-sm bg-white dark:bg-[#1f1f1f]">
         <div className="flex justify-between">
           <span className="text-muted-foreground">{t("summary.totalSemestral")}</span>
           <span className="font-bold">{metricas.totalHorasSemestrales}h</span>
