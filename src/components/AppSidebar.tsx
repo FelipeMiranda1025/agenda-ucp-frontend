@@ -61,7 +61,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
           }`}
         >
           <Icon className="h-4 w-4 shrink-0" />
-          <span className="truncate">{item.shortTitle}</span>
+          <span className="truncate">{t(item.shortTitleKey || item.shortTitle)}</span>
         </button>
       );
     });

@@ -84,7 +84,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
                   <td className="p-2 border bg-muted/50 text-muted-foreground font-medium text-center whitespace-nowrap">
                     {formatHour(hour)}
                   </td>
-                  {DAYS.map((_, dayIdx) => {
+                  {getTranslatedDays(t).map((_, dayIdx) => {
                     const block = schedule.blocks.find((b) => b.day === dayIdx && b.hour === hour);
                     return (
                       <td key={dayIdx} className="border p-0.5 h-10">

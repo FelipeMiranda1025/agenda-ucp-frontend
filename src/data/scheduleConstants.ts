@@ -22,8 +22,13 @@ export const SUBFUNCTION_BORDER_COLORS: { [key: string]: string } = {
   "administrativas": "border-slate-600",
 };
 
+export const DAY_KEYS = ["day.monday", "day.tuesday", "day.wednesday", "day.thursday", "day.friday", "day.saturday"];
 export const DAYS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 export const HOURS = Array.from({ length: 14 }, (_, i) => i + 8); // 8 to 21
+
+export function getTranslatedDays(t: (key: string) => string): string[] {
+  return DAY_KEYS.map((k) => t(k));
+}
 
 export function formatHour(hour: number): string {
   const h = hour > 12 ? hour - 12 : hour;

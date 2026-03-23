@@ -174,24 +174,24 @@ const Index = () => {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0 text-lg"
+                  className="flex items-center gap-1 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 px-2"
                 >
-                  {flagEmoji}
+                  <img src={currentFlag} alt="" className="h-6 w-6 rounded-full object-cover" />
+                  <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem
                   onClick={() => setLanguage("es")}
                   className={`gap-2 cursor-pointer ${language === "es" ? "font-bold" : ""}`}
                 >
-                  🇨🇴 {t("lang.es")}
+                  <img src={flagCol} alt="" className="h-5 w-5 rounded-full object-cover" /> {t("lang.es")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setLanguage("en")}
                   className={`gap-2 cursor-pointer ${language === "en" ? "font-bold" : ""}`}
                 >
-                  🇺🇸 {t("lang.en")}
+                  <img src={flagUsa} alt="" className="h-5 w-5 rounded-full object-cover" /> {t("lang.en")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

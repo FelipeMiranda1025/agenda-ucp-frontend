@@ -103,7 +103,7 @@ export function SummaryPanel() {
                   className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 cursor-pointer hover:text-primary transition-colors"
                   onClick={() => scrollToSection(group.id)}
                 >
-                  {group.shortTitle}
+                  {t(group.shortTitleKey || group.shortTitle)}
                 </h3>
                 {group.records.map((record, i) => {
                   const label = Object.values(record.data).find((v) => typeof v === "string") || `${t("form.record")} ${i + 1}`;
