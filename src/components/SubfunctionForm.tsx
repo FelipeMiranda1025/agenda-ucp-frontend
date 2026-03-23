@@ -513,7 +513,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       {totalWeeklyHours !== null && (
         <div className="flex justify-end px-2">
           <p className={`text-sm font-semibold ${weeklyHoursColor}`}>
-            Total de horas semanales por todas las actividades: {totalWeeklyHours}h
+            {t("form.totalWeeklyHours")}: {totalWeeklyHours}h
             {requirement !== null && (
               <span className="text-muted-foreground font-normal"> / {requirement}h requeridas</span>
             )}
