@@ -1,31 +1,70 @@
 
 
-## Plan: Hacer la página principal más armoniosa y menos saturada
+## Plan: Header blanco + sistema de internacionalización con banderas
 
-### Problema actual
-El área principal (`main`) ocupa todo el ancho disponible con solo `p-6`, haciendo que los formularios se estiren demasiado y la página se vea saturada.
+### 1. Cambiar header de verde a blanco
 
-### Solución
-Agregar un contenedor con ancho máximo centrado y márgenes laterales generosos dentro del `main`, creando espacio visual a los lados de los formularios.
+**Archivos:** `src/pages/Index.tsx`, `src/pages/Profile.tsx`
 
-### Cambios en `src/pages/Index.tsx`
+- Header: cambiar `bg-primary` a `bg-white dark:bg-gray-900 border-b border-gray-200`
+- Textos: cambiar `text-primary-foreground` a `text-gray-800 dark:text-gray-100`
+- Botones hover: ajustar a `hover:bg-gray-100`
+- Separadores: cambiar a `bg-gray-300`
+- Agregar `gap-6` entre logo y título (más separación)
+- Logo: usar `ucp-logo.png` (versión a color) en lugar de `ucp-logo-white.png`
 
-Modificar el bloque del `<main>` (línea 199):
+### 2. Crear sistema de internacionalización (i18n)
 
-```tsx
-<main ref={mainRef} className="flex-1 overflow-auto">
-  <div className="max-w-4xl mx-auto px-8 py-6 space-y-6">
-    {subfunctions...}
-  </div>
-</main>
-```
+**Archivo nuevo:** `src/i18n/translations.ts`
 
-- `max-w-4xl` (~896px) limita el ancho de los formularios para que no se estiren.
-- `mx-auto` centra el contenido.
-- `px-8` da padding lateral (~2rem cada lado).
-- `py-6` mantiene el padding vertical.
-- `space-y-6` reduce ligeramente la separación entre formularios (de `space-y-8` a `space-y-6`).
+Diccionario con todas las cadenas de texto de la app en español e inglés:
+- Header: "Sistema de Gestión de Agenda Docente" / "Teaching Agenda Management System"
+- Secciones: "Producción" / "Production", "Actividades diferentes a la docencia" / "Non-teaching Activities"
+- Notificaciones, mensajes, perfil, cerrar sesión
+- SummaryPanel: "Resumen de Datos", "Total semestral", "Confirmar datos", etc.
+- AppSidebar: "Buscar...", "Docente de planta", secciones
+- SubfunctionForm: "Registro", "Editando registro", "Limpiar", "Agregar", "Seleccionar...", etc.
+- Profile: "Mi Perfil", labels de campos
+- Toasts y mensajes de error/éxito
 
-### Archivo modificado
-- `src/pages/Index.tsx` — solo 2 líneas cambian en el contenedor principal.
+**Archivo nuevo:** `src/i18n/LanguageContext.tsx`
+
+Context con:
+- `language: "es" | "en"` (default: "es")
+- `setLanguage(lang)` 
+- `t(key: string): string` — función de traducción
+
+### 3. Reemplazar Globe por banderas de país
+
+**En `src/pages/Index.tsx`:**
+
+- Eliminar import de `Globe`
+- El botón del selector de idioma muestra un emoji de bandera: 🇨🇴 cuando `language === "es"`, 🇺🇸 cuando `language === "en"`
+- Dropdown: "🇨🇴 Español (Colombia)" y "🇺🇸 English"
+- Mover el estado `language` al `LanguageContext`
+
+### 4. Integrar traducciones en componentes
+
+**Archivos a modificar:**
+- `src/pages/Index.tsx` — header labels, dropdowns
+- `src/components/SummaryPanel.tsx` — títulos, métricas, botón confirmar, toasts
+- `src/components/AppSidebar.tsx` — secciones, placeholder búsqueda
+- `src/components/SubfunctionForm.tsx` — títulos de cards, placeholders, botones, toasts
+- `src/pages/Profile.tsx` — header, labels de campos
+- `src/App.tsx` — envolver con `LanguageProvider`
+
+Cada componente importará `useLanguage()` y usará `t("key")` para todas las cadenas visibles.
+
+### Resumen de archivos
+
+| Archivo | Acción |
+|---|---|
+| `src/i18n/translations.ts` | Crear — diccionario ES/EN |
+| `src/i18n/LanguageContext.tsx` | Crear — context + hook `useLanguage` |
+| `src/App.tsx` | Envolver con `LanguageProvider` |
+| `src/pages/Index.tsx` | Header blanco, banderas, usar `t()` |
+| `src/pages/Profile.tsx` | Header blanco, usar `t()` |
+| `src/components/SummaryPanel.tsx` | Usar `t()` |
+| `src/components/AppSidebar.tsx` | Usar `t()` |
+| `src/components/SubfunctionForm.tsx` | Usar `t()` |
 
