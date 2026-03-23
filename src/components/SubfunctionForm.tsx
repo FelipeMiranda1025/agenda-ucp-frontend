@@ -423,7 +423,17 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                             </PopoverContent>
                           </Popover>
                         </>
-                      ) : (
+                          </Popover>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="shrink-0"
+                            onClick={() => setSubjectDialogOpen(true)}
+                            title={t("subject.manage")}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <SubjectManagementDialog open={subjectDialogOpen} onOpenChange={setSubjectDialogOpen} />
                         <>
                           <Select
                             value={String(formData[field.name] || "")}
