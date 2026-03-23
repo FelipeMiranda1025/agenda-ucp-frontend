@@ -1,33 +1,43 @@
 
 
-## Plan: Deduplicación de asignaturas y validación de unicidad nombre+facultad+programa
+## Plan: Relación programa-facultad y nuevo auto-llenado
 
-### Problema actual
-- El combobox de asignaturas muestra todas las filas de `subjects`, incluyendo duplicados por nombre (ej: "Matemáticas I" puede existir para varias facultades/programas).
-- No hay validación que impida crear asignaturas duplicadas con la misma combinación nombre+facultad+programa.
+### 1. Base de datos: agregar columna `id_faculty` a `professional_careers`
 
-### Cambios
+Migración SQL para agregar `id_faculty INTEGER REFERENCES faculties(id)` a la tabla `professional_careers`. Luego, usando el insert tool, actualizar cada registro con su facultad correspondiente:
 
-#### 1. SubjectManagementDialog.tsx — Validación al crear/editar
-Antes de insertar o actualizar, consultar la tabla `subjects` para verificar si ya existe un registro con el mismo `name`, `id_faculty` e `id_professional_career`. Si existe (y no es el mismo registro en caso de edición), mostrar un toast de error indicando que ya existe esa asignatura para esa facultad y programa.
+| career_id | faculty_id |
+|-----------|-----------|
+| 1,2,3,4 | 1 (Ciencias básicas e ingeniería) |
+| 5,6,7,9 | 2 (Arquitectura y diseño) |
+| 10,11,12 | 3 (Ciencias humanas) |
+| 13,14,15 | 4 (Ciencias económicas) |
 
-#### 2. SubfunctionForm.tsx — Deduplicar nombres en combobox y auto-completar facultad/programa
-- En el combobox de asignaturas, en vez de listar todos los `subjects`, deduplicar por nombre: mostrar solo un item por cada nombre único.
-- Al seleccionar un nombre de asignatura:
-  - Si solo hay una asignatura con ese nombre, auto-completar facultad y programa como antes.
-  - Si hay múltiples asignaturas con ese nombre, seleccionar la primera por defecto y habilitar los campos de facultad y programa como selectores filtrados (solo mostrando las opciones que corresponden a asignaturas con ese nombre).
-  - Al cambiar la facultad o programa, actualizar la referencia interna a la asignatura correspondiente (la que coincide con nombre+facultad+programa seleccionados).
+Nota: id=8 ("Diseño audiovisual") no fue mencionado por el usuario, se dejará con `id_faculty = NULL` o se preguntará.
 
-#### 3. Lógica de auto-fill al seleccionar asignatura
-Cuando el usuario selecciona una asignatura en el combobox:
-- Buscar todas las `subjects` con ese nombre.
-- Si hay una sola: llenar automáticamente facultad, programa, semestre, nivel, horas y semanas.
-- Si hay varias: llenar los campos comunes, y para facultad/programa mostrar solo las opciones correspondientes a asignaturas con ese nombre.
+### 2. TypeScript: actualizar tipo `DbProfessionalCareer`
 
-#### Archivos a modificar
+En `src/types/database.ts`, agregar `id_faculty: number | null` al tipo `DbProfessionalCareer`.
+
+### 3. Lógica de auto-llenado en `SubfunctionForm.tsx`
+
+Cambiar la lógica de Docencia Directa:
+- Al seleccionar una asignatura, auto-llenar **todos** los campos (programa, facultad, semestre, nivel, horas, semanas) basándose en la primera variante (por defecto, la del programa "Tecnología en desarrollo de software").
+- **Facultad siempre bloqueada** (read-only). Se deriva automáticamente del programa seleccionado usando la nueva relación `professional_careers.id_faculty`.
+- **Programa**: si hay múltiples variantes de la asignatura, se habilita como selector filtrado (solo los programas que tienen esa asignatura). Al cambiar el programa, se resuelve la nueva asignatura y se auto-llena la facultad desde `professional_careers.id_faculty`.
+- Eliminar la lógica actual que usa `filteredFacultyIds` para filtrar facultades en el Select. En su lugar, la facultad siempre viene del programa.
+
+### 4. `SubjectManagementDialog.tsx`
+
+Cuando se selecciona un programa al crear/editar asignatura, auto-llenar la facultad basándose en `professional_careers.id_faculty`. El campo facultad queda read-only en este diálogo también.
+
+### Archivos a modificar
+
 | Archivo | Cambio |
 |---|---|
-| `src/components/SubjectManagementDialog.tsx` | Agregar validación de duplicado nombre+facultad+programa antes de insert/update |
-| `src/components/SubfunctionForm.tsx` | Deduplicar nombres en combobox, lógica de selección con múltiples variantes, filtro dinámico de facultad/programa |
-| `src/i18n/translations.ts` | Agregar mensaje de error "asignatura ya existe" |
+| Migración SQL | Agregar columna `id_faculty` a `professional_careers` |
+| Insert SQL | Actualizar `id_faculty` en los 14 registros |
+| `src/types/database.ts` | Agregar `id_faculty` a `DbProfessionalCareer` |
+| `src/components/SubfunctionForm.tsx` | Facultad siempre read-only, derivada del programa; programa editable si hay variantes |
+| `src/components/SubjectManagementDialog.tsx` | Auto-llenar facultad al seleccionar programa |
 
