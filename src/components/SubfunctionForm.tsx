@@ -285,7 +285,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       toast.success(t("form.updatedRecord"));
     } else {
       upsertRecord(resolvedId, { ...formData }, total);
-      toast.success("Registro guardado");
+      toast.success(t("form.savedRecord"));
     }
     
     // Clear form after saving
