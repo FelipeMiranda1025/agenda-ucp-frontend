@@ -1,0 +1,1 @@
+ALTER TABLE public.professional_careers ADD COLUMN id_faculty INTEGER REFERENCES public.faculties(id);
