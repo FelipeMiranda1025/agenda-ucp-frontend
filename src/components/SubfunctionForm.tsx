@@ -420,7 +420,14 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
             {inputFields.map((field) => {
               const readOnlyFields = (() => {
                 switch (resolvedId) {
-                  case "docencia-directa": return ["semestre", "nivel", "horasSemana", "cantidadSemanas"];
+                  case "docencia-directa": {
+                    const base = ["semestre", "nivel", "horasSemana", "cantidadSemanas"];
+                    // If multiple variants exist, allow faculty/program editing
+                    if (!hasMultipleVariants) {
+                      base.push("facultad", "programa");
+                    }
+                    return base;
+                  }
                   case "docencia-indirecta": return ["horasSemana", "cantidadSemanas"];
                   case "trabajos-grado": return ["cantidadHoras"];
                   case "practicas-academicas": return ["cantidadHoras"];
