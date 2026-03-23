@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Lock, User } from 'lucide-react';
-import ucpLogo from '@/assets/ucp-logo.png';
+import ucpLogoWhite from '@/assets/ucp-logo-white.png';
 
 const MAX_FAILED_ATTEMPTS = 3;
 const LOCKOUT_SECONDS = 30;
@@ -155,7 +155,7 @@ export const LoginDialog: React.FC = () => {
       <div className="w-full max-w-md mx-4 bg-background rounded-2xl shadow-2xl border overflow-hidden">
         {/* Header */}
         <div className="bg-primary px-6 py-8 flex flex-col items-center gap-3">
-          <img src={ucpLogo} alt="Logo UCP" className="h-16 w-auto object-contain" />
+          <img src={ucpLogoWhite} alt="Logo UCP" className="h-16 w-auto object-contain" />
           <h2 className="text-primary-foreground text-xl font-bold text-center">
             Sistema de Gestión de Agenda Docente
           </h2>
