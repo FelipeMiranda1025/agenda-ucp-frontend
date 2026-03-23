@@ -8,11 +8,12 @@ import { Input } from "@/components/ui/input";
 import { CheckCircle, ClipboardList, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { translateOption } from "@/i18n/optionTranslations";
 
 export function SummaryPanel() {
   const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord } = useAgenda();
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
 
   const grouped = subfunctions
@@ -106,7 +107,8 @@ export function SummaryPanel() {
                   {t(group.shortTitleKey || group.shortTitle)}
                 </h3>
                 {group.records.map((record, i) => {
-                  const label = Object.values(record.data).find((v) => typeof v === "string") || `${t("form.record")} ${i + 1}`;
+                  const rawLabel = Object.values(record.data).find((v) => typeof v === "string") || `${t("form.record")} ${i + 1}`;
+                  const label = translateOption(String(rawLabel), language);
                   return (
                     <div
                       key={record.id}

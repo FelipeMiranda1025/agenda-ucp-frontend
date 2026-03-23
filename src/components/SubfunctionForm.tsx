@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Plus, CalendarX, Eraser, ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { translateOption } from "@/i18n/optionTranslations";
 import { toast } from "sonner";
 import { SUBFUNCTION_COLORS, HOURS, formatHour, getTranslatedDays } from "@/data/scheduleConstants";
 import { DocentePlanta } from "@/types/docentePlanta";
@@ -109,7 +110,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
 export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   const { activeSubfunction, dropdownOptions, addDropdownOption, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord } = useAgenda();
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const resolvedId = subfunctionId || activeSubfunction;
   const [formData, setFormData] = useState<{ [key: string]: string | number }>(() => {
     return formDataStore[resolvedId] || {};
@@ -371,7 +372,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                   <Label className="text-sm font-medium">{t(field.labelKey || field.label)}</Label>
                   {isReadOnly ? (
                     <div className="h-10 px-3 py-2 rounded-md bg-muted text-sm font-semibold flex items-center">
-                      {formData[field.name] || "—"}
+                      {translateOption(formData[field.name] || "—", language)}
                     </div>
                   ) : field.type === "dropdown" ? (
                     <div className="flex gap-1">
@@ -386,7 +387,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                                 className="flex-1 justify-between font-normal"
                               >
                                 {formData[field.name]
-                                  ? String(formData[field.name])
+                                  ? translateOption(String(formData[field.name]), language)
                                   : t("form.searchSubject")}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                               </Button>
@@ -412,7 +413,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                                             formData[field.name] === subject.name ? "opacity-100" : "opacity-0"
                                           )}
                                         />
-                                        {subject.name}
+                                        {translateOption(subject.name, language)}
                                       </CommandItem>
                                     ))}
                                   </CommandGroup>
@@ -447,7 +448,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                                 if (dbData) {
                                   return dbData.map((item) => (
                                     <SelectItem key={item.id} value={item.name}>
-                                      {item.name}
+                                      {translateOption(item.name, language)}
                                     </SelectItem>
                                   ));
                                 }
@@ -455,7 +456,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                                   .filter((o) => o.category === field.category)
                                   .map((o) => (
                                     <SelectItem key={o.id} value={o.value}>
-                                      {o.value}
+                                      {translateOption(o.value, language)}
                                     </SelectItem>
                                   ));
                               })()}
