@@ -393,9 +393,9 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                             </PopoverTrigger>
                             <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
                               <Command>
-                                <CommandInput placeholder="Escriba para filtrar..." />
+                                <CommandInput placeholder={t("form.filterType")} />
                                 <CommandList>
-                                  <CommandEmpty>No se encontraron asignaturas.</CommandEmpty>
+                                  <CommandEmpty>{t("form.noSubjects")}</CommandEmpty>
                                   <CommandGroup>
                                     {dbSubjects?.map((subject) => (
                                       <CommandItem
