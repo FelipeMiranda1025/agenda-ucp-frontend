@@ -107,7 +107,8 @@ export function SummaryPanel() {
                   {t(group.shortTitleKey || group.shortTitle)}
                 </h3>
                 {group.records.map((record, i) => {
-                  const label = Object.values(record.data).find((v) => typeof v === "string") || `${t("form.record")} ${i + 1}`;
+                  const rawLabel = Object.values(record.data).find((v) => typeof v === "string") || `${t("form.record")} ${i + 1}`;
+                  const label = translateOption(String(rawLabel), language);
                   return (
                     <div
                       key={record.id}
