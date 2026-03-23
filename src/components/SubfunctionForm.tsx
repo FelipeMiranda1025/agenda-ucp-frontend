@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Plus, CalendarX, Eraser, ChevronsUpDown, Check, Pencil } from "lucide-react";
 import { SubjectManagementDialog } from "@/components/SubjectManagementDialog";
+import { ActivityManagementDialog, type ActivityTableType } from "@/components/ActivityManagementDialog";
 import { cn } from "@/lib/utils";
 import { translateOption } from "@/i18n/optionTranslations";
 import { toast } from "sonner";
