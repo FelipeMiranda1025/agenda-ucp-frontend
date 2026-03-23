@@ -1,70 +1,75 @@
 
 
-## Plan: Header blanco + sistema de internacionalización con banderas
+## Plan: Traduccion completa + banderas con imagenes reales
 
-### 1. Cambiar header de verde a blanco
+### Resumen
+Completar la traduccion de TODOS los textos visibles (titulos de formularios, labels de campos, nombres en sidebar, dias del horario, nombres de asignaturas del dropdown) y reemplazar los emojis de banderas por las imagenes PNG proporcionadas, mostradas de forma circular con un dropdown tipo chevron.
 
-**Archivos:** `src/pages/Index.tsx`, `src/pages/Profile.tsx`
+### Cambios
 
-- Header: cambiar `bg-primary` a `bg-white dark:bg-gray-900 border-b border-gray-200`
-- Textos: cambiar `text-primary-foreground` a `text-gray-800 dark:text-gray-100`
-- Botones hover: ajustar a `hover:bg-gray-100`
-- Separadores: cambiar a `bg-gray-300`
-- Agregar `gap-6` entre logo y título (más separación)
-- Logo: usar `ucp-logo.png` (versión a color) en lugar de `ucp-logo-white.png`
+#### 1. Copiar imagenes de banderas a `src/assets/`
+- `user-uploads://BanderaCol.png` → `src/assets/flag-col.png`
+- `user-uploads://BanderaUSA.png` → `src/assets/flag-usa.png`
 
-### 2. Crear sistema de internacionalización (i18n)
+#### 2. `src/i18n/translations.ts` — Agregar traducciones faltantes
 
-**Archivo nuevo:** `src/i18n/translations.ts`
+Agregar traducciones para:
+- **Titulos de subfunciones**: `"sub.docencia-directa.title"`, `"sub.docencia-directa.short"`, etc. para las 10 subfunciones
+- **Labels de campos**: `"field.asignatura"`, `"field.semestre"`, `"field.facultad"`, `"field.programa"`, `"field.jornada"`, `"field.nivel"`, `"field.horasSemana"`, `"field.cantidadSemanas"`, `"field.totalHoras"`, `"field.actividad"`, `"field.tipoTrabajo"`, `"field.cantidadProyectos"`, `"field.cantidadHoras"`, `"field.cantidadEstudiantes"`
+- **Dias del horario**: `"day.monday"` ... `"day.saturday"`
 
-Diccionario con todas las cadenas de texto de la app en español e inglés:
-- Header: "Sistema de Gestión de Agenda Docente" / "Teaching Agenda Management System"
-- Secciones: "Producción" / "Production", "Actividades diferentes a la docencia" / "Non-teaching Activities"
-- Notificaciones, mensajes, perfil, cerrar sesión
-- SummaryPanel: "Resumen de Datos", "Total semestral", "Confirmar datos", etc.
-- AppSidebar: "Buscar...", "Docente de planta", secciones
-- SubfunctionForm: "Registro", "Editando registro", "Limpiar", "Agregar", "Seleccionar...", etc.
-- Profile: "Mi Perfil", labels de campos
-- Toasts y mensajes de error/éxito
+#### 3. `src/data/subfunctions.ts` — Agregar translation keys
 
-**Archivo nuevo:** `src/i18n/LanguageContext.tsx`
+Agregar `titleKey` y `shortTitleKey` a cada subfunction config para que los componentes puedan traducir los nombres. Los campos tambien tendran un `labelKey`.
 
-Context con:
-- `language: "es" | "en"` (default: "es")
-- `setLanguage(lang)` 
-- `t(key: string): string` — función de traducción
+#### 4. `src/types/agenda.ts` — Agregar `labelKey` al tipo `FieldConfig`
 
-### 3. Reemplazar Globe por banderas de país
+Agregar campo opcional `labelKey: string` a la interfaz de campos.
 
-**En `src/pages/Index.tsx`:**
+#### 5. `src/components/SubfunctionForm.tsx` — Usar `t()` para titulos y labels
 
-- Eliminar import de `Globe`
-- El botón del selector de idioma muestra un emoji de bandera: 🇨🇴 cuando `language === "es"`, 🇺🇸 cuando `language === "en"`
-- Dropdown: "🇨🇴 Español (Colombia)" y "🇺🇸 English"
-- Mover el estado `language` al `LanguageContext`
+- Linea 324: Cambiar `{config.title}` por `{t(config.titleKey || config.title)}`
+- Linea 371: Cambiar `{field.label}` por `{t(field.labelKey || field.label)}`
 
-### 4. Integrar traducciones en componentes
+#### 6. `src/components/AppSidebar.tsx` — Usar `t()` para shortTitle
 
-**Archivos a modificar:**
-- `src/pages/Index.tsx` — header labels, dropdowns
-- `src/components/SummaryPanel.tsx` — títulos, métricas, botón confirmar, toasts
-- `src/components/AppSidebar.tsx` — secciones, placeholder búsqueda
-- `src/components/SubfunctionForm.tsx` — títulos de cards, placeholders, botones, toasts
-- `src/pages/Profile.tsx` — header, labels de campos
-- `src/App.tsx` — envolver con `LanguageProvider`
+- Cambiar `{item.shortTitle}` por `{t(item.shortTitleKey || item.shortTitle)}`
 
-Cada componente importará `useLanguage()` y usará `t("key")` para todas las cadenas visibles.
+#### 7. `src/data/scheduleConstants.ts` — Exportar claves de dias traducibles
 
-### Resumen de archivos
+Cambiar `DAYS` a claves de traduccion y agregar una funcion `getTranslatedDays(t)`.
 
-| Archivo | Acción |
+#### 8. `src/pages/Index.tsx` — Reemplazar emojis por imagenes PNG
+
+Cambiar el selector de idioma:
+```tsx
+import flagCol from "@/assets/flag-col.png";
+import flagUsa from "@/assets/flag-usa.png";
+
+// En el trigger del dropdown:
+<img src={language === "es" ? flagCol : flagUsa} className="h-6 w-6 rounded-full object-cover" />
+<ChevronDown className="h-3 w-3" />
+
+// En las opciones del dropdown:
+<img src={flagCol} className="h-5 w-5 rounded-full object-cover" /> Español (Colombia)
+<img src={flagUsa} className="h-5 w-5 rounded-full object-cover" /> English
+```
+
+#### 9. `src/components/SummaryPanel.tsx` — Traducir titulos de subfunciones en el resumen
+
+Donde se muestra `sf.title` o `sf.shortTitle`, usar `t(sf.titleKey)` o `t(sf.shortTitleKey)`.
+
+### Archivos modificados
+| Archivo | Accion |
 |---|---|
-| `src/i18n/translations.ts` | Crear — diccionario ES/EN |
-| `src/i18n/LanguageContext.tsx` | Crear — context + hook `useLanguage` |
-| `src/App.tsx` | Envolver con `LanguageProvider` |
-| `src/pages/Index.tsx` | Header blanco, banderas, usar `t()` |
-| `src/pages/Profile.tsx` | Header blanco, usar `t()` |
-| `src/components/SummaryPanel.tsx` | Usar `t()` |
-| `src/components/AppSidebar.tsx` | Usar `t()` |
-| `src/components/SubfunctionForm.tsx` | Usar `t()` |
+| `src/assets/flag-col.png` | Copiar imagen |
+| `src/assets/flag-usa.png` | Copiar imagen |
+| `src/i18n/translations.ts` | Agregar ~40 traducciones |
+| `src/types/agenda.ts` | Agregar `labelKey`, `titleKey`, `shortTitleKey` |
+| `src/data/subfunctions.ts` | Agregar translation keys |
+| `src/data/scheduleConstants.ts` | Dias traducibles |
+| `src/pages/Index.tsx` | Banderas PNG + chevron |
+| `src/components/SubfunctionForm.tsx` | Usar `t()` para titulo y labels |
+| `src/components/AppSidebar.tsx` | Usar `t()` para shortTitle |
+| `src/components/SummaryPanel.tsx` | Usar `t()` para titulos |
 
