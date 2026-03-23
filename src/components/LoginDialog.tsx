@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Lock, User } from 'lucide-react';
-import ucpLogo from '@/assets/ucp-logo.png';
+import ucpLogoWhite from '@/assets/ucp-logo-white.png';
 
 const MAX_FAILED_ATTEMPTS = 3;
 const LOCKOUT_SECONDS = 30;
