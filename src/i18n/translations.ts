@@ -127,6 +127,23 @@ const translations: Record<string, Record<Language, string>> = {
   "field.cantidadHoras": { es: "Cantidad de horas", en: "Number of hours" },
   "field.cantidadEstudiantes": { es: "Cantidad de estudiantes", en: "Number of students" },
 
+  // Subject management
+  "subject.manage": { es: "Gestionar asignaturas", en: "Manage subjects" },
+  "subject.add": { es: "Agregar asignatura", en: "Add subject" },
+  "subject.edit": { es: "Editar asignatura", en: "Edit subject" },
+  "subject.delete": { es: "Eliminar asignatura", en: "Delete subject" },
+  "subject.confirmDelete": { es: "¿Confirmar eliminación?", en: "Confirm deletion?" },
+  "subject.cancel": { es: "Cancelar", en: "Cancel" },
+  "subject.save": { es: "Guardar cambios", en: "Save changes" },
+  "subject.name": { es: "Nombre de la asignatura", en: "Subject name" },
+  "subject.nameRequired": { es: "El nombre es obligatorio", en: "Name is required" },
+  "subject.nameMax": { es: "Máximo 200 caracteres", en: "Maximum 200 characters" },
+  "subject.hoursInvalid": { es: "Debe ser un entero positivo", en: "Must be a positive integer" },
+  "subject.weeksInvalid": { es: "Debe ser un entero positivo", en: "Must be a positive integer" },
+  "subject.added": { es: "Asignatura agregada", en: "Subject added" },
+  "subject.updated": { es: "Asignatura actualizada", en: "Subject updated" },
+  "subject.deleted": { es: "Asignatura eliminada", en: "Subject deleted" },
+
   // Days
   "day.monday": { es: "Lunes", en: "Monday" },
   "day.tuesday": { es: "Martes", en: "Tuesday" },
