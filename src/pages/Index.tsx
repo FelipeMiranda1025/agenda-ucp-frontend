@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { subfunctions } from "@/data/subfunctions";
 
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -16,17 +17,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, Globe } from "lucide-react";
-import ucpLogoWhite from "@/assets/ucp-logo-white.png";
+import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare } from "lucide-react";
+import ucpLogo from "@/assets/ucp-logo.png";
 
 const Index = () => {
   const { user, logout } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [visibleSection, setVisibleSection] = useState<string>("Producción");
+  const [visibleSection, setVisibleSection] = useState<string>("header.production");
   const [notificationCount] = useState(0);
-  const [language, setLanguage] = useState<"es" | "en">("es");
   const mainRef = useRef<HTMLDivElement>(null);
 
   const initials = user
@@ -48,9 +49,9 @@ const Index = () => {
             if (sectionId) {
               const sf = subfunctions.find((s) => s.id === sectionId);
               if (sf) {
-                if (sf.sectionId === "produccion") setVisibleSection("Producción");
-                else if (sf.sectionId === "actividades") setVisibleSection("Actividades diferentes a la docencia");
-                else if (sf.sectionId === "horario") setVisibleSection("Horario de permanencia");
+                if (sf.sectionId === "produccion") setVisibleSection("header.production");
+                else if (sf.sectionId === "actividades") setVisibleSection("header.activities");
+                else if (sf.sectionId === "horario") setVisibleSection("header.schedule");
               }
             }
           }
@@ -65,17 +66,19 @@ const Index = () => {
 
   const handleMenuClose = useCallback(() => setMenuOpen(false), []);
 
+  const flagEmoji = language === "es" ? "🇨🇴" : "🇺🇸";
+
   return (
     <div className="h-screen flex flex-col">
-      {/* Sticky header */}
-      <header className="sticky top-0 z-40 bg-primary border-b shrink-0">
-        <div className="h-14 flex items-center gap-3 px-4">
-          <img src={ucpLogoWhite} alt="UCP" className="h-9 w-auto" />
+      {/* Sticky header - white */}
+      <header className="sticky top-0 z-40 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shrink-0">
+        <div className="h-14 flex items-center gap-6 px-4">
+          <img src={ucpLogo} alt="UCP" className="h-9 w-auto" />
           <div className="flex-1 min-w-0">
-            <h1 className="text-primary-foreground font-semibold text-lg leading-tight">
-              Sistema de Gestión de Agenda Docente
+            <h1 className="text-gray-800 dark:text-gray-100 font-semibold text-lg leading-tight">
+              {t("header.title")}
             </h1>
-            <p className="text-primary-foreground/80 text-sm leading-tight">{visibleSection}</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm leading-tight">{t(visibleSection)}</p>
           </div>
 
           {/* Right-side toolbar */}
@@ -86,7 +89,7 @@ const Index = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="relative text-primary-foreground hover:bg-primary-foreground/10 shrink-0"
+                  className="relative text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0"
                 >
                   <Bell className="h-5 w-5" />
                   {notificationCount > 0 && (
@@ -97,10 +100,10 @@ const Index = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-72">
-                <div className="px-3 py-2 text-sm font-semibold">Notificaciones</div>
+                <div className="px-3 py-2 text-sm font-semibold">{t("notifications.title")}</div>
                 <DropdownMenuSeparator />
                 <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                  No hay notificaciones nuevas
+                  {t("notifications.empty")}
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -111,29 +114,29 @@ const Index = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-primary-foreground hover:bg-primary-foreground/10 shrink-0"
+                  className="text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0"
                 >
                   <MessageSquare className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-72">
-                <div className="px-3 py-2 text-sm font-semibold">Mensajes</div>
+                <div className="px-3 py-2 text-sm font-semibold">{t("messages.title")}</div>
                 <DropdownMenuSeparator />
                 <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                  No hay mensajes
+                  {t("messages.empty")}
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
 
             {/* Separator */}
-            <div className="w-px h-6 bg-primary-foreground/30 mx-1" />
+            <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
 
             {/* Profile dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-1.5 text-primary-foreground hover:bg-primary-foreground/10 px-2">
+                <Button variant="ghost" className="flex items-center gap-1.5 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 px-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary-foreground/20 text-primary-foreground text-xs font-bold">
+                    <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
@@ -142,51 +145,51 @@ const Index = () => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={() => navigate("/profile")} className="gap-2 cursor-pointer">
-                  <User className="h-4 w-4" /> Ver perfil
+                  <User className="h-4 w-4" /> {t("profile.view")}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout} className="gap-2 cursor-pointer text-destructive">
-                  <LogOut className="h-4 w-4" /> Cerrar sesión
+                  <LogOut className="h-4 w-4" /> {t("profile.logout")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
             {/* Separator */}
-            <div className="w-px h-6 bg-primary-foreground/30 mx-1" />
+            <div className="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1" />
 
             {/* Dark mode toggle */}
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="text-primary-foreground hover:bg-primary-foreground/10 shrink-0"
+              className="text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0"
             >
               {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
 
-            {/* Language selector */}
+            {/* Language selector with flag */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-primary-foreground hover:bg-primary-foreground/10 shrink-0"
+                  className="text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0 text-lg"
                 >
-                  <Globe className="h-5 w-5" />
+                  {flagEmoji}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem
                   onClick={() => setLanguage("es")}
                   className={`gap-2 cursor-pointer ${language === "es" ? "font-bold" : ""}`}
                 >
-                  🇪🇸 Español
+                  🇨🇴 {t("lang.es")}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setLanguage("en")}
                   className={`gap-2 cursor-pointer ${language === "en" ? "font-bold" : ""}`}
                 >
-                  🇺🇸 English
+                  🇺🇸 {t("lang.en")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -214,7 +217,7 @@ const Index = () => {
       <button
         onClick={() => setMenuOpen(true)}
         className="fixed bottom-6 left-6 z-50 h-14 w-14 rounded-full bg-green-600 hover:bg-green-700 text-white shadow-lg flex items-center justify-center transition-colors"
-        aria-label="Abrir menú"
+        aria-label={t("menu.open")}
       >
         <Menu className="h-6 w-6" />
       </button>

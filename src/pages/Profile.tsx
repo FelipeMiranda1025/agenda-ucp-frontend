@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import { toast } from "sonner";
 
 const Profile = () => {
   const { user, roleName } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ ...user });
@@ -23,41 +25,40 @@ const Profile = () => {
   const statusLabel = STATUSES.find((s) => s.id === user.statusId)?.name || "";
 
   const handleSave = () => {
-    // In-memory only for now
-    toast.success("Perfil actualizado (solo en sesión actual)");
+    toast.success(t("profilePage.updated"));
     setEditing(false);
   };
 
   const fields = [
-    { label: "Cédula (ID)", key: "id", disabled: true },
-    { label: "Correo institucional", key: "email", disabled: false },
-    { label: "Primer nombre", key: "firstName", disabled: false },
-    { label: "Segundo nombre", key: "secondName", disabled: false },
-    { label: "Primer apellido", key: "firstLastName", disabled: false },
-    { label: "Segundo apellido", key: "secondLastName", disabled: false },
+    { label: t("profilePage.cedula"), key: "id", disabled: true },
+    { label: t("profilePage.email"), key: "email", disabled: false },
+    { label: t("profilePage.firstName"), key: "firstName", disabled: false },
+    { label: t("profilePage.secondName"), key: "secondName", disabled: false },
+    { label: t("profilePage.firstLastName"), key: "firstLastName", disabled: false },
+    { label: t("profilePage.secondLastName"), key: "secondLastName", disabled: false },
   ];
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="h-14 flex items-center gap-3 border-b bg-primary px-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="text-primary-foreground hover:bg-primary-foreground/10">
+      <header className="h-14 flex items-center gap-3 border-b bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700 px-4">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800">
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-primary-foreground font-semibold text-lg">Mi Perfil</h1>
+        <h1 className="text-gray-800 dark:text-gray-100 font-semibold text-lg">{t("profilePage.title")}</h1>
       </header>
 
       <div className="max-w-4xl mx-auto p-6">
         <Card>
           <CardHeader className="flex flex-row items-start justify-between">
-            <CardTitle className="text-xl">Información del usuario</CardTitle>
+            <CardTitle className="text-xl">{t("profilePage.userInfo")}</CardTitle>
             {!editing ? (
               <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="gap-1.5">
-                <Pencil className="h-4 w-4" /> Editar perfil
+                <Pencil className="h-4 w-4" /> {t("profilePage.edit")}
               </Button>
             ) : (
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleSave} className="gap-1.5">
-                  <Save className="h-4 w-4" /> Guardar
+                  <Save className="h-4 w-4" /> {t("profilePage.save")}
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => { setEditing(false); setForm({ ...user }); }}>
                   <X className="h-4 w-4" />
@@ -97,11 +98,11 @@ const Profile = () => {
                   </div>
                 ))}
                 <div className="space-y-1.5">
-                  <Label className="text-sm font-medium text-muted-foreground">Rol</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">{t("profilePage.role")}</Label>
                   <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted capitalize">{roleLabel}</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-sm font-medium text-muted-foreground">Estado</Label>
+                  <Label className="text-sm font-medium text-muted-foreground">{t("profilePage.status")}</Label>
                   <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted capitalize">{statusLabel}</p>
                 </div>
               </div>
