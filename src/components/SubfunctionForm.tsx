@@ -436,6 +436,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                       ) : (
                         <>
                           <Select
+                            value={String(formData[field.name] || "")}
                             onValueChange={(v) => setFormData((p) => ({ ...p, [field.name]: v }))}
                           >
                             <SelectTrigger className="flex-1">
