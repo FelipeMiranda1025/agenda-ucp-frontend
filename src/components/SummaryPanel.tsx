@@ -165,7 +165,7 @@ export function SummaryPanel() {
       <div className="p-4 border-t">
         <Button
           onClick={handleConfirm}
-          className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
+          className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
         >
           <CheckCircle className="h-4 w-4" />
           {t("summary.confirm")}
