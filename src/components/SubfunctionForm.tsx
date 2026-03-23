@@ -182,6 +182,43 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     formDataStore[resolvedId] = formData;
   }, [formData, resolvedId]);
 
+  // Deduplicated subject names for combobox
+  const uniqueSubjectNames = useMemo(() => {
+    if (!dbSubjects) return [];
+    const seen = new Set<string>();
+    return dbSubjects.filter((s) => {
+      const lower = s.name.toLowerCase();
+      if (seen.has(lower)) return false;
+      seen.add(lower);
+      return true;
+    });
+  }, [dbSubjects]);
+
+  // Subjects matching the currently selected name
+  const matchingSubjects = useMemo(() => {
+    const name = formData["asignatura"];
+    if (!name || typeof name !== "string" || !dbSubjects) return [];
+    return dbSubjects.filter((s) => s.name.toLowerCase() === String(name).toLowerCase());
+  }, [formData["asignatura"], dbSubjects]);
+
+  // Filtered faculties/careers for subjects with selected name
+  const filteredFacultyIds = useMemo(() => new Set(matchingSubjects.map((s) => s.id_faculty).filter(Boolean)), [matchingSubjects]);
+  const filteredCareerIds = useMemo(() => new Set(matchingSubjects.map((s) => s.id_professional_career).filter(Boolean)), [matchingSubjects]);
+
+  const hasMultipleVariants = matchingSubjects.length > 1;
+
+  // Resolve the exact subject record based on name + faculty + career selection
+  const resolveSubjectRecord = useCallback((subjects: typeof matchingSubjects, facultyName?: string, careerName?: string) => {
+    if (subjects.length === 0) return null;
+    if (subjects.length === 1) return subjects[0];
+    // Try to find exact match by faculty+career
+    const fac = facultyName ? dbFaculties?.find((f) => f.name === facultyName) : null;
+    const car = careerName ? dbProfessionalCareers?.find((c) => c.name === careerName) : null;
+    return subjects.find((s) =>
+      (!fac || s.id_faculty === fac.id) && (!car || s.id_professional_career === car.id)
+    ) || subjects[0];
+  }, [dbFaculties, dbProfessionalCareers]);
+
   // Auto-fill fields when selecting a subject in docencia-directa
   useEffect(() => {
     if (resolvedId !== "docencia-directa") return;
@@ -189,7 +226,10 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     if (!selectedSubjectName || typeof selectedSubjectName !== "string") return;
     if (!dbSubjects) return;
 
-    const subject = dbSubjects.find((s) => s.name === selectedSubjectName);
+    const subjects = dbSubjects.filter((s) => s.name.toLowerCase() === String(selectedSubjectName).toLowerCase());
+    if (subjects.length === 0) return;
+
+    const subject = resolveSubjectRecord(subjects, formData["facultad"] as string, formData["programa"] as string);
     if (!subject) return;
 
     const semesterName = subject.id_semester
@@ -215,7 +255,30 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       if (subject.number_weeks) updated["cantidadSemanas"] = subject.number_weeks;
       return updated;
     });
-  }, [formData["asignatura"], resolvedId, dbSubjects, dbSemesters, dbFaculties, dbEducationLevels, dbProfessionalCareers]);
+  }, [formData["asignatura"], resolvedId, dbSubjects, dbSemesters, dbFaculties, dbEducationLevels, dbProfessionalCareers, resolveSubjectRecord]);
+
+  // When faculty/program changes and there are multiple variants, resolve the correct subject
+  useEffect(() => {
+    if (resolvedId !== "docencia-directa" || !hasMultipleVariants) return;
+    const subject = resolveSubjectRecord(matchingSubjects, formData["facultad"] as string, formData["programa"] as string);
+    if (!subject) return;
+
+    const semesterName = subject.id_semester
+      ? dbSemesters?.find((s) => s.id === subject.id_semester)?.number?.toString()
+      : undefined;
+    const levelName = subject.id_education_level
+      ? dbEducationLevels?.find((l) => l.id === subject.id_education_level)?.name
+      : undefined;
+
+    setFormData((prev) => {
+      const updated = { ...prev };
+      if (semesterName) updated["semestre"] = semesterName;
+      if (levelName) updated["nivel"] = levelName;
+      if (subject.weekly_hours) updated["horasSemana"] = subject.weekly_hours;
+      if (subject.number_weeks) updated["cantidadSemanas"] = subject.number_weeks;
+      return updated;
+    });
+  }, [formData["facultad"], formData["programa"], resolvedId, hasMultipleVariants, matchingSubjects, resolveSubjectRecord, dbSemesters, dbEducationLevels]);
 
   // Auto-fill fields when selecting an activity in other subfunctions
   useEffect(() => {

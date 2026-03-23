@@ -110,6 +110,20 @@ export function SubjectManagementDialog({ open, onOpenChange }: Props) {
       number_weeks: Number(form.number_weeks),
     };
 
+    // Check for duplicate name+faculty+career
+    const duplicate = subjects?.find(
+      (s) =>
+        s.name.toLowerCase() === payload.name.toLowerCase() &&
+        s.id_faculty === payload.id_faculty &&
+        s.id_professional_career === payload.id_professional_career &&
+        (mode !== "edit" || s.id !== editingId)
+    );
+    if (duplicate) {
+      setLoading(false);
+      toast.error(t("subject.alreadyExists"));
+      return;
+    }
+
     let error;
     if (mode === "edit" && editingId) {
       ({ error } = await supabase.from("subjects").update(payload).eq("id", editingId));

@@ -143,6 +143,7 @@ const translations: Record<string, Record<Language, string>> = {
   "subject.added": { es: "Asignatura agregada", en: "Subject added" },
   "subject.updated": { es: "Asignatura actualizada", en: "Subject updated" },
   "subject.deleted": { es: "Asignatura eliminada", en: "Subject deleted" },
+  "subject.alreadyExists": { es: "Ya existe una asignatura con ese nombre para esa facultad y programa", en: "A subject with that name already exists for that faculty and program" },
 
   // Activity management (generic)
   "activity.manage": { es: "Gestionar actividades", en: "Manage activities" },
