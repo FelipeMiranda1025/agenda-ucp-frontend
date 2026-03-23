@@ -312,7 +312,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     addDropdownOption(newOptionCategory, newOptionValue.trim());
     setNewOptionValue("");
     setDialogOpen(false);
-    toast.success("Opción agregada");
+    toast.success(t("form.optionAdded"));
   };
 
   return (
