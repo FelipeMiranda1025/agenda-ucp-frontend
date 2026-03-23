@@ -73,12 +73,12 @@
     --ucp-green-dark: 156 90% 15%;
     --sidebar-background: 0 0% 12%;
     --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 156 90% 25%;
+    --sidebar-primary: 156 90% 19%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 18%;
     --sidebar-accent-foreground: 0 0% 90%;
     --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 156 90% 25%;
+    --sidebar-ring: 156 90% 19%;
   }
 }
 
