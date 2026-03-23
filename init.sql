@@ -223,7 +223,7 @@ CREATE TRIGGER update_agendas_updated_at
 -- =============================================
 
 INSERT INTO public.roles (id, name, description) VALUES
-  (6, 'Docente de planta', 'rol encargado de hacer la diligencia del formulario')
+  (1, 'Docente de planta', 'rol encargado de hacer la diligencia del formulario')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.states (id, name) VALUES
@@ -288,8 +288,8 @@ INSERT INTO public.subjects (id, name, weekly_hours, number_weeks, id_semester, 
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.users (id, first_name, second_name, first_last_name, second_last_name, cc, email, password, id_rol, id_state) VALUES
-  (3, 'Docente', '', 'Planta', 'Pruebas', '1234', 'docenteplanta.pruebas@ucp.edu.co',
-   '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4', 6, 1)
+  (1, 'Docente', '', 'Planta', 'Pruebas', '12345678', 'docenteplanta.pruebas@ucp.edu.co',
+   '74d18a339850e92425fe1c8b3efeddd5ff024d5291c629d79b35720c4bfe8e53', 1, 1)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO public.indirect_teaching (id, name, weekly_hours, number_weeks) VALUES
