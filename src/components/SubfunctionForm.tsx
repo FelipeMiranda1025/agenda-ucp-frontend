@@ -34,10 +34,10 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
     return (
       <div className="space-y-6">
         <div className="bg-ucp-red px-6 py-4 rounded-lg">
-          <h1 className="text-xl font-bold text-primary-foreground">3.1 Distribución horaria</h1>
+          <h1 className="text-xl font-bold text-primary-foreground">{t("schedule.title")}</h1>
           {user && (
             <p className="text-sm text-primary-foreground/80 mt-1">
-              Docente: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
+              {t("form.docente")}: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
             </p>
           )}
         </div>
@@ -45,7 +45,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
           <CardContent className="flex flex-col items-center justify-center py-16">
             <CalendarX className="h-12 w-12 text-muted-foreground/40 mb-4" />
             <p className="text-muted-foreground text-center">
-              Aún no se ha creado horario. Confirma las asignaturas en el resumen de registros.
+              {t("schedule.noSchedule")}
             </p>
           </CardContent>
         </Card>
