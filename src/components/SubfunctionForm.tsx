@@ -475,27 +475,73 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                               })()}
                             </SelectContent>
                           </Select>
-                          <Dialog open={dialogOpen && newOptionCategory === field.category} onOpenChange={(open) => { setDialogOpen(open); if (open) setNewOptionCategory(field.category!); }}>
-                            <DialogTrigger asChild>
-                              <Button variant="outline" size="icon" className="shrink-0" onClick={() => setNewOptionCategory(field.category!)}>
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>{t("form.addOption")}: {t(field.labelKey || field.label)}</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-3 pt-2">
-                                <Input
-                                  placeholder={t("form.newOption")}
-                                  value={newOptionValue}
-                                  onChange={(e) => setNewOptionValue(e.target.value)}
-                                  onKeyDown={(e) => e.key === "Enter" && handleAddOption()}
-                                />
-                                <Button onClick={handleAddOption} className="w-full">{t("form.add")}</Button>
-                              </div>
-                            </DialogContent>
-                          </Dialog>
+                          {(() => {
+                            const CATEGORY_TO_TABLE: Record<string, ActivityTableType> = {
+                              "actividad_indirecta": "indirect_teaching",
+                              "tipo_trabajo": "degree_works",
+                              "actividad_practicas": "academic_practices",
+                              "actividad_investigacion": "investigations",
+                              "actividad_proyeccion": "social_projects",
+                              "actividad_complementaria": "complementary_activities",
+                              "actividad_formacion": "teacher_training",
+                              "actividad_administrativa": "administrative_activities",
+                            };
+                            const CATEGORY_TO_DATA: Record<string, any[] | undefined> = {
+                              "actividad_indirecta": dbIndirectTeaching,
+                              "tipo_trabajo": dbDegreeWorks,
+                              "actividad_practicas": dbAcademicPractices,
+                              "actividad_investigacion": dbInvestigations,
+                              "actividad_proyeccion": dbSocialProjects,
+                              "actividad_complementaria": dbComplementaryActivities,
+                              "actividad_formacion": dbTeacherTraining,
+                              "actividad_administrativa": dbAdministrativeActivities,
+                            };
+                            const actTable = CATEGORY_TO_TABLE[field.category!];
+                            if (actTable) {
+                              return (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="shrink-0"
+                                    onClick={() => setActivityDialogOpen(actTable)}
+                                    title={t("activity.manage")}
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <ActivityManagementDialog
+                                    open={activityDialogOpen === actTable}
+                                    onOpenChange={(open) => setActivityDialogOpen(open ? actTable : null)}
+                                    tableType={actTable}
+                                    items={CATEGORY_TO_DATA[field.category!]}
+                                  />
+                                </>
+                              );
+                            }
+                            return (
+                              <Dialog open={dialogOpen && newOptionCategory === field.category} onOpenChange={(open) => { setDialogOpen(open); if (open) setNewOptionCategory(field.category!); }}>
+                                <DialogTrigger asChild>
+                                  <Button variant="outline" size="icon" className="shrink-0" onClick={() => setNewOptionCategory(field.category!)}>
+                                    <Plus className="h-4 w-4" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>{t("form.addOption")}: {t(field.labelKey || field.label)}</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-3 pt-2">
+                                    <Input
+                                      placeholder={t("form.newOption")}
+                                      value={newOptionValue}
+                                      onChange={(e) => setNewOptionValue(e.target.value)}
+                                      onKeyDown={(e) => e.key === "Enter" && handleAddOption()}
+                                    />
+                                    <Button onClick={handleAddOption} className="w-full">{t("form.add")}</Button>
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            );
+                          })()}
                         </>
                       )}
                     </div>
