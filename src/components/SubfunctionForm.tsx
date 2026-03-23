@@ -345,7 +345,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            {editingRecordId ? "Editando registro" : "Registro"}
+            {editingRecordId ? t("form.editing") : t("form.record")}
           </CardTitle>
         </CardHeader>
         <CardContent>
