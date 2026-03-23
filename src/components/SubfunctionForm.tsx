@@ -282,7 +282,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
 
     if (editingRecordId) {
       updateRecord(editingRecordId, { ...formData }, total);
-      toast.success("Registro actualizado");
+      toast.success(t("form.updatedRecord"));
     } else {
       upsertRecord(resolvedId, { ...formData }, total);
       toast.success("Registro guardado");
