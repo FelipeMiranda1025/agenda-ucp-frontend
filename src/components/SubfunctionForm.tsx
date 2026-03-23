@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Plus, CalendarX, Eraser, ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { translateOption } from "@/i18n/optionTranslations";
 import { toast } from "sonner";
 import { SUBFUNCTION_COLORS, HOURS, formatHour, getTranslatedDays } from "@/data/scheduleConstants";
 import { DocentePlanta } from "@/types/docentePlanta";
