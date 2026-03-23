@@ -196,14 +196,16 @@ const Index = () => {
 
       {/* Main content area */}
       <div className="flex-1 flex min-h-0">
-        <main ref={mainRef} className="flex-1 p-6 overflow-auto space-y-8">
-          {subfunctions
-            .filter((s) => s.id !== "distribucion-horaria")
-            .map((s) => (
-              <section key={s.id} id={`section-${s.id}`} data-section-id={s.id}>
-                <SubfunctionForm subfunctionId={s.id} />
-              </section>
-            ))}
+        <main ref={mainRef} className="flex-1 overflow-auto">
+          <div className="max-w-4xl mx-auto px-8 py-6 space-y-6">
+            {subfunctions
+              .filter((s) => s.id !== "distribucion-horaria")
+              .map((s) => (
+                <section key={s.id} id={`section-${s.id}`} data-section-id={s.id}>
+                  <SubfunctionForm subfunctionId={s.id} />
+                </section>
+              ))}
+          </div>
         </main>
         <SummaryPanel />
       </div>
