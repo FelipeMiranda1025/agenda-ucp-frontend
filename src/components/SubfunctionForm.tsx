@@ -456,7 +456,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                                   .filter((o) => o.category === field.category)
                                   .map((o) => (
                                     <SelectItem key={o.id} value={o.value}>
-                                      {o.value}
+                                      {translateOption(o.value, language)}
                                     </SelectItem>
                                   ));
                               })()}
