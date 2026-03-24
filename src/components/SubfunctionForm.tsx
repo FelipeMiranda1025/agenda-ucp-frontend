@@ -456,7 +456,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                 <div key={field.name} className="space-y-1.5">
                   <Label className="text-sm font-medium">{t(field.labelKey || field.label)}</Label>
                   {isReadOnly ? (
-                    <div className="h-10 px-3 py-2 rounded-md bg-muted text-sm font-semibold flex items-center">
+                     <div className="min-h-10 h-auto px-3 py-2 rounded-md bg-muted text-sm font-semibold flex items-center whitespace-normal text-left">
                       {translateOption(formData[field.name] || "—", language)}
                     </div>
                   ) : field.type === "dropdown" ? (
@@ -469,7 +469,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                                 variant="outline"
                                 role="combobox"
                                 aria-expanded={comboboxOpen}
-                                className="flex-1 justify-between font-normal"
+                                className="flex-1 justify-between font-normal h-auto min-h-10 whitespace-normal text-left"
                               >
                                 {formData[field.name]
                                   ? translateOption(String(formData[field.name]), language)
