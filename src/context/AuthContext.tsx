@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { User, AuthState, getRoleName } from '@/types/auth';
 import { findUserByCredentials } from '@/hooks/useDatabase';
 
