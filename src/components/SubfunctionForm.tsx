@@ -21,14 +21,11 @@ import { toast } from "sonner";
 import { SUBFUNCTION_COLORS, HOURS, formatHour, getTranslatedDays } from "@/data/scheduleConstants";
 import { DocentePlanta } from "@/types/docentePlanta";
 import { useSubjects, useSemesters, useFaculties, useEducationLevels, useProfessionalCareers, useDegreeWorks, useAcademicPractices, useInvestigations, useSocialProjects, useComplementaryActivities, useTeacherTraining, useAdministrativeActivities, useIndirectTeaching } from "@/hooks/useDatabase";
+import { useDocenteConfig, calculateHours } from "@/hooks/useDocenteConfig";
+import { DocenteResponses, DEFAULT_RESPONSES } from "@/types/docenteConfig";
 
 // Persistent form data across subfunctions
 const formDataStore: { [subfunctionId: string]: { [key: string]: string | number } } = {};
-
-// Weekly hour requirements per subfunction (null = no specific requirement)
-const WEEKLY_HOUR_REQUIREMENTS: { [subfunctionId: string]: number | null } = {
-  "docencia-directa": 16,
-};
 
 function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boolean; getSchedule: () => ScheduleData | null }) {
   const { user } = useAuth();
@@ -168,7 +165,18 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     return records.reduce((sum, r) => sum + (Number(r.data[weeklyField]) || 0), 0);
   }, [getRecordsBySubfunction, resolvedId]);
 
-  const requirement = WEEKLY_HOUR_REQUIREMENTS[resolvedId] ?? null;
+  const { data: docenteConfig } = useDocenteConfig(user?.id);
+  const dynamicRequirement = useMemo(() => {
+    if (resolvedId !== "docencia-directa") return null;
+    if (docenteConfig?.responses) {
+      const responses = docenteConfig.responses as unknown as DocenteResponses;
+      const calc = calculateHours(responses);
+      return calc.finalDirectHours;
+    }
+    return 16;
+  }, [resolvedId, docenteConfig]);
+
+  const requirement = dynamicRequirement;
 
   const weeklyHoursColor = useMemo(() => {
     if (totalWeeklyHours === null || requirement === null) return "text-muted-foreground";
