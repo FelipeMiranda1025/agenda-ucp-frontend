@@ -83,7 +83,7 @@ export function SummaryPanel() {
   };
 
   return (
-    <div className="w-96 shrink-0 flex flex-col bg-background border-l pt-6">
+    <div className="w-[420px] shrink-0 flex flex-col bg-background border-l pt-6">
       <div className="px-4 py-3 border-b bg-ucp-red">
         <h2 className="text-sm font-bold text-primary-foreground">{t("summary.title")}</h2>
         {user && (
@@ -101,43 +101,58 @@ export function SummaryPanel() {
           </div>
         ) : (
           <div className="space-y-4">
-            {grouped.map((group) => (
-              <div key={group.id}>
-                <h3
-                  className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 cursor-pointer hover:text-primary transition-colors"
-                  onClick={() => scrollToSection(group.id)}
-                >
-                  {t(group.shortTitleKey || group.shortTitle)}
-                </h3>
-                {group.records.map((record, i) => {
-                  const rawLabel = Object.values(record.data).find((v) => typeof v === "string") || `${t("form.record")} ${i + 1}`;
-                  const label = translateOption(String(rawLabel), language);
-                  return (
-                    <div
-                      key={record.id}
-                      className="flex items-center justify-between py-1 text-sm border-b border-border/50 last:border-0 cursor-pointer hover:bg-accent/50 rounded px-1 transition-colors group"
-                      onClick={() => handleRecordClick(record)}
+            {grouped.map((group) => {
+              const weeklyTotal = group.records.reduce((s, r) => s + (Number(r.data["horasSemana"]) || r.totalHoras / 18), 0);
+              const semesterTotal = group.records.reduce((s, r) => s + r.totalHoras, 0);
+              return (
+                <div key={group.id}>
+                  <div className="flex items-center mb-1">
+                    <h3
+                      className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer hover:text-primary transition-colors"
+                      onClick={() => scrollToSection(group.id)}
                     >
-                      <span className="flex-1 text-foreground break-words line-clamp-2" title={String(label)}>{String(label)}</span>
-                      <span className="font-semibold text-primary ml-2">{record.totalHoras}h</span>
-                      <button
-                        className="ml-1 p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteRecord(record.id);
-                        }}
-                        title={t("summary.deleteRecord")}
+                      {t(group.shortTitleKey || group.shortTitle)}
+                    </h3>
+                    <span className="w-14 text-right text-[10px] font-semibold text-muted-foreground">{t("summary.snal")}</span>
+                    <span className="w-14 text-right text-[10px] font-semibold text-muted-foreground">{t("summary.stral")}</span>
+                    <span className="w-6" />
+                  </div>
+                  {group.records.map((record, i) => {
+                    const rawLabel = Object.values(record.data).find((v) => typeof v === "string") || `${t("form.record")} ${i + 1}`;
+                    const label = translateOption(String(rawLabel), language);
+                    const weeklyHours = Number(record.data["horasSemana"]) || record.totalHoras / 18;
+                    return (
+                      <div
+                        key={record.id}
+                        className="flex items-center py-1 text-sm border-b border-border/50 last:border-0 cursor-pointer hover:bg-accent/50 rounded px-1 transition-colors group"
+                        onClick={() => handleRecordClick(record)}
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  );
-                })}
-                <div className="text-right text-xs font-medium text-muted-foreground mt-1">
-                  {t("summary.subtotal")}: {group.records.reduce((s, r) => s + (Number(r.data["horasSemana"]) || r.totalHoras / 18), 0).toFixed(1)}h/{t("summary.weekly")} · {group.records.reduce((s, r) => s + r.totalHoras, 0)}h
+                        <span className="flex-1 text-foreground break-words line-clamp-2" title={String(label)}>{String(label)}</span>
+                        <span className="w-14 text-right text-muted-foreground">{weeklyHours % 1 === 0 ? weeklyHours : weeklyHours.toFixed(1)}h</span>
+                        <span className="w-14 text-right font-semibold text-primary">{record.totalHoras}h</span>
+                        <button
+                          className="w-6 flex justify-center p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteRecord(record.id);
+                          }}
+                          title={t("summary.deleteRecord")}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  <div className="flex items-center mt-1 text-xs font-medium text-muted-foreground">
+                    <span className="flex-1 text-right pr-1">Tt:</span>
+                    <span className="w-14 text-right">{weeklyTotal % 1 === 0 ? weeklyTotal : weeklyTotal.toFixed(1)}h</span>
+                    <span className="px-1">:</span>
+                    <span className="w-14 text-right">{semesterTotal}h</span>
+                    <span className="w-6" />
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </ScrollArea>
