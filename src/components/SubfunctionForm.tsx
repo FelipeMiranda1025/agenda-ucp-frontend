@@ -235,11 +235,15 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     const semesterName = subject.id_semester
       ? dbSemesters?.find((s) => s.id === subject.id_semester)?.number?.toString()
       : undefined;
-    const facultyName = subject.id_faculty
-      ? dbFaculties?.find((f) => f.id === subject.id_faculty)?.name
-      : undefined;
     const careerName = subject.id_professional_career
       ? dbProfessionalCareers?.find((c) => c.id === subject.id_professional_career)?.name
+      : undefined;
+    // Derive faculty from the career's id_faculty relationship
+    const career = subject.id_professional_career
+      ? dbProfessionalCareers?.find((c) => c.id === subject.id_professional_career)
+      : null;
+    const facultyName = career?.id_faculty
+      ? dbFaculties?.find((f) => f.id === career.id_faculty)?.name
       : undefined;
     const levelName = subject.id_education_level
       ? dbEducationLevels?.find((l) => l.id === subject.id_education_level)?.name
