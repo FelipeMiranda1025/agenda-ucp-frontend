@@ -11,6 +11,7 @@ import { LoginDialog } from "@/components/LoginDialog";
 import Index from "./pages/Index";
 import Profile from "./pages/Profile";
 import ScheduleBuilder from "./pages/ScheduleBuilder";
+import AuditLog from "./pages/AuditLog";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -31,6 +32,7 @@ const AppContent = () => {
           <Route path="/" element={<Index />} />
           <Route path="/schedule" element={<ScheduleBuilder />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/audit" element={<AuditLog />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

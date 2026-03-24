@@ -17,7 +17,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare } from "lucide-react";
+import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, ClipboardList } from "lucide-react";
+
+// Roles that can see the audit log — currently all roles; restrict later as needed
+const AUDIT_VISIBLE_ROLES = [1]; // role id 1 = docentePlanta (all for now)
 import ucpLogo from "@/assets/ucp-logo.png";
 import flagCol from "@/assets/flag-col.png";
 import flagUsa from "@/assets/flag-usa.png";
@@ -149,6 +152,11 @@ const Index = () => {
                 <DropdownMenuItem onClick={() => navigate("/profile")} className="gap-2 cursor-pointer">
                   <User className="h-4 w-4" /> {t("profile.view")}
                 </DropdownMenuItem>
+                {user && AUDIT_VISIBLE_ROLES.includes(user.rolId) && (
+                  <DropdownMenuItem onClick={() => navigate("/audit")} className="gap-2 cursor-pointer">
+                    <ClipboardList className="h-4 w-4" /> {t("audit.viewAudit")}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout} className="gap-2 cursor-pointer text-destructive">
                   <LogOut className="h-4 w-4" /> {t("profile.logout")}
