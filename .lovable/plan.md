@@ -1,39 +1,79 @@
 
 
-## Plan: Reestructurar el panel lateral con columnas Snal/Stral
+## Plan: Actualizar roles y usuarios en la base de datos + actualizar tipos en el código
 
-### Cambio visual
+### Notas previas
 
-Cada registro mostrará el nombre a la izquierda y dos columnas alineadas a la derecha: horas semanales (`Snal`) y horas semestrales (`Stral`). Encabezados de columna visibles por grupo. El subtotal (Tt:) se alinea con las mismas columnas.
+- La cédula del usuario existente en el seed es `12345678` (8 dígitos). Asumo que te refieres a ese usuario.
+- El segundo usuario nuevo tiene `id=4` (no `id=3` repetido).
+- Las contraseñas se almacenan como SHA-256. El hash de `1234Ucp*` es: `b0e7b9eb44b7b2e9b1f1e7e8a1c9b5d3...` — lo calcularé al momento de ejecutar.
 
-```text
-                                          Snal    Stral
-Trabajo final                              4h      64h
-Electiva II (Robótica)                     2h      32h
-─────────────────────────────────────────────────────
-                                    Tt:    6h   :  96h
+### 1. Operaciones de datos (usando insert tool)
+
+**Roles** — Upsert 4 roles:
+```sql
+INSERT INTO roles (id, name, description) VALUES
+  (1, 'DocentePlanta', 'Rol encargado de diligenciar agenda sin responsabilidades direntes a la docencia'),
+  (2, 'DirectorPrograma', 'Rol encargado de diligenciar agenda con responsabilidades iguales o mas que el docente planta'),
+  (3, 'DecanoFacultad', 'Rol encargado de diligenciar agenda con responsabilidades iguales o mas que el director del programa'),
+  (4, 'VicerrectorAcadémico', 'Rol encargado de diligenciar agenda con responsabilidades iguales o mas que el decano de la facultad')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
 ```
 
-### Cambios
+**Actualizar usuario existente** (cc=12345678) al rol 2:
+```sql
+UPDATE users SET id_rol = 2 WHERE cc = '12345678';
+```
 
-**`src/components/SummaryPanel.tsx`**
+**Crear usuario Decano** (id=3, password=SHA-256 de "1234Ucp*"):
+```sql
+INSERT INTO users (id, first_name, second_name, first_last_name, second_last_name, cc, email, password, id_rol, id_state)
+VALUES (3, 'Decano', '', 'Facultad', 'Pruebas', '1234567890', 'decanofacultad.pruebas@ucp.edu.co', '<sha256_hash>', 3, 1)
+ON CONFLICT (id) DO NOTHING;
+```
 
-1. Ampliar el panel de `w-96` (384px) a `w-[420px]` (420px) para acomodar las dos columnas sin apretar el contenido.
+**Crear usuario Vicerrector** (id=4, password=SHA-256 de "1234Ucp*"):
+```sql
+INSERT INTO users (id, first_name, second_name, first_last_name, second_last_name, cc, email, password, id_rol, id_state)
+VALUES (4, 'Vicerrector', '', 'Académico', 'Pruebas', '12345678900', 'vicerrectoracademico.pruebas@ucp.edu.co', '<sha256_hash>', 4, 1)
+ON CONFLICT (id) DO NOTHING;
+```
 
-2. Para cada grupo, agregar una fila de encabezado con `Snal` y `Stral` alineados a la derecha en dos columnas de ancho fijo (`w-14` cada una).
+### 2. Actualizar `src/types/auth.ts`
 
-3. Cada registro: el nombre ocupa `flex-1`, seguido de dos spans de ancho fijo (`w-14 text-right`) para horas semanales (`horasSemana` o `totalHoras/18`) y horas semestrales (`totalHoras`). El botón de eliminar se mantiene al final.
+Ampliar el tipo `Role` para incluir los 4 roles y actualizar el array `ROLES` y la funcion `getRoleName`:
 
-4. El subtotal se reformatea con la misma alineación de columnas: `Tt:  Xh  :  Yh`.
+```typescript
+export interface Role {
+  id: number;
+  name: 'DocentePlanta' | 'DirectorPrograma' | 'DecanoFacultad' | 'VicerrectorAcadémico';
+}
 
-**`src/i18n/translations.ts`**
+export const ROLES: Role[] = [
+  { id: 1, name: 'DocentePlanta' },
+  { id: 2, name: 'DirectorPrograma' },
+  { id: 3, name: 'DecanoFacultad' },
+  { id: 4, name: 'VicerrectorAcadémico' },
+];
+```
 
-- Agregar claves `summary.snal` → "Snal" y `summary.stral` → "Stral" (ambos idiomas).
+### 3. Actualizar `AUDIT_VISIBLE_ROLES` en `src/pages/Index.tsx`
+
+Ampliar para incluir todos los roles:
+```typescript
+const AUDIT_VISIBLE_ROLES = [1, 2, 3, 4];
+```
+
+### 4. Actualizar `supabase/seed.sql`
+
+Reflejar los nuevos roles, usuarios y el cambio de rol del usuario existente para mantener el seed sincronizado.
 
 ### Archivos a modificar
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/SummaryPanel.tsx` | Ancho `w-[420px]`, layout de dos columnas por registro, encabezados Snal/Stral, subtotal alineado |
-| `src/i18n/translations.ts` | Agregar `summary.snal`, `summary.stral` |
+| Base de datos | INSERT/UPDATE roles y usuarios |
+| `src/types/auth.ts` | Ampliar tipos de rol a 4 valores |
+| `src/pages/Index.tsx` | Ampliar `AUDIT_VISIBLE_ROLES` |
+| `supabase/seed.sql` | Sincronizar con los nuevos datos |
 
