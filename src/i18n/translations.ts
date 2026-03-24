@@ -174,6 +174,22 @@ const translations: Record<string, Record<Language, string>> = {
   "day.friday": { es: "Viernes", en: "Friday" },
   "day.saturday": { es: "Sábado", en: "Saturday" },
 
+  // Audit log
+  "audit.title": { es: "Registro de auditoría", en: "Audit Log" },
+  "audit.viewAudit": { es: "Registro de auditoría", en: "Audit Log" },
+  "audit.table": { es: "Tabla", en: "Table" },
+  "audit.action": { es: "Acción", en: "Action" },
+  "audit.recordId": { es: "ID Registro", en: "Record ID" },
+  "audit.changedFields": { es: "Campos modificados", en: "Changed Fields" },
+  "audit.date": { es: "Fecha", en: "Date" },
+  "audit.oldData": { es: "Datos anteriores", en: "Previous Data" },
+  "audit.newData": { es: "Datos nuevos", en: "New Data" },
+  "audit.noRecords": { es: "No hay registros de auditoría", en: "No audit records" },
+  "audit.filterTable": { es: "Filtrar por tabla", en: "Filter by table" },
+  "audit.filterAction": { es: "Filtrar por acción", en: "Filter by action" },
+  "audit.allTables": { es: "Todas las tablas", en: "All tables" },
+  "audit.allActions": { es: "Todas las acciones", en: "All actions" },
+
   // Comments
   "comments.title": { es: "Observaciones", en: "Comments" },
   "comments.placeholder": { es: "Escribe una observación o comentario...", en: "Write a comment or observation..." },
