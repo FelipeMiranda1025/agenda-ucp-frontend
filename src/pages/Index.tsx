@@ -20,7 +20,7 @@ import {
 import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, ClipboardList } from "lucide-react";
 
 // Roles that can see the audit log — currently all roles; restrict later as needed
-const AUDIT_VISIBLE_ROLES = [1]; // role id 1 = docentePlanta (all for now)
+const AUDIT_VISIBLE_ROLES = [1, 2, 3, 4];
 import ucpLogo from "@/assets/ucp-logo.png";
 import flagCol from "@/assets/flag-col.png";
 import flagUsa from "@/assets/flag-usa.png";

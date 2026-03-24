@@ -1,6 +1,6 @@
 export interface Role {
   id: number;
-  name: 'docentePlanta';
+  name: 'DocentePlanta' | 'DirectorPrograma' | 'DecanoFacultad' | 'VicerrectorAcadémico';
 }
 
 export interface Status {
@@ -27,7 +27,10 @@ export interface AuthState {
 }
 
 export const ROLES: Role[] = [
-  { id: 1, name: 'docentePlanta' },
+  { id: 1, name: 'DocentePlanta' },
+  { id: 2, name: 'DirectorPrograma' },
+  { id: 3, name: 'DecanoFacultad' },
+  { id: 4, name: 'VicerrectorAcadémico' },
 ];
 
 export const STATUSES: Status[] = [
