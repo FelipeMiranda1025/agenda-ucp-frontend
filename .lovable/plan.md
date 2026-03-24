@@ -1,48 +1,71 @@
 
 
-## Plan: Agregar usuario Director y funcionalidad de comentarios en agendas
+## Plan: Sistema de trazabilidad con audit log y triggers
 
-### 1. Insertar usuario Director
+### 1. Nueva tabla `audit_log`
 
-Insertar en la tabla `users` con los datos proporcionados. La contraseña "1234Ucp*" se hasheará con SHA-256 (resultado: `a]` se calculará en el INSERT).
+Crear una tabla centralizada para registrar todos los cambios:
 
 ```sql
-INSERT INTO users (id, first_name, second_name, first_last_name, second_last_name, cc, email, password, id_rol, id_state)
-VALUES (2, 'Director', '', 'NULL', 'Pruebas', '123456789', 'director.pruebas@ucp.edu.co', '<sha256 de 1234Ucp*>', 1, 1);
+CREATE TABLE public.audit_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  table_name text NOT NULL,
+  record_id text NOT NULL,
+  action text NOT NULL, -- 'INSERT', 'UPDATE', 'DELETE'
+  old_data jsonb,
+  new_data jsonb,
+  changed_fields text[], -- solo para UPDATE: campos que cambiaron
+  user_cc text, -- CC del usuario que hizo el cambio (desde app context)
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 ```
 
-Nota: `first_last_name` se insertará como el texto literal `'NULL'` según lo indicado (no como valor nulo).
+RLS: solo lectura para `anon` y `authenticated`.
 
-### 2. Tabla de comentarios/observaciones en agendas
+### 2. Función genérica de auditoría
 
-Crear tabla `agenda_comments`:
+Crear una función PL/pgSQL `audit_trigger_func()` que:
+- En INSERT: guarda `new_data = NEW`, `old_data = NULL`
+- En UPDATE: guarda ambos `OLD` y `NEW`, calcula `changed_fields` comparando las columnas
+- En DELETE: guarda `old_data = OLD`, `new_data = NULL`
+- Extrae `record_id` del campo `id` del registro (cast a text)
+- Extrae `user_cc` desde un setting de sesión (`current_setting('app.current_user_cc', true)`) que se configurará desde el frontend
 
-| Columna | Tipo | Descripcion |
-|---|---|---|
-| id | uuid (PK) | Auto-generado |
-| agenda_id | uuid (FK → agendas) | Agenda comentada |
-| reviewer_cc | text | CC del revisor |
-| comment | text | Texto del comentario |
-| created_at | timestamptz | Fecha de creación |
+### 3. Triggers en todas las tablas relevantes
 
-RLS: lectura y escritura abierta para `anon` y `authenticated` (consistente con el esquema actual).
+Aplicar el trigger `AFTER INSERT OR UPDATE OR DELETE` en las siguientes tablas:
+- `agendas`
+- `agenda_comments`
+- `subjects`
+- `users`
+- `indirect_teaching`, `investigations`, `social_projects`, `teacher_training`, `degree_works`, `complementary_activities`, `administrative_activities`, `academic_practices`
 
-### 3. Frontend: sección de comentarios
+### 4. Frontend: establecer contexto de usuario
 
-En la vista de agenda confirmada (o en el panel de resumen), agregar:
-- Un área de texto para escribir observaciones
-- Botón "Agregar comentario"
-- Lista de comentarios existentes con fecha y nombre del revisor
-- Visible para todos los usuarios logueados (dado que ambos roles ven lo mismo)
+En el cliente Supabase, antes de cada operación de escritura, ejecutar:
+```sql
+SET LOCAL app.current_user_cc = '<cc_del_usuario>';
+```
 
-### 4. Archivos a modificar/crear
+Esto se hará creando un wrapper en `useDatabase.ts` que use `supabase.rpc()` o una función auxiliar para setear el contexto antes de las mutaciones.
+
+Alternativa más simple: dado que el sistema actual usa `anon` key sin auth de Supabase, pasar el `user_cc` como campo en un RPC o simplemente registrar el cambio sin usuario específico (ya que los triggers capturan el `OLD`/`NEW` data que contiene campos como `docente_cc` o `reviewer_cc`).
+
+**Decisión**: Usar la alternativa simple — el trigger registra los datos completos del registro (que ya contienen identificadores como `docente_cc`, `reviewer_cc`, `user_id`). No se requiere session variable.
+
+### 5. Frontend: vista de auditoría (opcional pero recomendado)
+
+Agregar un hook `useAuditLog` en `useDatabase.ts` para consultar los registros de auditoría, y opcionalmente un componente para visualizarlos.
+
+### Archivos a modificar/crear
 
 | Archivo | Cambio |
 |---|---|
-| Migración SQL | Crear tabla `agenda_comments` |
-| Insert SQL | Insertar usuario Director (id=2) |
-| `src/types/database.ts` | Agregar tipo `DbAgendaComment` |
-| `src/hooks/useDatabase.ts` | Hooks para CRUD de comentarios |
-| `src/components/AgendaComments.tsx` | Nuevo componente de comentarios |
-| `src/components/SummaryPanel.tsx` o donde se muestren agendas | Integrar componente de comentarios |
+| Migración SQL | Crear tabla `audit_log`, función `audit_trigger_func()`, y triggers en todas las tablas |
+| `src/types/database.ts` | Agregar tipo `DbAuditLog` |
+| `src/hooks/useDatabase.ts` | Agregar hook `useAuditLog` para consultar registros |
+
+### Tablas con trigger (13 tablas)
+
+`agendas`, `agenda_comments`, `subjects`, `users`, `indirect_teaching`, `investigations`, `social_projects`, `teacher_training`, `degree_works`, `complementary_activities`, `administrative_activities`, `academic_practices`, `professional_careers`
 
