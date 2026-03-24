@@ -67,7 +67,7 @@ export function SummaryPanel() {
       );
       return;
     }
-    if (total < horasSemestreDefecto) {
+    if (total < horasSemestreDefecto - 6) {
       toast.error(
         t("validation.missing", { missing: horasSemestreDefecto - total, max: horasSemestreDefecto }),
         { duration: 6000 }
