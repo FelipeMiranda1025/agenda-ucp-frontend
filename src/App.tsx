@@ -8,6 +8,8 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { AgendaProvider } from "@/context/AgendaContext";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { LoginDialog } from "@/components/LoginDialog";
+import { PreAgendaQuestionnaire } from "@/components/PreAgendaQuestionnaire";
+import { useDocenteConfig } from "@/hooks/useDocenteConfig";
 import Index from "./pages/Index";
 import Profile from "./pages/Profile";
 import ScheduleBuilder from "./pages/ScheduleBuilder";
@@ -19,10 +21,30 @@ const queryClient = new QueryClient({
 });
 
 const AppContent = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const { data: config, isLoading: configLoading } = useDocenteConfig(user?.id);
 
   if (!isAuthenticated) {
     return <LoginDialog />;
+  }
+
+  // Show questionnaire if config not confirmed for this semester
+  if (!configLoading && (!config || !config.confirmed)) {
+    return (
+      <PreAgendaQuestionnaire
+        onConfirmed={() => {
+          // Re-fetch will happen automatically via query invalidation
+        }}
+      />
+    );
+  }
+
+  if (configLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
+        <p className="text-muted-foreground">Cargando configuración...</p>
+      </div>
+    );
   }
 
   return (
