@@ -534,11 +534,6 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                               {(() => {
                                 // When multiple subject variants exist, filter faculty/program options
                                 if (hasMultipleVariants && resolvedId === "docencia-directa") {
-                                  if (field.category === "facultad") {
-                                    return dbFaculties?.filter((f) => filteredFacultyIds.has(f.id)).map((f) => (
-                                      <SelectItem key={f.id} value={f.name}>{translateOption(f.name, language)}</SelectItem>
-                                    ));
-                                  }
                                   if (field.category === "programa") {
                                     return dbProfessionalCareers?.filter((c) => filteredCareerIds.has(c.id)).map((c) => (
                                       <SelectItem key={c.id} value={c.name}>{translateOption(c.name, language)}</SelectItem>
