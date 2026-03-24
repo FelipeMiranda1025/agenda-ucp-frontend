@@ -7,7 +7,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, ClipboardList, Trash2 } from "lucide-react";
 import { AgendaComments } from "@/components/AgendaComments";
-import { useAgendas } from "@/hooks/useDatabase";
+import { useAgendas, useInsertAgendaComment } from "@/hooks/useDatabase";
+import { useDocenteConfig } from "@/hooks/useDocenteConfig";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { translateOption } from "@/i18n/optionTranslations";
@@ -18,6 +19,8 @@ export function SummaryPanel() {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
   const { data: savedAgendas = [] } = useAgendas(user?.id);
+  const { data: docenteConfig } = useDocenteConfig(user?.id);
+  const insertComment = useInsertAgendaComment();
 
   const grouped = subfunctions
     .filter((sf) => sf.sectionId !== "horario")
@@ -27,7 +30,7 @@ export function SummaryPanel() {
     }))
     .filter((g) => g.records.length > 0);
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     const tieneInvestigacion = records.some(r => r.subfunctionId === "investigacion");
 
     if (!tieneInvestigacion) {
@@ -66,6 +69,25 @@ export function SummaryPanel() {
         { duration: 6000 }
       );
       return;
+    }
+    // Auto-insert conflicts/observations as agenda comments
+    if (docenteConfig && savedAgendas.length > 0) {
+      const allNotes = [
+        ...(docenteConfig.conflicts || []),
+        ...(docenteConfig.observations || []),
+      ];
+      const targetAgendaId = savedAgendas[0].id;
+      for (const note of allNotes) {
+        try {
+          await insertComment.mutateAsync({
+            agenda_id: targetAgendaId,
+            reviewer_cc: user?.id || "",
+            comment: `[Auto] ${note}`,
+          });
+        } catch (err) {
+          console.error("Error inserting conflict comment:", err);
+        }
+      }
     }
 
     navigate("/schedule");

@@ -217,6 +217,45 @@ export type Database = {
         }
         Relationships: []
       }
+      docente_semester_config: {
+        Row: {
+          computed_direct_hours: number
+          confirmed: boolean
+          conflicts: string[] | null
+          created_at: string
+          id: string
+          observations: string[] | null
+          responses: Json
+          semester_label: string
+          updated_at: string
+          user_cc: string
+        }
+        Insert: {
+          computed_direct_hours?: number
+          confirmed?: boolean
+          conflicts?: string[] | null
+          created_at?: string
+          id?: string
+          observations?: string[] | null
+          responses?: Json
+          semester_label?: string
+          updated_at?: string
+          user_cc: string
+        }
+        Update: {
+          computed_direct_hours?: number
+          confirmed?: boolean
+          conflicts?: string[] | null
+          created_at?: string
+          id?: string
+          observations?: string[] | null
+          responses?: Json
+          semester_label?: string
+          updated_at?: string
+          user_cc?: string
+        }
+        Relationships: []
+      }
       education_levels: {
         Row: {
           description: string | null
