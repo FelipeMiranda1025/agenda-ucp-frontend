@@ -1,44 +1,34 @@
 
 
-## Plan: Relación programa-facultad y auto-llenado
+## Plan: Wrap Text en todos los campos de formularios
 
-La columna `id_faculty` ya existe en `professional_careers` (migración anterior). Falta poblar los datos y actualizar la lógica del frontend.
+### Problema
+Los textos largos (ej: "Electiva II (Introducción a la analítica de datos)") se truncan o desbordan en los campos de formulario.
 
-### 1. Migración SQL: poblar id_faculty
+### Cambios
 
-Crear migración con UPDATEs:
-```sql
-UPDATE professional_careers SET id_faculty = 1 WHERE id IN (1,2,3,4);
-UPDATE professional_careers SET id_faculty = 2 WHERE id IN (5,6,7,8,9);
-UPDATE professional_careers SET id_faculty = 3 WHERE id IN (10,11,12);
-UPDATE professional_careers SET id_faculty = 4 WHERE id IN (13,14,15);
-```
+#### 1. Combobox de asignatura (SubfunctionForm.tsx, línea 468-472)
+El botón del Popover tiene `className="flex-1 justify-between font-normal"` con altura fija implícita. Cambiar a:
+- Remover `h-10` implícito, usar `h-auto min-h-10`
+- Agregar `whitespace-normal text-left` para que el texto se ajuste en múltiples líneas
 
-### 2. `src/types/database.ts`
+#### 2. Read-only fields (SubfunctionForm.tsx, línea 459)
+El div read-only tiene `h-10`. Cambiar a `min-h-10 h-auto` para permitir que textos largos expandan el campo.
 
-Agregar `id_faculty: number | null` a `DbProfessionalCareer`.
+#### 3. SelectTrigger (src/components/ui/select.tsx, línea 20)
+Actualmente tiene `h-10` y `[&>span]:line-clamp-1` (trunca a 1 línea). Cambiar a:
+- `min-h-10 h-auto` en vez de `h-10`
+- Remover `[&>span]:line-clamp-1`
+- Agregar `[&>span]:whitespace-normal [&>span]:text-left`
 
-### 3. `src/components/SubfunctionForm.tsx`
-
-Cambios en la lógica de Docencia Directa:
-
-- **Facultad siempre read-only**: agregar `"facultad"` siempre a `readOnlyFields` (línea 424-429). Eliminar la condición `!hasMultipleVariants`.
-- **Programa editable si hay variantes**: mantener la lógica actual donde programa se habilita cuando `hasMultipleVariants`.
-- **Derivar facultad del programa**: en el `useEffect` de auto-fill (línea 223-258), cuando se resuelve el subject, obtener la facultad desde `dbProfessionalCareers.find(c => c.id === subject.id_professional_career)?.id_faculty` y luego buscar el nombre de la facultad con `dbFaculties.find(f => f.id === derivedFacultyId)?.name`.
-- **Al cambiar programa** (useEffect línea 261-281): resolver la nueva asignatura y re-derivar la facultad desde el programa seleccionado.
-- **Eliminar filtrado de facultades** en el Select (líneas 525-529): ya no se necesita porque facultad es siempre read-only.
-
-### 4. `src/components/SubjectManagementDialog.tsx`
-
-- Cuando el usuario selecciona un programa (`id_professional_career`), auto-llenar `id_faculty` basándose en `dbProfessionalCareers.find(c => c.id === selectedCareerIdid_faculty`.
-- El campo de facultad queda como read-only (disabled) en el formulario.
+#### 4. Input (src/components/ui/input.tsx, línea 11)
+Cambiar `h-10` a `min-h-10 h-auto` para inputs de texto que puedan tener contenido largo.
 
 ### Archivos a modificar
 
 | Archivo | Cambio |
 |---|---|
-| Nueva migración SQL | UPDATE id_faculty en 15 registros |
-| `src/types/database.ts` | Agregar `id_faculty` a `DbProfessionalCareer` |
-| `src/components/SubfunctionForm.tsx` | Facultad siempre read-only y derivada del programa |
-| `src/components/SubjectManagementDialog.tsx` | Auto-llenar facultad al seleccionar programa, campo read-only |
+| `src/components/ui/select.tsx` | SelectTrigger: `min-h-10 h-auto`, remover `line-clamp-1`, agregar `whitespace-normal` |
+| `src/components/SubfunctionForm.tsx` | Combobox button y read-only div: `min-h-10 h-auto whitespace-normal text-left` |
+| `src/components/ui/input.tsx` | `min-h-10 h-auto` en vez de `h-10` |
 
