@@ -531,6 +531,42 @@ export type Database = {
         }
         Relationships: []
       }
+      user_hierarchy: {
+        Row: {
+          created_at: string
+          id: string
+          supervisor_id: number
+          user_id: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          supervisor_id: number
+          user_id: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          supervisor_id?: number
+          user_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_hierarchy_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_hierarchy_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           cc: string
