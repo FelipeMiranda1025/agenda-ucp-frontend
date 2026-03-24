@@ -116,6 +116,16 @@ export interface DbAgenda {
   updated_at: string;
 }
 
+export interface DbAgendaComment {
+  id: string; // UUID
+  agenda_id: string;
+  reviewer_cc: string;
+  comment: string;
+  created_at: string;
+}
+
+export type DbAgendaCommentInsert = Omit<DbAgendaComment, 'id' | 'created_at'>;
+
 // =============================================
 // Tipos para inserción (sin campos auto-generados)
 // =============================================

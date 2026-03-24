@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, ClipboardList, Trash2 } from "lucide-react";
+import { AgendaComments } from "@/components/AgendaComments";
+import { useAgendas } from "@/hooks/useDatabase";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { translateOption } from "@/i18n/optionTranslations";
@@ -15,6 +17,7 @@ export function SummaryPanel() {
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
+  const { data: savedAgendas = [] } = useAgendas(user?.id);
 
   const grouped = subfunctions
     .filter((sf) => sf.sectionId !== "horario")
@@ -163,6 +166,8 @@ export function SummaryPanel() {
           />
         </div>
       </div>
+
+      <AgendaComments agendaIds={savedAgendas.map(a => a.id)} />
 
       <div className="p-4 border-t">
         <Button
