@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { CheckCircle, ClipboardList, Trash2 } from "lucide-react";
 import { AgendaComments } from "@/components/AgendaComments";
 import { useAgendas, useInsertAgendaComment } from "@/hooks/useDatabase";
-import { useDocenteConfig } from "@/hooks/useDocenteConfig";
+import { useDocenteConfig, calculateHours } from "@/hooks/useDocenteConfig";
+import { DocenteResponses } from "@/types/docenteConfig";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { translateOption } from "@/i18n/optionTranslations";
@@ -38,7 +39,10 @@ export function SummaryPanel() {
       const horasSemanalesDocDirecta = docDirectaRecords.reduce(
         (sum, r) => sum + (Number(r.data["horasSemana"]) || 0), 0
       );
-      if (horasSemanalesDocDirecta !== 16) {
+      const requiredHours = docenteConfig?.responses
+        ? calculateHours(docenteConfig.responses as unknown as DocenteResponses).finalDirectHours
+        : 16;
+      if (horasSemanalesDocDirecta !== requiredHours) {
         toast.error(
           t("validation.16hours", { hours: horasSemanalesDocDirecta }),
           { duration: 6000 }
