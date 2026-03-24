@@ -145,6 +145,19 @@ export type DbAgendaInsert = Omit<DbAgenda, 'id' | 'confirmed_at' | 'created_at'
 export type DbUserInsert = Omit<DbUser, 'id'>;
 
 // =============================================
+// Jerarquía de supervisión
+// =============================================
+
+export interface DbUserHierarchy {
+  id: string; // UUID
+  user_id: number;
+  supervisor_id: number;
+  created_at: string;
+}
+
+export type DbUserHierarchyInsert = Omit<DbUserHierarchy, 'id' | 'created_at'>;
+
+// =============================================
 // Mapa de tablas para referencia
 // =============================================
 
@@ -166,6 +179,7 @@ export const DB_TABLES = {
   subjects: 'subjects',
   users: 'users',
   agendas: 'agendas',
+  user_hierarchy: 'user_hierarchy',
 } as const;
 
 export type DbTableName = keyof typeof DB_TABLES;
