@@ -96,8 +96,8 @@ ON CONFLICT (id) DO NOTHING;
 
 -- 10. INVESTIGATIONS
 INSERT INTO investigations (id, name, weekly_hours, number_weeks) VALUES
-  (3, 'Investigador principal', 0, 23),
-  (4, 'Coinvestigador',         0, 23)
+  (1, 'Investigador principal', 11, 23),
+  (2, 'Co-investigador',        6, 23)
 ON CONFLICT (id) DO NOTHING;
 
 -- 11. SOCIAL PROJECTS
@@ -107,9 +107,8 @@ ON CONFLICT (id) DO NOTHING;
 
 -- 12. TEACHER TRAINING
 INSERT INTO teacher_training (id, name, weekly_hours, number_weeks) VALUES
-  (4, 'Estudios maestría',            0, 23),
-  (5, 'Estudios doctorado',           0, 23),
-  (6, 'Otros procesos de fomación',   0, 23)
+  (1, 'Estudios maestría',   7, 23),
+  (2, 'Estudios doctorado', 15, 23)
 ON CONFLICT (id) DO NOTHING;
 
 -- 13. DEGREE WORKS
