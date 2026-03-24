@@ -30,7 +30,7 @@ export function SummaryPanel() {
     }))
     .filter((g) => g.records.length > 0);
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     const tieneInvestigacion = records.some(r => r.subfunctionId === "investigacion");
 
     if (!tieneInvestigacion) {
