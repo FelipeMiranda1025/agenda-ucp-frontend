@@ -139,6 +139,12 @@ INSERT INTO academic_practices (id, name, number_students, number_weeks) VALUES
   (1, 'Práctica profesional (IST)', 0, 10)
 ON CONFLICT (id) DO NOTHING;
 
+-- 17. USER HIERARCHY (jerarquía de supervisión)
+INSERT INTO user_hierarchy (user_id, supervisor_id) VALUES
+  (1, 2),  -- DocentePlanta -> DirectorPrograma
+  (2, 3),  -- DirectorPrograma -> DecanoFacultad
+  (3, 4)   -- DecanoFacultad -> VicerrectorAcadémico
+ON CONFLICT (user_id) DO NOTHING;
 -- =============================================
 -- RESET SEQUENCES para evitar conflictos en futuros inserts
 -- =============================================

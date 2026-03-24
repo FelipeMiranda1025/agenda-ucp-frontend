@@ -213,3 +213,77 @@ export async function findUserByCredentials(
   if (error) throw error;
   return data as unknown as import("@/types/database").DbUser | null;
 }
+
+// =============================================
+// User Hierarchy (supervisión jerárquica)
+// =============================================
+
+export function useUserHierarchy() {
+  return useQuery<DbUserHierarchy[]>({
+    queryKey: ["user_hierarchy"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("user_hierarchy" as any).select("*");
+      if (error) throw error;
+      return (data ?? []) as DbUserHierarchy[];
+    },
+    staleTime: 1000 * 60 * 30,
+  });
+}
+
+/** Obtiene los subordinados directos de un supervisor */
+export function useSubordinates(supervisorId?: number) {
+  return useQuery<DbUserHierarchy[]>({
+    queryKey: ["user_hierarchy", "subordinates", supervisorId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("user_hierarchy" as any) as any)
+        .select("*")
+        .eq("supervisor_id", supervisorId);
+      if (error) throw error;
+      return (data ?? []) as DbUserHierarchy[];
+    },
+    enabled: !!supervisorId,
+  });
+}
+
+/** Obtiene el supervisor de un usuario */
+export function useSupervisor(userId?: number) {
+  return useQuery<DbUserHierarchy | null>({
+    queryKey: ["user_hierarchy", "supervisor", userId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("user_hierarchy" as any) as any)
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as DbUserHierarchy | null;
+    },
+    enabled: !!userId,
+  });
+}
+
+export function useInsertUserHierarchy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (entry: DbUserHierarchyInsert) => {
+      const { data, error } = await (supabase.from("user_hierarchy" as any) as any).insert(entry).select().single();
+      if (error) throw error;
+      return data as DbUserHierarchy;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["user_hierarchy"] });
+    },
+  });
+}
+
+export function useDeleteUserHierarchy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: number) => {
+      const { error } = await (supabase.from("user_hierarchy" as any) as any).delete().eq("user_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["user_hierarchy"] });
+    },
+  });
+}
