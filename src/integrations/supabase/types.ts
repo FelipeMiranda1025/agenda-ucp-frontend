@@ -56,6 +56,38 @@ export type Database = {
         }
         Relationships: []
       }
+      agenda_comments: {
+        Row: {
+          agenda_id: string
+          comment: string
+          created_at: string
+          id: string
+          reviewer_cc: string
+        }
+        Insert: {
+          agenda_id: string
+          comment: string
+          created_at?: string
+          id?: string
+          reviewer_cc: string
+        }
+        Update: {
+          agenda_id?: string
+          comment?: string
+          created_at?: string
+          id?: string
+          reviewer_cc?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_comments_agenda_id_fkey"
+            columns: ["agenda_id"]
+            isOneToOne: false
+            referencedRelation: "agendas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agendas: {
         Row: {
           confirmed_at: string
