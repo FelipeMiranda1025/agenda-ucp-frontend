@@ -41,6 +41,7 @@ export interface DbProfessionalCareer {
   id: number;
   name: string;
   description: string | null;
+  id_faculty: number | null;
 }
 
 // =============================================

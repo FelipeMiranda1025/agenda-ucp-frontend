@@ -235,11 +235,15 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     const semesterName = subject.id_semester
       ? dbSemesters?.find((s) => s.id === subject.id_semester)?.number?.toString()
       : undefined;
-    const facultyName = subject.id_faculty
-      ? dbFaculties?.find((f) => f.id === subject.id_faculty)?.name
-      : undefined;
     const careerName = subject.id_professional_career
       ? dbProfessionalCareers?.find((c) => c.id === subject.id_professional_career)?.name
+      : undefined;
+    // Derive faculty from the career's id_faculty relationship
+    const career = subject.id_professional_career
+      ? dbProfessionalCareers?.find((c) => c.id === subject.id_professional_career)
+      : null;
+    const facultyName = career?.id_faculty
+      ? dbFaculties?.find((f) => f.id === career.id_faculty)?.name
       : undefined;
     const levelName = subject.id_education_level
       ? dbEducationLevels?.find((l) => l.id === subject.id_education_level)?.name
@@ -257,7 +261,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     });
   }, [formData["asignatura"], resolvedId, dbSubjects, dbSemesters, dbFaculties, dbEducationLevels, dbProfessionalCareers, resolveSubjectRecord]);
 
-  // When faculty/program changes and there are multiple variants, resolve the correct subject
+  // When program changes and there are multiple variants, resolve the correct subject and derive faculty
   useEffect(() => {
     if (resolvedId !== "docencia-directa" || !hasMultipleVariants) return;
     const subject = resolveSubjectRecord(matchingSubjects, formData["facultad"] as string, formData["programa"] as string);
@@ -269,16 +273,24 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     const levelName = subject.id_education_level
       ? dbEducationLevels?.find((l) => l.id === subject.id_education_level)?.name
       : undefined;
+    // Derive faculty from the selected career
+    const career = subject.id_professional_career
+      ? dbProfessionalCareers?.find((c) => c.id === subject.id_professional_career)
+      : null;
+    const facultyName = career?.id_faculty
+      ? dbFaculties?.find((f) => f.id === career.id_faculty)?.name
+      : undefined;
 
     setFormData((prev) => {
       const updated = { ...prev };
       if (semesterName) updated["semestre"] = semesterName;
+      if (facultyName) updated["facultad"] = facultyName;
       if (levelName) updated["nivel"] = levelName;
       if (subject.weekly_hours) updated["horasSemana"] = subject.weekly_hours;
       if (subject.number_weeks) updated["cantidadSemanas"] = subject.number_weeks;
       return updated;
     });
-  }, [formData["facultad"], formData["programa"], resolvedId, hasMultipleVariants, matchingSubjects, resolveSubjectRecord, dbSemesters, dbEducationLevels]);
+  }, [formData["programa"], resolvedId, hasMultipleVariants, matchingSubjects, resolveSubjectRecord, dbSemesters, dbEducationLevels, dbProfessionalCareers, dbFaculties]);
 
   // Auto-fill fields when selecting an activity in other subfunctions
   useEffect(() => {
@@ -420,11 +432,11 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
             {inputFields.map((field) => {
               const readOnlyFields = (() => {
                 switch (resolvedId) {
-                  case "docencia-directa": {
-                    const base = ["semestre", "nivel", "horasSemana", "cantidadSemanas"];
-                    // If multiple variants exist, allow faculty/program editing
+                   case "docencia-directa": {
+                    const base = ["semestre", "nivel", "horasSemana", "cantidadSemanas", "facultad"];
+                    // If multiple variants exist, allow program editing
                     if (!hasMultipleVariants) {
-                      base.push("facultad", "programa");
+                      base.push("programa");
                     }
                     return base;
                   }
@@ -522,11 +534,6 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                               {(() => {
                                 // When multiple subject variants exist, filter faculty/program options
                                 if (hasMultipleVariants && resolvedId === "docencia-directa") {
-                                  if (field.category === "facultad") {
-                                    return dbFaculties?.filter((f) => filteredFacultyIds.has(f.id)).map((f) => (
-                                      <SelectItem key={f.id} value={f.name}>{translateOption(f.name, language)}</SelectItem>
-                                    ));
-                                  }
                                   if (field.category === "programa") {
                                     return dbProfessionalCareers?.filter((c) => filteredCareerIds.has(c.id)).map((c) => (
                                       <SelectItem key={c.id} value={c.name}>{translateOption(c.name, language)}</SelectItem>

@@ -83,10 +83,13 @@ export function SubjectManagementDialog({ open, onOpenChange }: Props) {
   const loadSubjectIntoForm = (subjectId: number) => {
     const s = subjects?.find((x) => x.id === subjectId);
     if (!s) return;
+    // Derive faculty from career's id_faculty
+    const career = s.id_professional_career ? careers?.find((c) => c.id === s.id_professional_career) : null;
+    const derivedFaculty = career?.id_faculty?.toString() || s.id_faculty?.toString() || "";
     setForm({
       name: s.name,
       id_semester: s.id_semester?.toString() || "",
-      id_faculty: s.id_faculty?.toString() || "",
+      id_faculty: derivedFaculty,
       id_professional_career: s.id_professional_career?.toString() || "",
       id_education_level: s.id_education_level?.toString() || "",
       id_state: s.id_state?.toString() || "",
@@ -196,29 +199,16 @@ export function SubjectManagementDialog({ open, onOpenChange }: Props) {
           </Select>
         </div>
 
-        {/* Faculty */}
-        <div className="space-y-1.5">
-          <Label className="text-sm font-medium">{t("field.facultad")}</Label>
-          <Select
-            value={form.id_faculty}
-            onValueChange={(v) => setForm((f) => ({ ...f, id_faculty: v }))}
-            disabled={readOnly}
-          >
-            <SelectTrigger><SelectValue placeholder={t("form.select")} /></SelectTrigger>
-            <SelectContent>
-              {faculties?.map((f) => (
-                <SelectItem key={f.id} value={f.id.toString()}>{translateOption(f.name, language)}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
         {/* Program */}
         <div className="space-y-1.5">
           <Label className="text-sm font-medium">{t("field.programa")}</Label>
           <Select
             value={form.id_professional_career}
-            onValueChange={(v) => setForm((f) => ({ ...f, id_professional_career: v }))}
+            onValueChange={(v) => {
+              const selectedCareer = careers?.find((c) => c.id.toString() === v);
+              const derivedFaculty = selectedCareer?.id_faculty?.toString() || "";
+              setForm((f) => ({ ...f, id_professional_career: v, id_faculty: derivedFaculty }));
+            }}
             disabled={readOnly}
           >
             <SelectTrigger><SelectValue placeholder={t("form.select")} /></SelectTrigger>
@@ -228,6 +218,16 @@ export function SubjectManagementDialog({ open, onOpenChange }: Props) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Faculty (read-only, derived from program) */}
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">{t("field.facultad")}</Label>
+          <div className="h-10 px-3 py-2 rounded-md bg-muted text-sm font-semibold flex items-center">
+            {form.id_faculty
+              ? translateOption(faculties?.find((f) => f.id.toString() === form.id_faculty)?.name || "—", language)
+              : "—"}
+          </div>
         </div>
 
         {/* Education Level */}
