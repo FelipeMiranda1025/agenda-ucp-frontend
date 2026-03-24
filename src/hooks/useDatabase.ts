@@ -6,6 +6,7 @@ import type {
   DbActivityBase, DbAgenda, DbAgendaInsert,
   DbDegreeWork, DbAcademicPractice,
   DbAgendaComment, DbAgendaCommentInsert,
+  DbUserHierarchy, DbUserHierarchyInsert,
 } from "@/types/database";
 
 // =============================================
