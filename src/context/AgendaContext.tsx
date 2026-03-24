@@ -64,9 +64,10 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     // Sum all weekly hours from docencia-directa
     const totalWeeklyHours = directRecords.reduce((sum, r) => sum + (Number(r.data["horasSemana"]) || 0), 0);
+    const numberOfSubjects = directRecords.length; // Cantidad de asignaturas
 
     const prepWeekly = totalWeeklyHours * 0.5; // Preparación de clases
-    const asesWeekly = totalWeeklyHours * 1;   // Asesorías de estudiantes
+    const asesWeekly = numberOfSubjects;        // Asesorías: 1h por asignatura
     const weeks = 18;
 
     const autoRecords: AgendaRecord[] = [];
