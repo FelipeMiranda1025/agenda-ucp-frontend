@@ -176,6 +176,24 @@ export function useDeleteAgendaComment() {
 }
 
 // =============================================
+// Audit Log
+// =============================================
+
+export function useAuditLog(tableName?: string, recordId?: string) {
+  return useQuery<import("@/types/database").DbAuditLog[]>({
+    queryKey: ["audit_log", tableName, recordId],
+    queryFn: async () => {
+      let query = supabase.from("audit_log" as any).select("*");
+      if (tableName) query = query.eq("table_name", tableName);
+      if (recordId) query = query.eq("record_id", recordId);
+      const { data, error } = await (query as any).order("created_at", { ascending: false }).limit(200);
+      if (error) throw error;
+      return (data ?? []) as import("@/types/database").DbAuditLog[];
+    },
+  });
+}
+
+// =============================================
 // Users (login validation)
 // =============================================
 
