@@ -1,43 +1,44 @@
 
 
-## Plan: Relación programa-facultad y nuevo auto-llenado
+## Plan: Relación programa-facultad y auto-llenado
 
-### 1. Base de datos: agregar columna `id_faculty` a `professional_careers`
+La columna `id_faculty` ya existe en `professional_careers` (migración anterior). Falta poblar los datos y actualizar la lógica del frontend.
 
-Migración SQL para agregar `id_faculty INTEGER REFERENCES faculties(id)` a la tabla `professional_careers`. Luego, usando el insert tool, actualizar cada registro con su facultad correspondiente:
+### 1. Migración SQL: poblar id_faculty
 
-| career_id | faculty_id |
-|-----------|-----------|
-| 1,2,3,4 | 1 (Ciencias básicas e ingeniería) |
-| 5,6,7,9 | 2 (Arquitectura y diseño) |
-| 10,11,12 | 3 (Ciencias humanas) |
-| 13,14,15 | 4 (Ciencias económicas) |
+Crear migración con UPDATEs:
+```sql
+UPDATE professional_careers SET id_faculty = 1 WHERE id IN (1,2,3,4);
+UPDATE professional_careers SET id_faculty = 2 WHERE id IN (5,6,7,8,9);
+UPDATE professional_careers SET id_faculty = 3 WHERE id IN (10,11,12);
+UPDATE professional_careers SET id_faculty = 4 WHERE id IN (13,14,15);
+```
 
-Nota: id=8 ("Diseño audiovisual") no fue mencionado por el usuario, se dejará con `id_faculty = NULL` o se preguntará.
+### 2. `src/types/database.ts`
 
-### 2. TypeScript: actualizar tipo `DbProfessionalCareer`
+Agregar `id_faculty: number | null` a `DbProfessionalCareer`.
 
-En `src/types/database.ts`, agregar `id_faculty: number | null` al tipo `DbProfessionalCareer`.
+### 3. `src/components/SubfunctionForm.tsx`
 
-### 3. Lógica de auto-llenado en `SubfunctionForm.tsx`
+Cambios en la lógica de Docencia Directa:
 
-Cambiar la lógica de Docencia Directa:
-- Al seleccionar una asignatura, auto-llenar **todos** los campos (programa, facultad, semestre, nivel, horas, semanas) basándose en la primera variante (por defecto, la del programa "Tecnología en desarrollo de software").
-- **Facultad siempre bloqueada** (read-only). Se deriva automáticamente del programa seleccionado usando la nueva relación `professional_careers.id_faculty`.
-- **Programa**: si hay múltiples variantes de la asignatura, se habilita como selector filtrado (solo los programas que tienen esa asignatura). Al cambiar el programa, se resuelve la nueva asignatura y se auto-llena la facultad desde `professional_careers.id_faculty`.
-- Eliminar la lógica actual que usa `filteredFacultyIds` para filtrar facultades en el Select. En su lugar, la facultad siempre viene del programa.
+- **Facultad siempre read-only**: agregar `"facultad"` siempre a `readOnlyFields` (línea 424-429). Eliminar la condición `!hasMultipleVariants`.
+- **Programa editable si hay variantes**: mantener la lógica actual donde programa se habilita cuando `hasMultipleVariants`.
+- **Derivar facultad del programa**: en el `useEffect` de auto-fill (línea 223-258), cuando se resuelve el subject, obtener la facultad desde `dbProfessionalCareers.find(c => c.id === subject.id_professional_career)?.id_faculty` y luego buscar el nombre de la facultad con `dbFaculties.find(f => f.id === derivedFacultyId)?.name`.
+- **Al cambiar programa** (useEffect línea 261-281): resolver la nueva asignatura y re-derivar la facultad desde el programa seleccionado.
+- **Eliminar filtrado de facultades** en el Select (líneas 525-529): ya no se necesita porque facultad es siempre read-only.
 
-### 4. `SubjectManagementDialog.tsx`
+### 4. `src/components/SubjectManagementDialog.tsx`
 
-Cuando se selecciona un programa al crear/editar asignatura, auto-llenar la facultad basándose en `professional_careers.id_faculty`. El campo facultad queda read-only en este diálogo también.
+- Cuando el usuario selecciona un programa (`id_professional_career`), auto-llenar `id_faculty` basándose en `dbProfessionalCareers.find(c => c.id === selectedCareerIdid_faculty`.
+- El campo de facultad queda como read-only (disabled) en el formulario.
 
 ### Archivos a modificar
 
 | Archivo | Cambio |
 |---|---|
-| Migración SQL | Agregar columna `id_faculty` a `professional_careers` |
-| Insert SQL | Actualizar `id_faculty` en los 14 registros |
+| Nueva migración SQL | UPDATE id_faculty en 15 registros |
 | `src/types/database.ts` | Agregar `id_faculty` a `DbProfessionalCareer` |
-| `src/components/SubfunctionForm.tsx` | Facultad siempre read-only, derivada del programa; programa editable si hay variantes |
-| `src/components/SubjectManagementDialog.tsx` | Auto-llenar facultad al seleccionar programa |
+| `src/components/SubfunctionForm.tsx` | Facultad siempre read-only y derivada del programa |
+| `src/components/SubjectManagementDialog.tsx` | Auto-llenar facultad al seleccionar programa, campo read-only |
 
