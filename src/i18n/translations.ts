@@ -173,6 +173,13 @@ const translations: Record<string, Record<Language, string>> = {
   "day.thursday": { es: "Jueves", en: "Thursday" },
   "day.friday": { es: "Viernes", en: "Friday" },
   "day.saturday": { es: "Sábado", en: "Saturday" },
+
+  // Comments
+  "comments.title": { es: "Observaciones", en: "Comments" },
+  "comments.placeholder": { es: "Escribe una observación o comentario...", en: "Write a comment or observation..." },
+  "comments.add": { es: "Agregar comentario", en: "Add comment" },
+  "comments.empty": { es: "Sin observaciones aún", en: "No comments yet" },
+  "comments.by": { es: "por", en: "by" },
 };
 
 export function getTranslation(key: string, lang: Language): string {

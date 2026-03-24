@@ -112,6 +112,70 @@ export function useDeleteAgenda() {
 }
 
 // =============================================
+// Agenda Comments
+// =============================================
+
+export function useAgendaComments(docenteCc?: string) {
+  return useQuery<DbAgendaComment[]>({
+    queryKey: ["agenda_comments", docenteCc],
+    queryFn: async () => {
+      let query = supabase.from("agenda_comments" as any).select("*");
+      if (docenteCc) {
+        query = query.eq("reviewer_cc", docenteCc).or(`agenda_id.in.(select id from agendas where docente_cc='${docenteCc}')`);
+      }
+      const { data, error } = await (query as any).order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as DbAgendaComment[];
+    },
+    enabled: !!docenteCc,
+  });
+}
+
+export function useAgendaCommentsByAgenda(agendaIds?: string[]) {
+  return useQuery<DbAgendaComment[]>({
+    queryKey: ["agenda_comments_by_agenda", agendaIds],
+    queryFn: async () => {
+      if (!agendaIds || agendaIds.length === 0) return [];
+      const { data, error } = await (supabase.from("agenda_comments" as any).select("*") as any)
+        .in("agenda_id", agendaIds)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as DbAgendaComment[];
+    },
+    enabled: !!agendaIds && agendaIds.length > 0,
+  });
+}
+
+export function useInsertAgendaComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (comment: DbAgendaCommentInsert) => {
+      const { data, error } = await (supabase.from("agenda_comments" as any) as any).insert(comment).select().single();
+      if (error) throw error;
+      return data as DbAgendaComment;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agenda_comments"] });
+      qc.invalidateQueries({ queryKey: ["agenda_comments_by_agenda"] });
+    },
+  });
+}
+
+export function useDeleteAgendaComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase.from("agenda_comments" as any) as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agenda_comments"] });
+      qc.invalidateQueries({ queryKey: ["agenda_comments_by_agenda"] });
+    },
+  });
+}
+
+// =============================================
 // Users (login validation)
 // =============================================
 
