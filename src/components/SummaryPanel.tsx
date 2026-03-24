@@ -17,6 +17,7 @@ export function SummaryPanel() {
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
+  const { data: savedAgendas = [] } = useAgendas(user?.id);
 
   const grouped = subfunctions
     .filter((sf) => sf.sectionId !== "horario")
