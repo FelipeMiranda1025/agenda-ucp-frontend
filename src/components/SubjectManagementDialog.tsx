@@ -83,10 +83,13 @@ export function SubjectManagementDialog({ open, onOpenChange }: Props) {
   const loadSubjectIntoForm = (subjectId: number) => {
     const s = subjects?.find((x) => x.id === subjectId);
     if (!s) return;
+    // Derive faculty from career's id_faculty
+    const career = s.id_professional_career ? careers?.find((c) => c.id === s.id_professional_career) : null;
+    const derivedFaculty = career?.id_faculty?.toString() || s.id_faculty?.toString() || "";
     setForm({
       name: s.name,
       id_semester: s.id_semester?.toString() || "",
-      id_faculty: s.id_faculty?.toString() || "",
+      id_faculty: derivedFaculty,
       id_professional_career: s.id_professional_career?.toString() || "",
       id_education_level: s.id_education_level?.toString() || "",
       id_state: s.id_state?.toString() || "",
