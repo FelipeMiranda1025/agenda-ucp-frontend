@@ -1,34 +1,48 @@
 
 
-## Plan: Wrap Text en todos los campos de formularios
+## Plan: Agregar usuario Director y funcionalidad de comentarios en agendas
 
-### Problema
-Los textos largos (ej: "Electiva II (Introducción a la analítica de datos)") se truncan o desbordan en los campos de formulario.
+### 1. Insertar usuario Director
 
-### Cambios
+Insertar en la tabla `users` con los datos proporcionados. La contraseña "1234Ucp*" se hasheará con SHA-256 (resultado: `a]` se calculará en el INSERT).
 
-#### 1. Combobox de asignatura (SubfunctionForm.tsx, línea 468-472)
-El botón del Popover tiene `className="flex-1 justify-between font-normal"` con altura fija implícita. Cambiar a:
-- Remover `h-10` implícito, usar `h-auto min-h-10`
-- Agregar `whitespace-normal text-left` para que el texto se ajuste en múltiples líneas
+```sql
+INSERT INTO users (id, first_name, second_name, first_last_name, second_last_name, cc, email, password, id_rol, id_state)
+VALUES (2, 'Director', '', 'NULL', 'Pruebas', '123456789', 'director.pruebas@ucp.edu.co', '<sha256 de 1234Ucp*>', 1, 1);
+```
 
-#### 2. Read-only fields (SubfunctionForm.tsx, línea 459)
-El div read-only tiene `h-10`. Cambiar a `min-h-10 h-auto` para permitir que textos largos expandan el campo.
+Nota: `first_last_name` se insertará como el texto literal `'NULL'` según lo indicado (no como valor nulo).
 
-#### 3. SelectTrigger (src/components/ui/select.tsx, línea 20)
-Actualmente tiene `h-10` y `[&>span]:line-clamp-1` (trunca a 1 línea). Cambiar a:
-- `min-h-10 h-auto` en vez de `h-10`
-- Remover `[&>span]:line-clamp-1`
-- Agregar `[&>span]:whitespace-normal [&>span]:text-left`
+### 2. Tabla de comentarios/observaciones en agendas
 
-#### 4. Input (src/components/ui/input.tsx, línea 11)
-Cambiar `h-10` a `min-h-10 h-auto` para inputs de texto que puedan tener contenido largo.
+Crear tabla `agenda_comments`:
 
-### Archivos a modificar
+| Columna | Tipo | Descripcion |
+|---|---|---|
+| id | uuid (PK) | Auto-generado |
+| agenda_id | uuid (FK → agendas) | Agenda comentada |
+| reviewer_cc | text | CC del revisor |
+| comment | text | Texto del comentario |
+| created_at | timestamptz | Fecha de creación |
+
+RLS: lectura y escritura abierta para `anon` y `authenticated` (consistente con el esquema actual).
+
+### 3. Frontend: sección de comentarios
+
+En la vista de agenda confirmada (o en el panel de resumen), agregar:
+- Un área de texto para escribir observaciones
+- Botón "Agregar comentario"
+- Lista de comentarios existentes con fecha y nombre del revisor
+- Visible para todos los usuarios logueados (dado que ambos roles ven lo mismo)
+
+### 4. Archivos a modificar/crear
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/ui/select.tsx` | SelectTrigger: `min-h-10 h-auto`, remover `line-clamp-1`, agregar `whitespace-normal` |
-| `src/components/SubfunctionForm.tsx` | Combobox button y read-only div: `min-h-10 h-auto whitespace-normal text-left` |
-| `src/components/ui/input.tsx` | `min-h-10 h-auto` en vez de `h-10` |
+| Migración SQL | Crear tabla `agenda_comments` |
+| Insert SQL | Insertar usuario Director (id=2) |
+| `src/types/database.ts` | Agregar tipo `DbAgendaComment` |
+| `src/hooks/useDatabase.ts` | Hooks para CRUD de comentarios |
+| `src/components/AgendaComments.tsx` | Nuevo componente de comentarios |
+| `src/components/SummaryPanel.tsx` o donde se muestren agendas | Integrar componente de comentarios |
 
