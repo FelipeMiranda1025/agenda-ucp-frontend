@@ -261,7 +261,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     });
   }, [formData["asignatura"], resolvedId, dbSubjects, dbSemesters, dbFaculties, dbEducationLevels, dbProfessionalCareers, resolveSubjectRecord]);
 
-  // When faculty/program changes and there are multiple variants, resolve the correct subject
+  // When program changes and there are multiple variants, resolve the correct subject and derive faculty
   useEffect(() => {
     if (resolvedId !== "docencia-directa" || !hasMultipleVariants) return;
     const subject = resolveSubjectRecord(matchingSubjects, formData["facultad"] as string, formData["programa"] as string);
@@ -273,16 +273,24 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     const levelName = subject.id_education_level
       ? dbEducationLevels?.find((l) => l.id === subject.id_education_level)?.name
       : undefined;
+    // Derive faculty from the selected career
+    const career = subject.id_professional_career
+      ? dbProfessionalCareers?.find((c) => c.id === subject.id_professional_career)
+      : null;
+    const facultyName = career?.id_faculty
+      ? dbFaculties?.find((f) => f.id === career.id_faculty)?.name
+      : undefined;
 
     setFormData((prev) => {
       const updated = { ...prev };
       if (semesterName) updated["semestre"] = semesterName;
+      if (facultyName) updated["facultad"] = facultyName;
       if (levelName) updated["nivel"] = levelName;
       if (subject.weekly_hours) updated["horasSemana"] = subject.weekly_hours;
       if (subject.number_weeks) updated["cantidadSemanas"] = subject.number_weeks;
       return updated;
     });
-  }, [formData["facultad"], formData["programa"], resolvedId, hasMultipleVariants, matchingSubjects, resolveSubjectRecord, dbSemesters, dbEducationLevels]);
+  }, [formData["programa"], resolvedId, hasMultipleVariants, matchingSubjects, resolveSubjectRecord, dbSemesters, dbEducationLevels, dbProfessionalCareers, dbFaculties]);
 
   // Auto-fill fields when selecting an activity in other subfunctions
   useEffect(() => {
