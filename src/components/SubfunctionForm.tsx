@@ -469,7 +469,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                                 variant="outline"
                                 role="combobox"
                                 aria-expanded={comboboxOpen}
-                                className="flex-1 justify-between font-normal"
+                                className="flex-1 justify-between font-normal h-auto min-h-10 whitespace-normal text-left"
                               >
                                 {formData[field.name]
                                   ? translateOption(String(formData[field.name]), language)
