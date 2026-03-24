@@ -41,6 +41,7 @@ const translations: Record<string, Record<Language, string>> = {
   "summary.avgWeek": { es: "Promedio/semana", en: "Average/week" },
   "summary.missing": { es: "Horas faltantes", en: "Missing hours" },
   "summary.defaultHours": { es: "Horas semestre/defecto", en: "Default semester hours" },
+  "summary.weekly": { es: "sem", en: "wk" },
   "summary.confirm": { es: "Confirmar datos", en: "Confirm data" },
   "summary.deleteRecord": { es: "Eliminar registro", en: "Delete record" },
 
