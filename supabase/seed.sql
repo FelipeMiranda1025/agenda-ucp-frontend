@@ -7,8 +7,11 @@
 
 -- 1. ROLES
 INSERT INTO roles (id, name, description) VALUES
-  (1, 'Docente de planta', 'rol encargado de hacer la diligencia del formulario')
-ON CONFLICT (id) DO NOTHING;
+  (1, 'DocentePlanta', 'Rol encargado de diligenciar agenda sin responsabilidades direntes a la docencia'),
+  (2, 'DirectorPrograma', 'Rol encargado de diligenciar agenda con responsabilidades iguales o mas que el docente planta'),
+  (3, 'DecanoFacultad', 'Rol encargado de diligenciar agenda con responsabilidades iguales o mas que el director del programa'),
+  (4, 'VicerrectorAcadémico', 'Rol encargado de diligenciar agenda con responsabilidades iguales o mas que el decano de la facultad')
+ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
 
 -- 2. STATES
 INSERT INTO states (id, name) VALUES
@@ -80,7 +83,9 @@ ON CONFLICT (id) DO NOTHING;
 -- 8. USERS (depende de roles y states)
 -- Password: SHA-256 de "1234"
 INSERT INTO users (id, first_name, second_name, first_last_name, second_last_name, cc, email, password, id_rol, id_state) VALUES
-  (1, 'Docente', '', 'Planta', 'Pruebas', '12345678', 'docenteplanta.pruebas@ucp.edu.co', '74d18a339850e92425fe1c8b3efeddd5ff024d5291c629d79b35720c4bfe8e53', 1, 1)
+  (1, 'Docente', '', 'Planta', 'Pruebas', '12345678', 'docenteplanta.pruebas@ucp.edu.co', '74d18a339850e92425fe1c8b3efeddd5ff024d5291c629d79b35720c4bfe8e53', 2, 1),
+  (3, 'Decano', '', 'Facultad', 'Pruebas', '1234567890', 'decanofacultad.pruebas@ucp.edu.co', '74d18a339850e92425fe1c8b3efeddd5ff024d5291c629d79b35720c4bfe8e53', 3, 1),
+  (4, 'Vicerrector', '', 'Académico', 'Pruebas', '12345678900', 'vicerrectoracademico.pruebas@ucp.edu.co', '74d18a339850e92425fe1c8b3efeddd5ff024d5291c629d79b35720c4bfe8e53', 4, 1)
 ON CONFLICT (id) DO NOTHING;
 
 -- 9. INDIRECT TEACHING
