@@ -420,11 +420,11 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
             {inputFields.map((field) => {
               const readOnlyFields = (() => {
                 switch (resolvedId) {
-                  case "docencia-directa": {
-                    const base = ["semestre", "nivel", "horasSemana", "cantidadSemanas"];
-                    // If multiple variants exist, allow faculty/program editing
+                   case "docencia-directa": {
+                    const base = ["semestre", "nivel", "horasSemana", "cantidadSemanas", "facultad"];
+                    // If multiple variants exist, allow program editing
                     if (!hasMultipleVariants) {
-                      base.push("facultad", "programa");
+                      base.push("programa");
                     }
                     return base;
                   }
