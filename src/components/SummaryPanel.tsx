@@ -134,7 +134,7 @@ export function SummaryPanel() {
                   );
                 })}
                 <div className="text-right text-xs font-medium text-muted-foreground mt-1">
-                  {t("summary.subtotal")}: {group.records.reduce((s, r) => s + r.totalHoras, 0)}h
+                  {t("summary.subtotal")}: {group.records.reduce((s, r) => s + (Number(r.data["horasSemana"]) || r.totalHoras / 18), 0).toFixed(1)}h/{t("summary.weekly")} · {group.records.reduce((s, r) => s + r.totalHoras, 0)}h
                 </div>
               </div>
             ))}
