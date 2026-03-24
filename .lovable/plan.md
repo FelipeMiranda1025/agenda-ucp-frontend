@@ -1,79 +1,121 @@
 
 
-## Plan: Actualizar roles y usuarios en la base de datos + actualizar tipos en el código
+## Plan: Formulario Condicional Post-Login de Actividades y Responsabilidades Docentes
 
-### Notas previas
+### Resumen
 
-- La cédula del usuario existente en el seed es `12345678` (8 dígitos). Asumo que te refieres a ese usuario.
-- El segundo usuario nuevo tiene `id=4` (no `id=3` repetido).
-- Las contraseñas se almacenan como SHA-256. El hash de `1234Ucp*` es: `b0e7b9eb44b7b2e9b1f1e7e8a1c9b5d3...` — lo calcularé al momento de ejecutar.
+Crear un formulario tipo cuestionario que aparece entre el login y la agenda docente. Basado en el rol del usuario y la normativa institucional (Artículos 1-8), presenta preguntas con checkboxes para determinar las horas de docencia directa, detectar conflictos normativos y generar observaciones automáticas.
 
-### 1. Operaciones de datos (usando insert tool)
+### 1. Nueva tabla en base de datos: `docente_semester_config`
 
-**Roles** — Upsert 4 roles:
+Persiste las respuestas del formulario por docente y semestre.
+
 ```sql
-INSERT INTO roles (id, name, description) VALUES
-  (1, 'DocentePlanta', 'Rol encargado de diligenciar agenda sin responsabilidades direntes a la docencia'),
-  (2, 'DirectorPrograma', 'Rol encargado de diligenciar agenda con responsabilidades iguales o mas que el docente planta'),
-  (3, 'DecanoFacultad', 'Rol encargado de diligenciar agenda con responsabilidades iguales o mas que el director del programa'),
-  (4, 'VicerrectorAcadémico', 'Rol encargado de diligenciar agenda con responsabilidades iguales o mas que el decano de la facultad')
-ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, description = EXCLUDED.description;
+CREATE TABLE public.docente_semester_config (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_cc text NOT NULL,
+  semester_label text NOT NULL DEFAULT '2025-1',
+  responses jsonb NOT NULL DEFAULT '{}',
+  computed_direct_hours integer NOT NULL DEFAULT 16,
+  observations text[] DEFAULT '{}',
+  conflicts text[] DEFAULT '{}',
+  confirmed boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(user_cc, semester_label)
+);
+
+ALTER TABLE public.docente_semester_config ENABLE ROW LEVEL SECURITY;
+
+-- Políticas: lectura y escritura para anon/authenticated (igual que agendas)
+CREATE POLICY "Anyone can read docente_semester_config" ON public.docente_semester_config FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Anyone can insert docente_semester_config" ON public.docente_semester_config FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Anyone can update docente_semester_config" ON public.docente_semester_config FOR UPDATE TO anon, authenticated USING (true);
 ```
 
-**Actualizar usuario existente** (cc=12345678) al rol 2:
-```sql
-UPDATE users SET id_rol = 2 WHERE cc = '12345678';
+### 2. Nuevo componente: `src/components/PreAgendaQuestionnaire.tsx`
+
+Formulario modal compacto (mismo estilo que LoginDialog). Contiene:
+
+**Preguntas por rol (checkboxes):**
+
+Todos los roles (base DocentePlanta):
+- `isInvestigadorPrincipal`: "¿Es investigador principal de un proyecto aprobado por la DII?" → 10h docencia directa + 11h investigación
+- `isCoInvestigador`: "¿Participa como co-investigador en un proyecto aprobado?" → 13h docencia directa + 6h investigación  
+- `isFormacionDoctorado`: "¿Está en formación de doctorado?" → hasta 8h docencia directa + 15h investigación
+- `isFormacionMaestria`: "¿Está en formación de maestría?" → hasta 12h docencia directa + 7h investigación
+- `isCoordinadorArea`: "¿Tiene a cargo la coordinación de un área?" → reducción de hasta 3h + 6h registro
+- `isFormacionPedagogica`: "¿Participa en procesos de formación pedagógica avalados por Vicerrectoría?" → reducción de hasta 3h
+- `isProduccionPendiente`: "¿Tiene compromisos de producción intelectual pendientes del semestre anterior?" → 16h obligatorias, sin tiempo para investigación
+- `isDirectorDoctorado`: "¿Dirige un programa de Doctorado?" → 1 curso asignado
+- `isDecano`: "¿Ejerce como Decano de Facultad?" → 1 curso asignado
+- `isVicerrector`: "¿Ejerce como Vicerrector Académico?" → 1 curso asignado
+
+Solo para DirectorPrograma (id_rol=2):
+- `isDirectorPregrado`: "¿Es director de un programa de pregrado?" → 6h docencia directa
+- `isDirectorPosgrado`: "¿Tiene a cargo la dirección de un programa de posgrado?" → reducción de 5h + 9h registro (máximo 2 direcciones acumulables)
+- `cantidadPosgrados`: Si marcó dirección de posgrado, preguntar cantidad (1 o 2)
+
+**Motor de cálculo de horas (en cliente):**
+
+Prioridad de cálculo basada en la normativa:
+1. Producción pendiente → fuerza 16h, sin investigación
+2. Formación doctorado → hasta 8h (incompatible con investigación y cargos admin)
+3. Formación maestría → hasta 12h
+4. Investigador principal → 10h
+5. Co-investigador → 13h
+6. Director programa pregrado → 6h
+7. Sin ninguna condición especial → 16h (default)
+8. Reducciones acumulables: coordinación área (-3h), formación pedagógica (-3h), dirección posgrado (-5h por cada, máx 2)
+
+**Motor de detección de conflictos:**
+
+| Combinación | Tipo | Mensaje |
+|---|---|---|
+| Investigador principal + Co-investigador | Observación | Art. 6 Nota: participación múltiple requiere valoración de Vicerrectoría, Decano, Director y DII |
+| Formación doctorado + Investigador/Co-investigador | Conflicto | Art. 6k: docente en formación doctoral no puede tener proyectos de investigación |
+| Formación doctorado + Director programa/Coordinador área | Conflicto | Art. 6k: docente en formación doctoral no puede tener encargos académico-administrativos |
+| Formación maestría + >12h docencia | Advertencia | Art. 6j: límite de 12 horas de docencia directa |
+| Producción pendiente + Investigador/Co-investigador | Conflicto | Art. 6c: tiempo de investigación suspendido por incumplimiento |
+
+**Resumen post-respuestas:**
+- Horas semanales de docencia directa calculadas
+- Lista de observaciones/conflictos con iconos diferenciados (warning/error)
+- Botón "Confirmar y continuar" que guarda en DB y pasa a la agenda
+
+### 3. Modificar flujo en `src/App.tsx`
+
+```text
+Login → ¿Tiene config confirmada para este semestre?
+  → Sí: Mostrar agenda (Index)
+  → No: Mostrar PreAgendaQuestionnaire
 ```
 
-**Crear usuario Decano** (id=3, password=SHA-256 de "1234Ucp*"):
-```sql
-INSERT INTO users (id, first_name, second_name, first_last_name, second_last_name, cc, email, password, id_rol, id_state)
-VALUES (3, 'Decano', '', 'Facultad', 'Pruebas', '1234567890', 'decanofacultad.pruebas@ucp.edu.co', '<sha256_hash>', 3, 1)
-ON CONFLICT (id) DO NOTHING;
-```
+Agregar estado intermedio en `AppContent`:
+- Consultar `docente_semester_config` para el usuario logueado
+- Si no existe o `confirmed=false`, mostrar `PreAgendaQuestionnaire`
+- Si `confirmed=true`, mostrar la agenda normal
 
-**Crear usuario Vicerrector** (id=4, password=SHA-256 de "1234Ucp*"):
-```sql
-INSERT INTO users (id, first_name, second_name, first_last_name, second_last_name, cc, email, password, id_rol, id_state)
-VALUES (4, 'Vicerrector', '', 'Académico', 'Pruebas', '12345678900', 'vicerrectoracademico.pruebas@ucp.edu.co', '<sha256_hash>', 4, 1)
-ON CONFLICT (id) DO NOTHING;
-```
+### 4. Nuevo hook: `src/hooks/useDocenteConfig.ts`
 
-### 2. Actualizar `src/types/auth.ts`
+- `useDocenteConfig(userCc)`: query para obtener la config del semestre actual
+- `useUpsertDocenteConfig()`: mutation para insertar/actualizar config
+- Exporta también la lógica de cálculo de horas y conflictos como funciones puras
 
-Ampliar el tipo `Role` para incluir los 4 roles y actualizar el array `ROLES` y la funcion `getRoleName`:
+### 5. Integración con agenda y comentarios
 
-```typescript
-export interface Role {
-  id: number;
-  name: 'DocentePlanta' | 'DirectorPrograma' | 'DecanoFacultad' | 'VicerrectorAcadémico';
-}
+- Al confirmar la agenda (botón "Confirmar datos" en SummaryPanel), si existen conflictos en `docente_semester_config`, se insertan automáticamente como `agenda_comments` con el texto de cada conflicto/observación
+- `AgendaContext` recibe las horas calculadas del pre-formulario como referencia para validaciones
 
-export const ROLES: Role[] = [
-  { id: 1, name: 'DocentePlanta' },
-  { id: 2, name: 'DirectorPrograma' },
-  { id: 3, name: 'DecanoFacultad' },
-  { id: 4, name: 'VicerrectorAcadémico' },
-];
-```
+### 6. Archivos a crear/modificar
 
-### 3. Actualizar `AUDIT_VISIBLE_ROLES` en `src/pages/Index.tsx`
-
-Ampliar para incluir todos los roles:
-```typescript
-const AUDIT_VISIBLE_ROLES = [1, 2, 3, 4];
-```
-
-### 4. Actualizar `supabase/seed.sql`
-
-Reflejar los nuevos roles, usuarios y el cambio de rol del usuario existente para mantener el seed sincronizado.
-
-### Archivos a modificar
-
-| Archivo | Cambio |
+| Archivo | Acción |
 |---|---|
-| Base de datos | INSERT/UPDATE roles y usuarios |
-| `src/types/auth.ts` | Ampliar tipos de rol a 4 valores |
-| `src/pages/Index.tsx` | Ampliar `AUDIT_VISIBLE_ROLES` |
-| `supabase/seed.sql` | Sincronizar con los nuevos datos |
+| DB migration | Crear tabla `docente_semester_config` |
+| `src/components/PreAgendaQuestionnaire.tsx` | Crear: formulario condicional completo |
+| `src/hooks/useDocenteConfig.ts` | Crear: hooks de DB + lógica de cálculo/conflictos |
+| `src/types/docenteConfig.ts` | Crear: tipos para preguntas, respuestas, conflictos |
+| `src/App.tsx` | Modificar: agregar paso intermedio post-login |
+| `src/components/SummaryPanel.tsx` | Modificar: insertar conflictos como comentarios al confirmar |
+| `src/types/database.ts` | Agregar tipo `DbDocenteSemesterConfig` |
 
