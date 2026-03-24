@@ -167,6 +167,8 @@ export function SummaryPanel() {
         </div>
       </div>
 
+      <AgendaComments agendaIds={savedAgendas.map(a => a.id)} />
+
       <div className="p-4 border-t">
         <Button
           onClick={handleConfirm}
