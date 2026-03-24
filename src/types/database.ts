@@ -126,6 +126,17 @@ export interface DbAgendaComment {
 
 export type DbAgendaCommentInsert = Omit<DbAgendaComment, 'id' | 'created_at'>;
 
+export interface DbAuditLog {
+  id: string;
+  table_name: string;
+  record_id: string;
+  action: 'INSERT' | 'UPDATE' | 'DELETE';
+  old_data: Record<string, any> | null;
+  new_data: Record<string, any> | null;
+  changed_fields: string[] | null;
+  created_at: string;
+}
+
 // =============================================
 // Tipos para inserción (sin campos auto-generados)
 // =============================================
