@@ -224,7 +224,7 @@ export function useUserHierarchy() {
     queryFn: async () => {
       const { data, error } = await supabase.from("user_hierarchy" as any).select("*");
       if (error) throw error;
-      return (data ?? []) as DbUserHierarchy[];
+      return (data ?? []) as unknown as DbUserHierarchy[];
     },
     staleTime: 1000 * 60 * 30,
   });
