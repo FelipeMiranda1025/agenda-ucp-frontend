@@ -132,6 +132,6 @@ describe("generateIndirectRecords", () => {
     const manual = result.find(r => r.id === "manual-1");
 
     expect(manual).toBeDefined();
-    expect(result).toHaveLength(3); // manual + prep + ases
+    expect(result).toHaveLength(4); // direct + manual + prep + ases
   });
 });
