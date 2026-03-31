@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { SubfunctionForm } from "@/components/SubfunctionForm";
 import { SummaryPanel } from "@/components/SummaryPanel";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
+import { useAllAgendaComments, useMarkCommentsRead } from "@/hooks/useDatabase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,8 +33,28 @@ const Index = () => {
   const { theme, setTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [visibleSection, setVisibleSection] = useState<string>("header.production");
-  const [notificationCount] = useState(0);
   const mainRef = useRef<HTMLDivElement>(null);
+
+  // Global comments & notifications
+  const { data: allComments = [] } = useAllAgendaComments();
+  const markRead = useMarkCommentsRead();
+
+  const unreadCount = useMemo(() => {
+    if (!user) return 0;
+    return allComments.filter(
+      (c) => c.reviewer_cc !== user.id && !(c.read_by || []).includes(user.id)
+    ).length;
+  }, [allComments, user]);
+
+  const handleOpenNotifications = () => {
+    if (!user || unreadCount === 0) return;
+    const unreadIds = allComments
+      .filter((c) => c.reviewer_cc !== user.id && !(c.read_by || []).includes(user.id))
+      .map((c) => c.id);
+    if (unreadIds.length > 0) {
+      markRead.mutate({ commentIds: unreadIds, userCc: user.id });
+    }
+  };
 
   const initials = user
     ? `${user.firstName?.[0] || ""}${user.firstLastName?.[0] || ""}`.toUpperCase()
