@@ -9,6 +9,7 @@ import { AgendaProvider } from "@/context/AgendaContext";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { LoginDialog } from "@/components/LoginDialog";
 import { PreAgendaQuestionnaire } from "@/components/PreAgendaQuestionnaire";
+import { InactivityWarning } from "@/components/InactivityWarning";
 import { useDocenteConfig } from "@/hooks/useDocenteConfig";
 import Index from "./pages/Index";
 import Profile from "./pages/Profile";
@@ -31,11 +32,14 @@ const AppContent = () => {
   // Show questionnaire if config not confirmed for this semester
   if (!configLoading && (!config || !config.confirmed)) {
     return (
-      <PreAgendaQuestionnaire
-        onConfirmed={() => {
-          // Re-fetch will happen automatically via query invalidation
-        }}
-      />
+      <>
+        <InactivityWarning />
+        <PreAgendaQuestionnaire
+          onConfirmed={() => {
+            // Re-fetch will happen automatically via query invalidation
+          }}
+        />
+      </>
     );
   }
 
@@ -49,6 +53,7 @@ const AppContent = () => {
 
   return (
     <AgendaProvider>
+      <InactivityWarning />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />

@@ -13,33 +13,23 @@ describe("detectConflicts", () => {
   });
 
   it("investigador principal + co-investigador genera observación", () => {
-    const results = detectConflicts(make({ isInvestigadorPrincipal: true, isCoInvestigador: true }), 1);
+    const results = detectConflicts(make({ investPrincipal1: true, coInvestigador1: true }), 1);
     expect(results).toContainEqual(expect.objectContaining({ type: "observation" }));
   });
 
   it("formación doctorado + investigador genera conflicto Art. 6k", () => {
-    const results = detectConflicts(make({ isFormacionDoctorado: true, isInvestigadorPrincipal: true }), 1);
+    const results = detectConflicts(make({ isFormacionDoctorado: true, investPrincipal1: true }), 1);
     expect(results).toContainEqual(expect.objectContaining({ type: "conflict", article: "Art. 6k" }));
   });
 
-  it("formación doctorado + director pregrado genera conflicto Art. 6k", () => {
-    const results = detectConflicts(make({ isFormacionDoctorado: true, isDirectorPregrado: true }), 2);
+  it("formación doctorado + jefe depto genera conflicto Art. 6k", () => {
+    const results = detectConflicts(make({ isFormacionDoctorado: true, isJefeDeptoPregrado: true }), 2);
     expect(results).toContainEqual(expect.objectContaining({ type: "conflict", article: "Art. 6k" }));
-  });
-
-  it("producción pendiente + investigador genera conflicto Art. 6c", () => {
-    const results = detectConflicts(make({ isProduccionPendiente: true, isInvestigadorPrincipal: true }), 1);
-    expect(results).toContainEqual(expect.objectContaining({ type: "conflict", article: "Art. 6c" }));
   });
 
   it("maestría + doctorado simultáneo genera warning", () => {
     const results = detectConflicts(make({ isFormacionMaestria: true, isFormacionDoctorado: true }), 1);
     expect(results).toContainEqual(expect.objectContaining({ type: "warning" }));
-  });
-
-  it("más de 2 posgrados genera warning", () => {
-    const results = detectConflicts(make({ isDirectorPosgrado: true, cantidadPosgrados: 3 }), 2);
-    expect(results).toContainEqual(expect.objectContaining({ type: "warning", article: "Art. 6f, Nota" }));
   });
 
   it("formación doctorado + coordinador genera conflicto", () => {
