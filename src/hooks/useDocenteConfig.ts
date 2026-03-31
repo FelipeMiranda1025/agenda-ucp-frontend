@@ -5,202 +5,248 @@ import type { DbDocenteSemesterConfig, DocenteResponses, ConflictResult, HoursCa
 const CURRENT_SEMESTER = "2025-1";
 
 // =============================================
-// Definición de preguntas por rol
+// Definición de preguntas
 // =============================================
 
 export const QUESTIONS: QuestionDef[] = [
   {
-    key: "isProduccionPendiente",
-    label: "¿Tiene compromisos de producción intelectual pendientes del semestre anterior?",
+    key: "investPrincipal1",
+    label: "1 proyecto",
     type: "checkbox",
-    visibleForRoles: [1, 2, 3, 4],
+    group: "investPrincipal",
+    groupLabel: "¿Eres investigador principal?",
   },
   {
-    key: "isInvestigadorPrincipal",
-    label: "¿Es investigador principal de un proyecto aprobado por la DII?",
+    key: "investPrincipal2",
+    label: "2 proyectos",
     type: "checkbox",
-    visibleForRoles: [1, 2, 3, 4],
+    group: "investPrincipal",
   },
   {
-    key: "isCoInvestigador",
-    label: "¿Participa como co-investigador en un proyecto aprobado?",
+    key: "coInvestigador1",
+    label: "1 proyecto",
     type: "checkbox",
-    visibleForRoles: [1, 2, 3, 4],
+    group: "coInvestigador",
+    groupLabel: "¿Eres co-investigador?",
   },
   {
-    key: "isFormacionDoctorado",
-    label: "¿Está en formación de doctorado?",
+    key: "coInvestigador2",
+    label: "2 proyectos",
     type: "checkbox",
-    visibleForRoles: [1, 2, 3, 4],
+    group: "coInvestigador",
   },
   {
-    key: "isFormacionMaestria",
-    label: "¿Está en formación de maestría?",
+    key: "isJefeDeptoPregrado",
+    label: "¿Eres jefe de departamento o director de programa de pregrado?",
     type: "checkbox",
-    visibleForRoles: [1, 2, 3, 4],
+  },
+  {
+    key: "dirPosgrado1",
+    label: "1 programa",
+    type: "checkbox",
+    group: "dirPosgrado",
+    groupLabel: "¿Eres director de posgrado?",
+  },
+  {
+    key: "dirPosgrado2",
+    label: "2 programas",
+    type: "checkbox",
+    group: "dirPosgrado",
   },
   {
     key: "isCoordinadorArea",
-    label: "¿Tiene a cargo la coordinación de un área?",
+    label: "¿Eres coordinador de área?",
     type: "checkbox",
-    visibleForRoles: [1, 2, 3, 4],
-  },
-  {
-    key: "isFormacionPedagogica",
-    label: "¿Participa en procesos de formación pedagógica avalados por Vicerrectoría?",
-    type: "checkbox",
-    visibleForRoles: [1, 2, 3, 4],
   },
   {
     key: "isDirectorDoctorado",
-    label: "¿Dirige un programa de Doctorado?",
+    label: "¿Eres director de doctorado?",
     type: "checkbox",
-    visibleForRoles: [1, 2, 3, 4],
   },
   {
     key: "isDecano",
-    label: "¿Ejerce como Decano de Facultad?",
+    label: "¿Eres decano de facultad?",
     type: "checkbox",
-    visibleForRoles: [3],
   },
   {
     key: "isVicerrector",
-    label: "¿Ejerce como Vicerrector Académico?",
+    label: "¿Eres vicerrector académico?",
     type: "checkbox",
-    visibleForRoles: [4],
   },
   {
-    key: "isDirectorPregrado",
-    label: "¿Es director de un programa de pregrado?",
+    key: "isFormacionDoctorado",
+    label: "¿Estás en formación de doctorado?",
     type: "checkbox",
-    visibleForRoles: [2],
   },
   {
-    key: "isDirectorPosgrado",
-    label: "¿Tiene a cargo la dirección de un programa de posgrado?",
+    key: "isFormacionMaestria",
+    label: "¿Estás en formación de maestría?",
     type: "checkbox",
-    visibleForRoles: [2],
   },
   {
-    key: "cantidadPosgrados",
-    label: "¿Cuántos programas de posgrado dirige? (máximo 2)",
-    type: "number",
-    visibleForRoles: [2],
-    dependsOn: "isDirectorPosgrado",
-    min: 1,
-    max: 2,
+    key: "isFormacionPedagogica",
+    label: "¿Estás en formación pedagógica?",
+    type: "checkbox",
   },
 ];
 
 // =============================================
-// Motor de cálculo de horas (Art. 6)
+// Reglas de bloqueo
+// =============================================
+
+export function getDisabledKeys(r: DocenteResponses): Set<keyof DocenteResponses> {
+  const disabled = new Set<keyof DocenteResponses>();
+
+  // Formación doctorado bloquea TODO lo demás
+  if (r.isFormacionDoctorado) {
+    const allKeys: (keyof DocenteResponses)[] = [
+      "investPrincipal1", "investPrincipal2", "coInvestigador1", "coInvestigador2",
+      "isJefeDeptoPregrado", "dirPosgrado1", "dirPosgrado2", "isCoordinadorArea",
+      "isDirectorDoctorado", "isDecano", "isVicerrector", "isFormacionMaestria", "isFormacionPedagogica",
+    ];
+    allKeys.forEach((k) => disabled.add(k));
+    return disabled;
+  }
+
+  // investPrincipal2 bloquea co-investigador
+  if (r.investPrincipal2) {
+    disabled.add("coInvestigador1");
+    disabled.add("coInvestigador2");
+  }
+
+  // coInvestigador2 bloquea invest principal
+  if (r.coInvestigador2) {
+    disabled.add("investPrincipal1");
+    disabled.add("investPrincipal2");
+  }
+
+  // Max 2 projects rule: if invest1 + coInvest1 selected, block the "2" versions
+  if (r.investPrincipal1 && r.coInvestigador1) {
+    disabled.add("investPrincipal2");
+    disabled.add("coInvestigador2");
+  }
+
+  return disabled;
+}
+
+// =============================================
+// Motor de cálculo de horas
 // =============================================
 
 export function calculateHours(r: DocenteResponses): HoursCalculation {
-  let directHours = 16; // default (Art. 6d)
+  let directHours = 16;
   let investigationHours = 0;
+  let recommendedSubjects = 5; // default for 16h
   const reductions: { label: string; hours: number }[] = [];
 
-  // Prioridad 1: Producción pendiente → 16h forzadas, sin investigación (Art. 6c)
-  if (r.isProduccionPendiente) {
-    return { directHours: 16, reductions: [], finalDirectHours: 16, investigationHours: 0 };
+  // Formación doctorado → override everything
+  if (r.isFormacionDoctorado) {
+    return { directHours: 8, reductions: [], finalDirectHours: 8, investigationHours: 15, recommendedSubjects: 2 };
   }
 
-  // Determinar base de horas según condición principal
-  if (r.isDecano || r.isVicerrector || r.isDirectorDoctorado) {
-    // Art. 6h: 1 curso asignado (~3-4h). Usamos 4h como referencia
-    directHours = 4;
-  } else if (r.isDirectorPregrado) {
-    // Art. 6e: 6h
+  // Director doctorado / Decano / Vicerrector → 4h, 1 asignatura
+  if (r.isDirectorDoctorado || r.isDecano || r.isVicerrector) {
+    return { directHours: 4, reductions: [], finalDirectHours: 4, investigationHours: 0, recommendedSubjects: 1 };
+  }
+
+  // Research combinations
+  const hasIP1 = r.investPrincipal1 && !r.investPrincipal2;
+  const hasIP2 = r.investPrincipal2;
+  const hasCI1 = r.coInvestigador1 && !r.coInvestigador2;
+  const hasCI2 = r.coInvestigador2;
+
+  if (hasIP1 && hasCI1) {
+    // IP1 + CI1
     directHours = 6;
-  } else if (r.isFormacionDoctorado) {
-    // Art. 6i: hasta 8h
-    directHours = 8;
-    investigationHours = 15;
-  } else if (r.isFormacionMaestria) {
-    // Art. 6j: hasta 12h
-    directHours = 12;
-    investigationHours = 7;
-  } else if (r.isInvestigadorPrincipal) {
-    // Art. 6a: 10h
+    recommendedSubjects = 3;
+    investigationHours = 17; // combined
+  } else if (hasIP2) {
+    directHours = 4;
+    recommendedSubjects = 1;
+    investigationHours = 22;
+  } else if (hasCI2) {
+    directHours = 9;
+    recommendedSubjects = 3;
+    investigationHours = 12;
+  } else if (hasIP1) {
     directHours = 10;
+    recommendedSubjects = 3;
     investigationHours = 11;
-  } else if (r.isCoInvestigador) {
-    // Art. 6b: 13h
+  } else if (hasCI1) {
     directHours = 13;
+    recommendedSubjects = 4;
     investigationHours = 6;
+  } else if (r.isJefeDeptoPregrado) {
+    directHours = 6;
+    recommendedSubjects = 2;
+  } else if (r.dirPosgrado2) {
+    directHours = 6;
+    recommendedSubjects = 3;
+  } else if (r.dirPosgrado1) {
+    directHours = 11;
+    recommendedSubjects = 4;
+  } else if (r.isCoordinadorArea) {
+    directHours = 13;
+    recommendedSubjects = 4;
+  } else if (r.isFormacionMaestria) {
+    directHours = 12;
+    recommendedSubjects = 4;
+    investigationHours = 7;
+  } else if (r.isFormacionPedagogica) {
+    directHours = 13;
+    recommendedSubjects = 4;
   }
 
-  // Reducciones acumulables (solo si no es Decano/Vicerrector/DirectorDoctorado)
-  if (!r.isDecano && !r.isVicerrector && !r.isDirectorDoctorado) {
-    // Art. 6f: Dirección de posgrado (-5h por cada, máx 2)
-    if (r.isDirectorPosgrado) {
-      const qty = Math.min(r.cantidadPosgrados || 1, 2);
-      const reduction = qty * 5;
-      reductions.push({ label: `Dirección de ${qty} programa(s) de posgrado`, hours: reduction });
-    }
+  const finalDirectHours = Math.max(0, directHours - reductions.reduce((s, r) => s + r.hours, 0));
 
-    // Art. 6g: Coordinación de área (-3h)
-    if (r.isCoordinadorArea) {
-      reductions.push({ label: "Coordinación de área", hours: 3 });
-    }
-
-    // Art. 6l: Formación pedagógica (-3h)
-    if (r.isFormacionPedagogica) {
-      reductions.push({ label: "Formación pedagógica institucional", hours: 3 });
-    }
-  }
-
-  const totalReduction = reductions.reduce((s, r) => s + r.hours, 0);
-  const finalDirectHours = Math.max(0, directHours - totalReduction);
-
-  return { directHours, reductions, finalDirectHours, investigationHours };
+  return { directHours, reductions, finalDirectHours, investigationHours, recommendedSubjects };
 }
 
 // =============================================
 // Motor de detección de conflictos
 // =============================================
 
-export function detectConflicts(r: DocenteResponses, rolId: number): ConflictResult[] {
+export function detectConflicts(r: DocenteResponses, _rolId: number): ConflictResult[] {
   const results: ConflictResult[] = [];
 
-  // Investigador principal + Co-investigador
-  if (r.isInvestigadorPrincipal && r.isCoInvestigador) {
+  // Formación doctorado + anything else
+  if (r.isFormacionDoctorado) {
+    const otherKeys: (keyof DocenteResponses)[] = [
+      "investPrincipal1", "investPrincipal2", "coInvestigador1", "coInvestigador2",
+      "isJefeDeptoPregrado", "dirPosgrado1", "dirPosgrado2", "isCoordinadorArea",
+      "isDirectorDoctorado", "isDecano", "isVicerrector", "isFormacionMaestria", "isFormacionPedagogica",
+    ];
+    if (otherKeys.some((k) => r[k])) {
+      results.push({
+        type: "conflict",
+        article: "Art. 6k",
+        message: "Un docente en formación de doctorado no puede tener otros encargos ni proyectos de investigación.",
+      });
+    }
+  }
+
+  // IP + CI combo check
+  if ((r.investPrincipal1 || r.investPrincipal2) && (r.coInvestigador1 || r.coInvestigador2)) {
+    const totalProjects = (r.investPrincipal1 ? 1 : 0) + (r.investPrincipal2 ? 2 : 0) + (r.coInvestigador1 ? 1 : 0) + (r.coInvestigador2 ? 2 : 0);
+    if (totalProjects > 2) {
+      results.push({
+        type: "conflict",
+        article: "Art. 6, Nota",
+        message: "El docente solo puede participar en máximo 2 proyectos de investigación.",
+      });
+    }
+  }
+
+  // IP1 + CI1 is valid (observation)
+  if (r.investPrincipal1 && r.coInvestigador1) {
     results.push({
       type: "observation",
       article: "Art. 6, Nota",
-      message: "El docente participa en múltiples proyectos de investigación. Esta situación será valorada directamente por la Vicerrectoría Académica, el Decano de Facultad, el Director de Programa y la Dirección de Investigación e Innovación.",
+      message: "El docente participa en 2 proyectos (1 como principal, 1 como co-investigador). Carga: 6h docencia directa.",
     });
   }
 
-  // Formación doctorado + Investigador/Co-investigador (Art. 6k)
-  if (r.isFormacionDoctorado && (r.isInvestigadorPrincipal || r.isCoInvestigador)) {
-    results.push({
-      type: "conflict",
-      article: "Art. 6k",
-      message: "Según el Artículo 6º punto k, un docente en formación de doctorado no puede tener a cargo proyectos de investigación.",
-    });
-  }
-
-  // Formación doctorado + cargos administrativos (Art. 6k)
-  if (r.isFormacionDoctorado && (r.isDirectorPregrado || r.isDirectorPosgrado || r.isCoordinadorArea || r.isDecano)) {
-    results.push({
-      type: "conflict",
-      article: "Art. 6k",
-      message: "Según el Artículo 6º punto k, un docente en formación de doctorado no puede tener encargos académico-administrativos.",
-    });
-  }
-
-  // Producción pendiente + Investigador/Co-investigador (Art. 6c)
-  if (r.isProduccionPendiente && (r.isInvestigadorPrincipal || r.isCoInvestigador)) {
-    results.push({
-      type: "conflict",
-      article: "Art. 6c",
-      message: "Según el Artículo 6º punto c, al docente con compromisos de producción intelectual pendientes le será suspendida la asignación de tiempo para investigación y deberá asumir 16 horas de docencia directa.",
-    });
-  }
-
-  // Formación maestría + formación doctorado simultáneo
+  // Formación maestría + formación doctorado
   if (r.isFormacionMaestria && r.isFormacionDoctorado) {
     results.push({
       type: "warning",
@@ -209,16 +255,16 @@ export function detectConflicts(r: DocenteResponses, rolId: number): ConflictRes
     });
   }
 
-  // Director de más de 2 posgrados
-  if (r.isDirectorPosgrado && r.cantidadPosgrados > 2) {
-    results.push({
-      type: "warning",
-      article: "Art. 6f, Nota",
-      message: "Un docente puede asumir máximo 2 direcciones de posgrado.",
-    });
-  }
-
   return results;
+}
+
+// =============================================
+// Cálculo de horas semanales para director posgrado x2 en resumen
+// =============================================
+
+export function getPosgradoSummaryHours(r: DocenteResponses): number | null {
+  if (r.dirPosgrado2) return 17; // special case: 17h instead of 9+9=18
+  return null;
 }
 
 // =============================================
