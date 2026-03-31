@@ -62,6 +62,7 @@ export type Database = {
           comment: string
           created_at: string
           id: string
+          read_by: string[] | null
           reviewer_cc: string
         }
         Insert: {
@@ -69,6 +70,7 @@ export type Database = {
           comment: string
           created_at?: string
           id?: string
+          read_by?: string[] | null
           reviewer_cc: string
         }
         Update: {
@@ -76,6 +78,7 @@ export type Database = {
           comment?: string
           created_at?: string
           id?: string
+          read_by?: string[] | null
           reviewer_cc?: string
         }
         Relationships: [

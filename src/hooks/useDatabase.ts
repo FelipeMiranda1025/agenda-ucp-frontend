@@ -147,6 +147,46 @@ export function useAgendaCommentsByAgenda(agendaIds?: string[]) {
   });
 }
 
+export function useAllAgendaComments() {
+  return useQuery<(DbAgendaComment & { read_by?: string[] })[]>({
+    queryKey: ["agenda_comments_all"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("agenda_comments" as any).select("*") as any)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as (DbAgendaComment & { read_by?: string[] })[];
+    },
+    refetchInterval: 15000, // poll every 15s for new comments
+  });
+}
+
+export function useMarkCommentsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ commentIds, userCc }: { commentIds: string[]; userCc: string }) => {
+      for (const id of commentIds) {
+        await (supabase.from("agenda_comments" as any) as any)
+          .update({ read_by: supabase.rpc ? undefined : undefined })
+          .eq("id", id);
+        // Use raw SQL approach via rpc or direct update with array_append
+        // Since we can't use array_append easily, we'll fetch and update
+        const { data: existing } = await (supabase.from("agenda_comments" as any).select("read_by") as any).eq("id", id).single();
+        const currentReadBy: string[] = existing?.read_by || [];
+        if (!currentReadBy.includes(userCc)) {
+          await (supabase.from("agenda_comments" as any) as any)
+            .update({ read_by: [...currentReadBy, userCc] })
+            .eq("id", id);
+        }
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agenda_comments_all"] });
+      qc.invalidateQueries({ queryKey: ["agenda_comments_by_agenda"] });
+    },
+  });
+}
+
 export function useInsertAgendaComment() {
   const qc = useQueryClient();
   return useMutation({
@@ -158,6 +198,7 @@ export function useInsertAgendaComment() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agenda_comments"] });
       qc.invalidateQueries({ queryKey: ["agenda_comments_by_agenda"] });
+      qc.invalidateQueries({ queryKey: ["agenda_comments_all"] });
     },
   });
 }
@@ -172,6 +213,7 @@ export function useDeleteAgendaComment() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agenda_comments"] });
       qc.invalidateQueries({ queryKey: ["agenda_comments_by_agenda"] });
+      qc.invalidateQueries({ queryKey: ["agenda_comments_all"] });
     },
   });
 }

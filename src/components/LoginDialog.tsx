@@ -11,10 +11,10 @@ const LOCKOUT_SECONDS = 30;
 
 function getUsernameError(value: string): string {
   const trimmed = value.trim();
-  if (!trimmed) return 'Mínimo de 8 caracteres';
+  if (!trimmed) return 'Mínimo de 6 caracteres';
   // Solo dígitos → cédula
   if (/^\d+$/.test(trimmed)) {
-    return trimmed.length >= 8 ? '' : 'Mínimo de 8 caracteres';
+    return trimmed.length >= 6 ? '' : 'Mínimo de 6 caracteres';
   }
   // Tiene letras o caracteres especiales (junto con o sin números) → correo
   return trimmed.endsWith('@ucp.edu.co') ? '' : 'El correo debe de terminar con @ucp.edu.co';

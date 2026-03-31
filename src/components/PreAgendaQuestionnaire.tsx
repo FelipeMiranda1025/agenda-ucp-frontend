@@ -3,7 +3,6 @@ import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertTriangle, XCircle, Info, CheckCircle, Clock } from "lucide-react";
 import ucpLogoWhite from "@/assets/ucp-logo-white.png";
@@ -15,6 +14,7 @@ import {
   QUESTIONS,
   calculateHours,
   detectConflicts,
+  getDisabledKeys,
   useUpsertDocenteConfig,
 } from "@/hooks/useDocenteConfig";
 import { getRoleName } from "@/types/auth";
@@ -31,21 +31,24 @@ export const PreAgendaQuestionnaire: React.FC<Props> = ({ onConfirmed }) => {
   const [saving, setSaving] = useState(false);
   const upsert = useUpsertDocenteConfig();
 
-  const visibleQuestions = useMemo(
-    () =>
-      QUESTIONS.filter((q) => {
-        if (!q.visibleForRoles.includes(rolId)) return false;
-        if (q.dependsOn && !responses[q.dependsOn]) return false;
-        return true;
-      }),
-    [rolId, responses]
-  );
+  const disabledKeys = useMemo(() => getDisabledKeys(responses), [responses]);
 
   const calc = useMemo(() => calculateHours(responses), [responses]);
   const conflicts = useMemo(() => detectConflicts(responses, rolId), [responses, rolId]);
 
   const toggle = (key: keyof DocenteResponses) => {
-    setResponses((prev) => ({ ...prev, [key]: !prev[key] }));
+    if (disabledKeys.has(key)) return;
+    setResponses((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      // When toggling off, also clear disabled downstream
+      const newDisabled = getDisabledKeys(next);
+      for (const k of Object.keys(next) as (keyof DocenteResponses)[]) {
+        if (newDisabled.has(k) && next[k]) {
+          (next as any)[k] = false;
+        }
+      }
+      return next;
+    });
   };
 
   const handleConfirm = async () => {
@@ -70,14 +73,71 @@ export const PreAgendaQuestionnaire: React.FC<Props> = ({ onConfirmed }) => {
     }
   };
 
-  const hasAnySelection = Object.entries(responses).some(
-    ([key, val]) => key !== "cantidadPosgrados" && val === true
-  );
-
   const conflictIcons = {
     conflict: <XCircle className="h-4 w-4 text-destructive shrink-0" />,
     warning: <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0" />,
     observation: <Info className="h-4 w-4 text-blue-500 shrink-0" />,
+  };
+
+  // Group questions for rendering
+  const renderQuestions = () => {
+    const rendered: React.ReactNode[] = [];
+    const processedGroups = new Set<string>();
+
+    for (const q of QUESTIONS) {
+      if (q.group) {
+        if (processedGroups.has(q.group)) continue;
+        processedGroups.add(q.group);
+
+        const groupQuestions = QUESTIONS.filter((gq) => gq.group === q.group);
+        const groupLabel = groupQuestions.find((gq) => gq.groupLabel)?.groupLabel || "";
+
+        rendered.push(
+          <div key={q.group} className="space-y-2">
+            <Label className="text-sm font-medium">{groupLabel}</Label>
+            <div className="flex items-center gap-6 pl-4">
+              {groupQuestions.map((gq) => (
+                <div key={gq.key} className="flex items-center gap-2">
+                  <Checkbox
+                    id={gq.key}
+                    checked={responses[gq.key] as boolean}
+                    onCheckedChange={() => toggle(gq.key)}
+                    disabled={disabledKeys.has(gq.key)}
+                    className="mt-0"
+                  />
+                  <Label
+                    htmlFor={gq.key}
+                    className={`text-sm cursor-pointer ${disabledKeys.has(gq.key) ? "text-muted-foreground/50" : ""}`}
+                  >
+                    {gq.label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      } else {
+        rendered.push(
+          <div key={q.key} className="flex items-start gap-3">
+            <Checkbox
+              id={q.key}
+              checked={responses[q.key] as boolean}
+              onCheckedChange={() => toggle(q.key)}
+              disabled={disabledKeys.has(q.key)}
+              className="mt-0.5"
+            />
+            <Label
+              htmlFor={q.key}
+              className={`text-sm leading-tight cursor-pointer ${disabledKeys.has(q.key) ? "text-muted-foreground/50" : ""}`}
+            >
+              {q.label}
+            </Label>
+          </div>
+        );
+      }
+    }
+
+    return rendered;
   };
 
   return (
@@ -103,42 +163,8 @@ export const PreAgendaQuestionnaire: React.FC<Props> = ({ onConfirmed }) => {
             </p>
 
             {/* Questions */}
-            <div className="space-y-3">
-              {visibleQuestions.map((q) => {
-                if (q.type === "number") {
-                  return (
-                    <div key={q.key} className="flex items-center gap-3 pl-6">
-                      <Label className="text-sm flex-1">{q.label}</Label>
-                      <Input
-                        type="number"
-                        min={q.min}
-                        max={q.max}
-                        className="w-16 h-8 text-sm"
-                        value={responses[q.key] as number}
-                        onChange={(e) =>
-                          setResponses((prev) => ({
-                            ...prev,
-                            [q.key]: Math.min(q.max || 2, Math.max(q.min || 1, Number(e.target.value) || 1)),
-                          }))
-                        }
-                      />
-                    </div>
-                  );
-                }
-                return (
-                  <div key={q.key} className="flex items-start gap-3">
-                    <Checkbox
-                      id={q.key}
-                      checked={responses[q.key] as boolean}
-                      onCheckedChange={() => toggle(q.key)}
-                      className="mt-0.5"
-                    />
-                    <Label htmlFor={q.key} className="text-sm leading-tight cursor-pointer">
-                      {q.label}
-                    </Label>
-                  </div>
-                );
-              })}
+            <div className="space-y-4">
+              {renderQuestions()}
             </div>
 
             {/* Results Summary */}
@@ -164,6 +190,11 @@ export const PreAgendaQuestionnaire: React.FC<Props> = ({ onConfirmed }) => {
                 <div className="flex justify-between border-t pt-1 font-bold">
                   <span>Horas semanales de docencia directa:</span>
                   <span className="text-primary">{calc.finalDirectHours}h/semana</span>
+                </div>
+
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Asignaturas recomendadas:</span>
+                  <span className="font-semibold">{calc.recommendedSubjects}</span>
                 </div>
 
                 {calc.investigationHours > 0 && (

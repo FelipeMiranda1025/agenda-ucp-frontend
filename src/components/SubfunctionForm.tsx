@@ -415,18 +415,16 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
             </p>
           )}
         </div>
-        {resolvedId === "docencia-directa" && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleClearForm}
-            className="text-primary-foreground hover:bg-primary-foreground/20"
-            title={t("form.clearFields")}
-          >
-            <Eraser className="h-4 w-4 mr-1" />
-            {t("form.clear")}
-          </Button>
-        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleClearForm}
+          className="text-primary-foreground hover:bg-primary-foreground/20"
+          title={t("form.clearFields")}
+        >
+          <Eraser className="h-4 w-4 mr-1" />
+          {t("form.clear")}
+        </Button>
       </div>
 
       <Card>
@@ -676,14 +674,32 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
         </CardContent>
       </Card>
 
-      {/* Total de horas semanales por todas las actividades */}
-      {totalWeeklyHours !== null && (
+      {/* Total de horas semanales - SOLO para docencia directa */}
+      {resolvedId === "docencia-directa" && totalWeeklyHours !== null && (
+        <div className="space-y-1 px-2">
+          <div className="flex justify-end">
+            <p className={`text-sm font-semibold ${weeklyHoursColor}`}>
+              {t("form.totalWeeklyHours")}: {totalWeeklyHours}h
+              {requirement !== null && (
+                <span className="text-muted-foreground font-normal"> / {requirement}h {t("form.required")}</span>
+              )}
+            </p>
+          </div>
+          {docenteConfig?.responses && (
+            <div className="flex justify-end">
+              <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                Se recomiendan {calculateHours(docenteConfig.responses as unknown as DocenteResponses).recommendedSubjects} asignaturas
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Mensaje recomendativo de asesorías para trabajos de grado y prácticas académicas */}
+      {(resolvedId === "trabajos-grado" || resolvedId === "practicas-academicas") && (
         <div className="flex justify-end px-2">
-          <p className={`text-sm font-semibold ${weeklyHoursColor}`}>
-            {t("form.totalWeeklyHours")}: {totalWeeklyHours}h
-            {requirement !== null && (
-              <span className="text-muted-foreground font-normal"> / {requirement}h {t("form.required")}</span>
-            )}
+          <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+            Se recomienda {Math.max(0, 4 - (getRecordsBySubfunction("trabajos-grado").length + getRecordsBySubfunction("practicas-academicas").length))} asesorías
           </p>
         </div>
       )}
