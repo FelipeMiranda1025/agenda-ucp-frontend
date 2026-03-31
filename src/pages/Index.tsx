@@ -110,7 +110,7 @@ const Index = () => {
           {/* Right-side toolbar */}
           <div className="flex items-center gap-1">
             {/* Notifications */}
-            <DropdownMenu>
+            <DropdownMenu onOpenChange={(open) => { if (open) handleOpenNotifications(); }}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
@@ -118,19 +118,33 @@ const Index = () => {
                   className="relative text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0"
                 >
                   <Bell className="h-5 w-5" />
-                  {notificationCount > 0 && (
+                  {unreadCount > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
-                      {notificationCount}
+                      {unreadCount}
                     </span>
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72">
+              <DropdownMenuContent align="end" className="w-80 max-h-72 overflow-auto">
                 <div className="px-3 py-2 text-sm font-semibold">{t("notifications.title")}</div>
                 <DropdownMenuSeparator />
-                <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                  {t("notifications.empty")}
-                </div>
+                {allComments.filter((c) => c.reviewer_cc !== user?.id).length === 0 ? (
+                  <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                    {t("notifications.empty")}
+                  </div>
+                ) : (
+                  allComments
+                    .filter((c) => c.reviewer_cc !== user?.id)
+                    .slice(0, 10)
+                    .map((c) => (
+                      <div key={c.id} className="px-3 py-2 text-xs border-b last:border-0">
+                        <p className="text-foreground line-clamp-2">{c.comment}</p>
+                        <span className="text-muted-foreground">
+                          {c.reviewer_cc} · {new Date(c.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    ))
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
