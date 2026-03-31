@@ -15,91 +15,98 @@ describe("calculateHours", () => {
     expect(result.reductions).toHaveLength(0);
   });
 
-  it("fuerza 16h si tiene producción pendiente (Art. 6c)", () => {
-    const result = calculateHours(make({ isProduccionPendiente: true, isInvestigadorPrincipal: true }));
-    expect(result.finalDirectHours).toBe(16);
-    expect(result.investigationHours).toBe(0);
-  });
-
-  it("investigador principal: 10h directas, 11h investigación (Art. 6a)", () => {
-    const result = calculateHours(make({ isInvestigadorPrincipal: true }));
+  it("investigador principal x1: 10h directas, 11h investigación", () => {
+    const result = calculateHours(make({ investPrincipal1: true }));
     expect(result.directHours).toBe(10);
     expect(result.finalDirectHours).toBe(10);
     expect(result.investigationHours).toBe(11);
+    expect(result.recommendedSubjects).toBe(3);
   });
 
-  it("co-investigador: 13h directas, 6h investigación (Art. 6b)", () => {
-    const result = calculateHours(make({ isCoInvestigador: true }));
+  it("investigador principal x2: 4h directas", () => {
+    const result = calculateHours(make({ investPrincipal2: true }));
+    expect(result.finalDirectHours).toBe(4);
+    expect(result.recommendedSubjects).toBe(1);
+  });
+
+  it("co-investigador x1: 13h directas, 6h investigación", () => {
+    const result = calculateHours(make({ coInvestigador1: true }));
     expect(result.directHours).toBe(13);
     expect(result.investigationHours).toBe(6);
+    expect(result.recommendedSubjects).toBe(4);
   });
 
-  it("formación doctorado: 8h directas, 15h investigación (Art. 6i)", () => {
+  it("co-investigador x2: 9h directas", () => {
+    const result = calculateHours(make({ coInvestigador2: true }));
+    expect(result.finalDirectHours).toBe(9);
+    expect(result.recommendedSubjects).toBe(3);
+  });
+
+  it("IP1 + CI1: 6h directas, 3 asignaturas", () => {
+    const result = calculateHours(make({ investPrincipal1: true, coInvestigador1: true }));
+    expect(result.finalDirectHours).toBe(6);
+    expect(result.recommendedSubjects).toBe(3);
+  });
+
+  it("formación doctorado: 8h directas, 15h investigación", () => {
     const result = calculateHours(make({ isFormacionDoctorado: true }));
     expect(result.directHours).toBe(8);
     expect(result.investigationHours).toBe(15);
+    expect(result.recommendedSubjects).toBe(2);
   });
 
-  it("formación maestría: 12h directas, 7h investigación (Art. 6j)", () => {
+  it("formación maestría: 12h directas, 7h investigación", () => {
     const result = calculateHours(make({ isFormacionMaestria: true }));
     expect(result.directHours).toBe(12);
     expect(result.investigationHours).toBe(7);
+    expect(result.recommendedSubjects).toBe(4);
   });
 
-  it("director pregrado: 6h directas (Art. 6e)", () => {
-    const result = calculateHours(make({ isDirectorPregrado: true }));
+  it("jefe depto/director pregrado: 6h directas", () => {
+    const result = calculateHours(make({ isJefeDeptoPregrado: true }));
     expect(result.directHours).toBe(6);
+    expect(result.recommendedSubjects).toBe(2);
   });
 
-  it("decano: 4h directas (Art. 6h)", () => {
+  it("decano: 4h directas", () => {
     const result = calculateHours(make({ isDecano: true }));
-    expect(result.directHours).toBe(4);
     expect(result.finalDirectHours).toBe(4);
+    expect(result.recommendedSubjects).toBe(1);
   });
 
-  it("vicerrector: 4h directas (Art. 6h)", () => {
+  it("vicerrector: 4h directas", () => {
     const result = calculateHours(make({ isVicerrector: true }));
     expect(result.directHours).toBe(4);
+    expect(result.recommendedSubjects).toBe(1);
   });
 
-  it("director doctorado: 4h directas (Art. 6h)", () => {
+  it("director doctorado: 4h directas", () => {
     const result = calculateHours(make({ isDirectorDoctorado: true }));
     expect(result.directHours).toBe(4);
+    expect(result.recommendedSubjects).toBe(1);
   });
 
-  it("coordinador de área reduce 3h (Art. 6g)", () => {
+  it("coordinador de área: 13h directas", () => {
     const result = calculateHours(make({ isCoordinadorArea: true }));
     expect(result.finalDirectHours).toBe(13);
-    expect(result.reductions).toContainEqual({ label: "Coordinación de área", hours: 3 });
+    expect(result.recommendedSubjects).toBe(4);
   });
 
-  it("formación pedagógica reduce 3h (Art. 6l)", () => {
+  it("formación pedagógica: 13h directas", () => {
     const result = calculateHours(make({ isFormacionPedagogica: true }));
     expect(result.finalDirectHours).toBe(13);
+    expect(result.recommendedSubjects).toBe(4);
   });
 
-  it("director posgrado reduce 5h por programa (Art. 6f)", () => {
-    const result = calculateHours(make({ isDirectorPosgrado: true, cantidadPosgrados: 2 }));
-    expect(result.finalDirectHours).toBe(6); // 16 - 10
+  it("director posgrado x1: 11h directas", () => {
+    const result = calculateHours(make({ dirPosgrado1: true }));
+    expect(result.finalDirectHours).toBe(11);
+    expect(result.recommendedSubjects).toBe(4);
   });
 
-  it("reducciones acumulables: coordinador + formación pedagógica", () => {
-    const result = calculateHours(make({ isCoordinadorArea: true, isFormacionPedagogica: true }));
-    expect(result.finalDirectHours).toBe(10); // 16 - 3 - 3
-  });
-
-  it("decano no tiene reducciones acumulables", () => {
-    const result = calculateHours(make({ isDecano: true, isCoordinadorArea: true }));
-    expect(result.finalDirectHours).toBe(4);
-    expect(result.reductions).toHaveLength(0);
-  });
-
-  it("no baja de 0 horas con muchas reducciones", () => {
-    const result = calculateHours(make({
-      isDirectorPregrado: true, // 6h
-      isDirectorPosgrado: true,
-      cantidadPosgrados: 2, // -10h
-    }));
-    expect(result.finalDirectHours).toBe(0);
+  it("director posgrado x2: 6h directas", () => {
+    const result = calculateHours(make({ dirPosgrado2: true }));
+    expect(result.finalDirectHours).toBe(6);
+    expect(result.recommendedSubjects).toBe(3);
   });
 });
