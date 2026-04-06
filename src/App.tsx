@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,7 +11,8 @@ import { LanguageProvider } from "@/i18n/LanguageContext";
 import { LoginDialog } from "@/components/LoginDialog";
 import { PreAgendaQuestionnaire } from "@/components/PreAgendaQuestionnaire";
 import { InactivityWarning } from "@/components/InactivityWarning";
-import { useDocenteConfig } from "@/hooks/useDocenteConfig";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import Index from "./pages/Index";
 import Profile from "./pages/Profile";
 import ScheduleBuilder from "./pages/ScheduleBuilder";
@@ -23,31 +25,35 @@ const queryClient = new QueryClient({
 
 const AppContent = () => {
   const { isAuthenticated, user } = useAuth();
-  const { data: config, isLoading: configLoading } = useDocenteConfig(user?.id);
+  const [showQuestionnaire, setShowQuestionnaire] = useState(true);
 
   if (!isAuthenticated) {
     return <LoginDialog />;
   }
 
-  // Show questionnaire if config not confirmed for this semester
-  if (!configLoading && (!config || !config.confirmed)) {
+  if (showQuestionnaire) {
+    const handleSkip = async () => {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("agendas")
+        .select("id")
+        .eq("docente_cc", user.id)
+        .limit(1);
+      if (error || !data || data.length === 0) {
+        toast.error("No existen agendas diligenciadas. Obligatorio llenar este formulario filtro.");
+        return;
+      }
+      setShowQuestionnaire(false);
+    };
+
     return (
       <>
         <InactivityWarning />
         <PreAgendaQuestionnaire
-          onConfirmed={() => {
-            // Re-fetch will happen automatically via query invalidation
-          }}
+          onConfirmed={() => setShowQuestionnaire(false)}
+          onSkip={handleSkip}
         />
       </>
-    );
-  }
-
-  if (configLoading) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">Cargando configuración...</p>
-      </div>
     );
   }
 

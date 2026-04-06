@@ -234,7 +234,7 @@ export const PreAgendaQuestionnaire: React.FC<Props> = ({ onConfirmed, onSkip })
         </ScrollArea>
 
         {/* Footer */}
-        <div className="p-4 border-t shrink-0">
+        <div className="p-4 border-t shrink-0 space-y-2">
           <Button
             onClick={handleConfirm}
             className="w-full h-11 text-base font-semibold gap-2"
@@ -243,6 +243,16 @@ export const PreAgendaQuestionnaire: React.FC<Props> = ({ onConfirmed, onSkip })
             <CheckCircle className="h-4 w-4" />
             {saving ? "Guardando..." : "Confirmar y continuar"}
           </Button>
+          {onSkip && (
+            <Button
+              variant="outline"
+              onClick={onSkip}
+              className="w-full h-10 text-sm"
+              disabled={saving}
+            >
+              Omitir
+            </Button>
+          )}
         </div>
       </div>
     </div>

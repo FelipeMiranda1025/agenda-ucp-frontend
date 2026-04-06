@@ -184,6 +184,16 @@ export function SummaryPanel() {
       </ScrollArea>
 
       <div className="border-t px-4 pt-3 pb-1 space-y-1 text-sm bg-white dark:bg-[#1f1f1f]">
+        {/* Total semanal global */}
+        <div className="flex justify-between pb-1 mb-1 border-b border-border">
+          <span className="font-bold text-primary">Total semanal global</span>
+          <span className="font-bold text-primary">
+            {(() => {
+              const total = records.reduce((sum, r) => sum + (Number(r.data["horasSemana"]) || r.totalHoras / 18), 0);
+              return total % 1 === 0 ? total : total.toFixed(1);
+            })()}h
+          </span>
+        </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">{t("summary.totalSemestral")}</span>
           <span className="font-bold">{metricas.totalHorasSemestrales}h</span>
