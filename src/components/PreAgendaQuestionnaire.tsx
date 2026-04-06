@@ -22,6 +22,7 @@ import { toast } from "sonner";
 
 interface Props {
   onConfirmed: () => void;
+  onSkip?: () => void;
 }
 
 export const PreAgendaQuestionnaire: React.FC<Props> = ({ onConfirmed }) => {
