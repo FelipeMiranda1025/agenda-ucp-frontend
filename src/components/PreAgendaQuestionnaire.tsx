@@ -25,7 +25,7 @@ interface Props {
   onSkip?: () => void;
 }
 
-export const PreAgendaQuestionnaire: React.FC<Props> = ({ onConfirmed }) => {
+export const PreAgendaQuestionnaire: React.FC<Props> = ({ onConfirmed, onSkip }) => {
   const { user } = useAuth();
   const rolId = user?.rolId ?? 1;
   const [responses, setResponses] = useState<DocenteResponses>({ ...DEFAULT_RESPONSES });
