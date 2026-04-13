@@ -286,6 +286,8 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         hasSchedule,
         editingRecord,
         setEditingRecord,
+        hasPendingAgendaView,
+        loadFromAgendaView,
       }}
     >
       {children}
