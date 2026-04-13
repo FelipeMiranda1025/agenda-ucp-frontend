@@ -8,9 +8,9 @@ import { Input } from "@/components/ui/input";
 import { CheckCircle, ClipboardList, Trash2 } from "lucide-react";
 import { AgendaComments } from "@/components/AgendaComments";
 import { useAgendas, useInsertAgendaComment } from "@/hooks/useDatabase";
-import { useDocenteConfig, calculateHours } from "@/hooks/useDocenteConfig";
-import { DocenteResponses } from "@/types/docenteConfig";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { translateOption } from "@/i18n/optionTranslations";
 import { toast } from "sonner";
 import { translateOption } from "@/i18n/optionTranslations";
 
@@ -20,7 +20,6 @@ export function SummaryPanel() {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
   const { data: savedAgendas = [] } = useAgendas(user?.id);
-  const { data: docenteConfig } = useDocenteConfig(user?.id);
   const insertComment = useInsertAgendaComment();
 
   const grouped = subfunctions
@@ -32,24 +31,6 @@ export function SummaryPanel() {
     .filter((g) => g.records.length > 0);
 
   const handleConfirm = async () => {
-    const tieneInvestigacion = records.some(r => r.subfunctionId === "investigacion");
-
-    if (!tieneInvestigacion) {
-      const docDirectaRecords = records.filter(r => r.subfunctionId === "docencia-directa");
-      const horasSemanalesDocDirecta = docDirectaRecords.reduce(
-        (sum, r) => sum + (Number(r.data["horasSemana"]) || 0), 0
-      );
-      const requiredHours = docenteConfig?.responses
-        ? calculateHours(docenteConfig.responses as unknown as DocenteResponses).finalDirectHours
-        : 16;
-      if (horasSemanalesDocDirecta !== requiredHours) {
-        toast.error(
-          t("validation.16hours", { hours: horasSemanalesDocDirecta }),
-          { duration: 6000 }
-        );
-        return;
-      }
-    }
 
     const total = metricas.totalHorasSemestrales;
     if (total > horasSemestreDefecto) {
