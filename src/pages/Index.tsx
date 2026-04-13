@@ -39,18 +39,20 @@ const Index = () => {
   const { data: allComments = [] } = useAllAgendaComments();
   const markRead = useMarkCommentsRead();
   const { data: agendaView } = useAgendaView(user?.id);
+  const { data: pendingSubordinateAgendas = [] } = usePendingAgendaViewsForSupervisor(user?.id);
 
   const unreadCount = useMemo(() => {
     if (!user) return 0;
     let count = allComments.filter(
       (c) => c.reviewer_cc !== user.id && !(c.read_by || []).includes(user.id)
     ).length;
-    // Add notification if agenda_views status changed from pending
     if (agendaView && agendaView.status !== "pending") {
       count += 1;
     }
+    // Add pending subordinate agendas as notifications for supervisors
+    count += pendingSubordinateAgendas.length;
     return count;
-  }, [allComments, user, agendaView]);
+  }, [allComments, user, agendaView, pendingSubordinateAgendas]);
 
   const handleOpenNotifications = () => {
     if (!user || unreadCount === 0) return;
