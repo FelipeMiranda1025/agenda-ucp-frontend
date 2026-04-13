@@ -353,7 +353,13 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       updateRecord(editingRecordId, { ...formData }, total);
       toast.success(t("form.updatedRecord"));
     } else {
-      upsertRecord(resolvedId, { ...formData }, total);
+      // Forms that allow duplicate activities use addRecord to create independent records
+      const allowDuplicates = ["investigacion", "administrativas"];
+      if (allowDuplicates.includes(resolvedId)) {
+        addRecord({ subfunctionId: resolvedId, data: { ...formData }, totalHoras: total });
+      } else {
+        upsertRecord(resolvedId, { ...formData }, total);
+      }
       toast.success(t("form.savedRecord"));
     }
     
