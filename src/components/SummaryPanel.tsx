@@ -250,16 +250,42 @@ export function SummaryPanel() {
       <AgendaComments agendaIds={savedAgendas.map(a => a.id)} />
 
       <div className="p-4 border-t">
-        <Button
-          onClick={handleConfirm}
-          className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
-        >
-          <CheckCircle className="h-4 w-4" />
-          {t("summary.confirm")}
-        </Button>
+        {isReviewingSubordinate ? (
+          <div className="space-y-3">
+            <Textarea
+              placeholder={t("summary.observationPlaceholder")}
+              value={returnObservation}
+              onChange={(e) => setReturnObservation(e.target.value)}
+              className="min-h-[60px] text-sm"
+            />
+            <div className="flex gap-2">
+              <Button
+                onClick={handleReturn}
+                className="flex-1 gap-2 text-white hover:opacity-90"
+                style={{ backgroundColor: "#a8822c" }}
+              >
+                <RotateCcw className="h-4 w-4" />
+                {t("summary.return")}
+              </Button>
+              <Button
+                onClick={handleApprove}
+                className="flex-1 gap-2 bg-green-600 hover:bg-green-700 text-white"
+              >
+                <ThumbsUp className="h-4 w-4" />
+                {t("summary.approve")}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            onClick={handleConfirm}
+            className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+          >
+            <CheckCircle className="h-4 w-4" />
+            {t("summary.confirm")}
+          </Button>
+        )}
       </div>
-
-      <ConfirmSuccessDialog
         open={dialogOpen}
         onClose={handleDialogClose}
         variant={dialogVariant}
