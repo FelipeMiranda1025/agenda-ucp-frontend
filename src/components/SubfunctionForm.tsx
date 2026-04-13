@@ -332,7 +332,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     }
   }, [editingRecord, resolvedId, setEditingRecord]);
 
-  // Auto-upsert when all fields are filled, then clear form
+  // Auto-upsert when all fields are filled, with debounce to allow typing 2-digit numbers
   useEffect(() => {
     if (!config || resolvedId === "distribucion-horaria") return;
 
@@ -347,26 +347,29 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     const total = computeTotal(formData);
     const sig = JSON.stringify({ resolvedId, data: formData, total });
     if (sig === lastUpsertRef.current) return;
-    lastUpsertRef.current = "";
 
-    if (editingRecordId) {
-      updateRecord(editingRecordId, { ...formData }, total);
-      toast.success(t("form.updatedRecord"));
-    } else {
-      // Forms that allow duplicate activities use addRecord to create independent records
-      const allowDuplicates = ["investigacion", "administrativas"];
-      if (allowDuplicates.includes(resolvedId)) {
-        addRecord({ subfunctionId: resolvedId, data: { ...formData }, totalHoras: total });
+    const timer = setTimeout(() => {
+      lastUpsertRef.current = "";
+
+      if (editingRecordId) {
+        updateRecord(editingRecordId, { ...formData }, total);
+        toast.success(t("form.updatedRecord"));
       } else {
-        upsertRecord(resolvedId, { ...formData }, total);
+        const allowDuplicates = ["investigacion", "administrativas"];
+        if (allowDuplicates.includes(resolvedId)) {
+          addRecord({ subfunctionId: resolvedId, data: { ...formData }, totalHoras: total });
+        } else {
+          upsertRecord(resolvedId, { ...formData }, total);
+        }
+        toast.success(t("form.savedRecord"));
       }
-      toast.success(t("form.savedRecord"));
-    }
-    
-    // Clear form after saving
-    setFormData({});
-    formDataStore[resolvedId] = {};
-    setEditingRecordId(null);
+
+      setFormData({});
+      formDataStore[resolvedId] = {};
+      setEditingRecordId(null);
+    }, 800);
+
+    return () => clearTimeout(timer);
   }, [formData, resolvedId, config, inputFields, computeTotal, addRecord, upsertRecord, updateRecord, editingRecordId]);
 
   const handleClearForm = () => {
