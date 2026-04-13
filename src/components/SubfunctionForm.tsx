@@ -105,9 +105,13 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule, displayName }: { hasSc
 }
 
 export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
-  const { activeSubfunction, records, dropdownOptions, addDropdownOption, addRecord, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord } = useAgenda();
+  const { activeSubfunction, records, dropdownOptions, addDropdownOption, addRecord, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord, selectedDocente } = useAgenda();
   const { user } = useAuth();
   const { t, language } = useLanguage();
+
+  const displayName = selectedDocente && selectedDocente.firstName !== "Yo"
+    ? [selectedDocente.firstName, selectedDocente.secondName, selectedDocente.firstLastName].filter(Boolean).join(' ')
+    : user ? [user.firstName, user.firstLastName].filter(Boolean).join(' ') : '';
   const resolvedId = subfunctionId || activeSubfunction;
   const [formData, setFormData] = useState<{ [key: string]: string | number }>(() => {
     return formDataStore[resolvedId] || {};
@@ -389,7 +393,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   if (!config) return null;
 
   if (resolvedId === "distribucion-horaria") {
-    return <ScheduleReadOnlyView hasSchedule={hasSchedule} getSchedule={getSchedule} />;
+    return <ScheduleReadOnlyView hasSchedule={hasSchedule} getSchedule={getSchedule} displayName={displayName} />;
   }
 
   const handleAddOption = () => {
