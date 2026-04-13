@@ -32,7 +32,7 @@ interface AgendaContextType {
   editingRecord: AgendaRecord | null;
   setEditingRecord: (r: AgendaRecord | null) => void;
   hasPendingAgendaView: boolean;
-  loadFromAgendaView: () => void;
+  loadFromAgendaView: () => Promise<boolean>;
 }
 
 const AgendaContext = createContext<AgendaContextType | null>(null);
@@ -240,8 +240,8 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   }, [scheduleByDocente, docenteId]);
 
   // Load agenda from agenda_views on login
-  const loadFromAgendaView = useCallback(async () => {
-    if (!docenteId) return;
+  const loadFromAgendaView = useCallback(async (): Promise<boolean> => {
+    if (!docenteId) return false;
     try {
       const { data, error } = await (supabase.from("agenda_views" as any) as any)
         .select("*")
@@ -249,19 +249,21 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (error || !data) return;
-      if (data.status === "pending") {
-        setHasPendingAgendaView(true);
+      if (error || !data) return false;
+      if (data.status === "pending" || data.status === "approved" || data.status === "returned") {
+        setHasPendingAgendaView(data.status === "pending");
+        const savedRecords = data.records as AgendaRecord[];
+        if (savedRecords && savedRecords.length > 0) {
+          setRecordsByDocente((prev) => ({
+            ...prev,
+            [docenteId]: savedRecords,
+          }));
+          return true;
+        }
       }
-      const savedRecords = data.records as AgendaRecord[];
-      if (savedRecords && savedRecords.length > 0) {
-        setRecordsByDocente((prev) => ({
-          ...prev,
-          [docenteId]: savedRecords,
-        }));
-      }
+      return false;
     } catch {
-      // silently fail
+      return false;
     }
   }, [docenteId]);
 

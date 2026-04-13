@@ -5,6 +5,7 @@ import { useAgenda } from "@/context/AgendaContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { subfunctions } from "@/data/subfunctions";
 import { getDocenteFullName } from "@/types/docentePlanta";
+import { toast } from "sonner";
 import ucpLogo from "@/assets/ucp-logo.png";
 
 const iconMap: { [key: string]: React.ElementType } = {
@@ -25,7 +26,7 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ onClose }: AppSidebarProps) {
-  const { activeSubfunction, setActiveSubfunction, searchTerm, setSearchTerm, selectedDocente, setSelectedDocente, docentesList } = useAgenda();
+  const { activeSubfunction, setActiveSubfunction, searchTerm, setSearchTerm, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView } = useAgenda();
   const { t } = useLanguage();
 
   const prodSubs = subfunctions.filter((s) => s.sectionId === "produccion");
@@ -101,9 +102,19 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{t("sidebar.docente")}</p>
         <Select
           value={selectedDocente?.id || ""}
-          onValueChange={(val) => {
+          onValueChange={async (val) => {
             const d = docentesList.find((doc) => doc.id === val) || null;
             setSelectedDocente(d);
+            // If selecting a subordinate (not "Yo"), check if they have a pending agenda
+            if (d && d.firstName !== "Yo") {
+              // Wait a tick for docenteId to update, then load
+              setTimeout(async () => {
+                const found = await loadFromAgendaView();
+                if (!found) {
+                  toast.info(`Docente ${getDocenteFullName(d)} no ha diligenciado su agenda`);
+                }
+              }, 100);
+            }
           }}
         >
           <SelectTrigger className="h-9 text-sm">

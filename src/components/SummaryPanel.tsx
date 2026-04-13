@@ -128,7 +128,9 @@ export function SummaryPanel() {
                     <span className="w-6" />
                   </div>
                   {group.records.map((record, i) => {
-                    const rawLabel = Object.values(record.data).find((v) => typeof v === "string") || `${t("form.record")} ${i + 1}`;
+                    // Pick a meaningful label: asignatura > actividad > tipoTrabajo > first string
+                    const data = record.data;
+                    const rawLabel = data["asignatura"] || data["actividad"] || data["tipoTrabajo"] || Object.values(data).find((v) => typeof v === "string" && v !== "1" && v !== data["_auto"]) || `${t("form.record")} ${i + 1}`;
                     const label = translateOption(String(rawLabel), language);
                     const weeklyHours = Number(record.data["horasSemana"]) || record.totalHoras / 18;
                     return (
