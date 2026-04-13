@@ -144,6 +144,18 @@ const Index = () => {
               <DropdownMenuContent align="end" className="w-80 max-h-72 overflow-auto">
                 <div className="px-3 py-2 text-sm font-semibold">{t("notifications.title")}</div>
                 <DropdownMenuSeparator />
+                {/* Returned agenda notification for docentes */}
+                {isReturnedAgenda && (
+                  <div className="px-3 py-2 text-xs border-b bg-destructive/10">
+                    <p className="text-foreground font-medium">{reviewerName || agendaView?.reviewer_cc}</p>
+                    <p className="text-muted-foreground">{t("notifications.returned")}</p>
+                    {agendaView?.reviewed_at && (
+                      <span className="text-muted-foreground text-[10px]">
+                        {new Date(agendaView.reviewed_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                )}
                 {/* Pending subordinate agendas for supervisors */}
                 {pendingSubordinateAgendas.map((pa) => (
                   <button
@@ -172,7 +184,7 @@ const Index = () => {
                   </button>
                 ))}
                 {/* Regular comment notifications */}
-                {allComments.filter((c) => c.reviewer_cc !== user?.id).length === 0 && pendingSubordinateAgendas.length === 0 ? (
+                {allComments.filter((c) => c.reviewer_cc !== user?.id).length === 0 && pendingSubordinateAgendas.length === 0 && !isReturnedAgenda ? (
                   <div className="px-3 py-4 text-sm text-muted-foreground text-center">
                     {t("notifications.empty")}
                   </div>
