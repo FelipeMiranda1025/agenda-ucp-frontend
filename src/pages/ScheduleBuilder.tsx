@@ -26,25 +26,6 @@ export default function ScheduleBuilder() {
   const { user } = useAuth();
   const { data: agendaView, isLoading: loadingView } = useAgendaView(user?.id);
 
-  // Protect route: only allow access if agenda is approved
-  useEffect(() => {
-    if (!loadingView && (!agendaView || agendaView.status !== "approved")) {
-      navigate("/", { replace: true });
-    }
-  }, [agendaView, loadingView, navigate]);
-
-  if (loadingView) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">Cargando...</p>
-      </div>
-    );
-  }
-
-  if (!agendaView || agendaView.status !== "approved") {
-    return null;
-  }
-
   const existingSchedule = getSchedule();
 
   // Build draggable items from records
@@ -74,7 +55,6 @@ export default function ScheduleBuilder() {
     return items;
   }, [records]);
 
-  // Initialize placed blocks from existing schedule
   const [placedBlocks, setPlacedBlocks] = useState<ScheduleBlock[]>(
     existingSchedule?.blocks || []
   );
@@ -86,7 +66,6 @@ export default function ScheduleBuilder() {
     [allItems, placedIds]
   );
 
-  // Group available by label for display
   const groupedAvailable = useMemo(() => {
     const map = new Map<string, { label: string; color: string; borderColor: string; items: DraggableItem[] }>();
     for (const item of availableItems) {
@@ -107,12 +86,10 @@ export default function ScheduleBuilder() {
 
   const handleDrop = useCallback((day: number, hour: number) => {
     if (!draggedItem) return;
-    // Check if cell is occupied
     if (placedBlocks.some((b) => b.day === day && b.hour === hour)) {
       toast.error("Esta celda ya está ocupada");
       return;
     }
-    // Find the item
     const item = allItems.find((i) => i.id === draggedItem);
     if (!item) return;
 
@@ -139,6 +116,25 @@ export default function ScheduleBuilder() {
     navigate("/");
   };
 
+  // Protect route: only allow access if agenda is approved
+  useEffect(() => {
+    if (!loadingView && (!agendaView || agendaView.status !== "approved")) {
+      navigate("/", { replace: true });
+    }
+  }, [agendaView, loadingView, navigate]);
+
+  if (loadingView) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground">Cargando...</p>
+      </div>
+    );
+  }
+
+  if (!agendaView || agendaView.status !== "approved") {
+    return null;
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <header className="h-14 flex items-center gap-3 border-b bg-primary px-4 shrink-0">
@@ -162,7 +158,6 @@ export default function ScheduleBuilder() {
       </header>
 
       <div className="flex-1 flex min-h-0">
-        {/* Schedule Grid */}
         <div className="flex-1 overflow-auto p-4">
           <div className="min-w-[700px]">
             <table className="w-full border-collapse text-xs">
@@ -213,7 +208,6 @@ export default function ScheduleBuilder() {
           </div>
         </div>
 
-        {/* Right sidebar - draggable blocks */}
         <div className="w-72 shrink-0 border-l bg-card flex flex-col">
           <div className="px-4 py-3 border-b bg-ucp-red">
             <h2 className="text-sm font-bold text-primary-foreground">Bloques disponibles</h2>
