@@ -3,8 +3,9 @@ import { DropdownOption, Record as AgendaRecord, MetricasPie, ScheduleBlock, Sch
 import { initialDropdownOptions } from "@/data/initialDropdownOptions";
 import { subfunctions } from "@/data/subfunctions";
 import { DocentePlanta } from "@/types/docentePlanta";
-import { docentesPlanta } from "@/data/docentesPlanta";
 import { supabase } from "@/integrations/supabase/client";
+import { useSubordinatesWithNames, SubordinateDocente } from "@/hooks/useDatabase";
+import { useAuth } from "@/context/AuthContext";
 
 interface AgendaContextType {
   dropdownOptions: DropdownOption[];
