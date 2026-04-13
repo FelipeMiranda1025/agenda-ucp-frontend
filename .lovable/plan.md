@@ -1,29 +1,27 @@
 
 
-# Plan: Reemplazar lista de botones por dropdown en sección "Docente"
+# Plan: Filtrar dropdown "Docente" por subordinados directos via user_hierarchy
 
 ## Resumen
 
-Reemplazar la lista de botones interactivos en la sección "Docente" del sidebar izquierdo por un componente `Select` (dropdown) similar a los usados en los formularios.
+Actualmente `useSubordinatesWithNames` obtiene **todos** los usuarios con `id_rol = 1` (docentePlanta). Se debe cambiar para que solo muestre los subordinados directos del usuario logueado según la tabla `user_hierarchy`, de modo que el director con cc=123456789 solo vea al docente con cc=12345678 (y cualquier futuro subordinado que se agregue a la jerarquía).
 
 ## Cambios
 
-### `src/components/AppSidebar.tsx`
+### `src/hooks/useDatabase.ts` — función `useSubordinatesWithNames`
 
-- Importar `Select, SelectContent, SelectItem, SelectTrigger, SelectValue` desde `@/components/ui/select`
-- Reemplazar el bloque de botones (líneas 101-131) por un `Select` con:
-  - `SelectTrigger` mostrando el nombre del docente seleccionado
-  - `SelectItem` para cada docente en `docentesList` ("Yo" + subordinados)
-  - `onValueChange` que busca el docente por id, ejecuta `setSelectedDocente`, y si no es "Yo", llama `loadFromAgendaView` con toast si no hay agenda
-- Eliminar import de `User` icon (ya no se usa en la lista)
+Reemplazar la consulta actual que hace `select * from users where id_rol=1` por:
 
-### Fix runtime error
+1. Obtener el `id` numérico del supervisor desde `users` usando su `cc`
+2. Consultar `user_hierarchy` para obtener los `user_id` donde `supervisor_id` = id del supervisor
+3. Consultar `users` con `.in("id", subordinateIds)` para obtener nombres
+4. Mapear al formato `SubordinateDocente`
 
-- El error `useLanguage must be used within LanguageProvider` se investigará y corregirá si persiste (puede ser transitorio por HMR)
+Esto replica la lógica que ya existe en `usePendingAgendaViewsForSupervisor` (pasos 1-3).
 
-## Archivos a modificar
+## Archivo a modificar
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/AppSidebar.tsx` | Reemplazar botones por Select dropdown |
+| `src/hooks/useDatabase.ts` | Reescribir `useSubordinatesWithNames` para filtrar por `user_hierarchy` |
 
