@@ -286,6 +286,7 @@ export function SummaryPanel() {
           </Button>
         )}
       </div>
+      <ConfirmSuccessDialog
         open={dialogOpen}
         onClose={handleDialogClose}
         variant={dialogVariant}
