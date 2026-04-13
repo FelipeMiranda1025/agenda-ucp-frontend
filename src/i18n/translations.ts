@@ -31,6 +31,7 @@ const translations: Record<string, Record<Language, string>> = {
   "sidebar.activities": { es: "Actividades Diferentes", en: "Non-teaching Activities" },
   "sidebar.schedule": { es: "Horario Permanencia", en: "Permanence Schedule" },
   "sidebar.docente": { es: "Docente de planta", en: "Full-time Teacher" },
+  "sidebar.docenteSection": { es: "Docente", en: "Teacher" },
   "sidebar.selectDocente": { es: "Seleccionar docente...", en: "Select teacher..." },
   "sidebar.agendaDocente": { es: "Agenda Docente", en: "Teaching Agenda" },
 
