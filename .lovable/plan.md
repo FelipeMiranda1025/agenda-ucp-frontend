@@ -1,35 +1,51 @@
 
-# Plan: Notificaciones de agendas pendientes para supervisores
+
+# Plan: Notificaciones clickeables, dropdown de docentes subordinados y carga de registros
 
 ## Resumen
 
-Cuando el docente (cc=12345678) confirma su agenda, el director (cc=123456789) debe ver una notificación en la campanita con el nombre del docente y "Agenda pendiente por revisar". Se necesita:
-
-1. Un nuevo hook que obtenga las `agenda_views` pendientes de los subordinados del usuario logueado
-2. Modificar la lógica de notificaciones en `Index.tsx` para mostrar estas agendas pendientes con nombre completo del docente
+Tres cambios principales:
+1. Al hacer click en una notificación de agenda pendiente, cargar los registros del docente en el panel derecho (Resumen de Datos)
+2. En el sidebar izquierdo, reemplazar el dropdown de docentes con uno dinámico que muestre "Yo" + los docentes subordinados (para el director cc=123456789, mostrará "Yo" y el docente cc=12345678)
+3. Al seleccionar un docente en el dropdown, el Resumen de Datos carga sus registros desde `agenda_views`
 
 ## Cambios
 
-### 1. Nuevo hook `usePendingAgendaViewsForSupervisor` en `useDatabase.ts`
+### 1. Hacer las notificaciones clickeables (`src/pages/Index.tsx`)
 
-- Recibe el `user.id` (cc) del supervisor logueado
-- Busca en `user_hierarchy` los `user_id` donde `supervisor_id` coincide con el ID numérico del supervisor
-- Luego busca en `users` las cédulas de esos subordinados
-- Consulta `agenda_views` con `status = 'pending'` y `user_cc` IN (cédulas subordinados)
-- Retorna un array con los datos de la agenda view + datos del usuario (nombre completo)
+- Cada notificación de agenda pendiente será un botón/link clickeable
+- Al hacer click:
+  - Cambiar el `selectedDocente` en el contexto al docente correspondiente (cc del subordinado)
+  - Cargar los records de su `agenda_views` en `recordsByDocente`
+  - El SummaryPanel se actualizará automáticamente al cambiar el docente seleccionado
 
-### 2. Modificar notificaciones en `Index.tsx`
+### 2. Dropdown dinámico de docentes en sidebar (`src/components/AppSidebar.tsx`)
 
-- Importar el nuevo hook
-- Incluir las agendas pendientes de subordinados en el `unreadCount`
-- En el dropdown de notificaciones, renderizar cada agenda pendiente con:
-  - **Nombre**: `{first_name} {second_name} {first_last_name}` del docente
-  - **Descripción**: "Agenda pendiente por revisar"
-  - Fecha de creación
+- Reemplazar la lista estática `docentesPlanta` con una lista dinámica que incluye:
+  - **"Yo"**: referencia al usuario logueado (cc del usuario actual)
+  - Los docentes subordinados obtenidos de `usePendingAgendaViewsForSupervisor` o una nueva query a `user_hierarchy`
+- Para el rol `DocentePlanta` (sin subordinados), solo mostrar "Yo"
+- Para el rol `DirectorPrograma`, mostrar "Yo" + sus subordinados
+
+### 3. Modificar `AgendaContext` para soportar docentes dinámicos
+
+**Archivo:** `src/context/AgendaContext.tsx`
+
+- Cambiar `docentesList` de estático (`docentesPlanta`) a dinámico, construido a partir del usuario logueado + subordinados
+- Agregar el usuario logueado como primer item con label "Yo"
+- Al seleccionar un docente del dropdown, `loadFromAgendaView` se ejecutará automáticamente para cargar sus registros guardados
+
+### 4. Nuevo hook para obtener subordinados (`src/hooks/useDatabase.ts`)
+
+- `useSubordinates(supervisorCc)`: obtiene los datos de los subordinados directos del usuario logueado desde `user_hierarchy` + `users`
+- Retorna un array de `DocentePlanta` compatible con el dropdown existente
 
 ## Archivos a modificar
 
 | Archivo | Cambio |
 |---|---|
-| `src/hooks/useDatabase.ts` | Nuevo hook `usePendingAgendaViewsForSupervisor` |
-| `src/pages/Index.tsx` | Integrar notificaciones de agendas pendientes de subordinados |
+| `src/hooks/useDatabase.ts` | Nuevo hook `useSubordinates(supervisorCc)` |
+| `src/context/AgendaContext.tsx` | `docentesList` dinámico con "Yo" + subordinados; recibir user del AuthContext |
+| `src/components/AppSidebar.tsx` | Mostrar "Yo" en dropdown + subordinados dinámicos |
+| `src/pages/Index.tsx` | Notificaciones clickeables que cambian docente seleccionado y cargan registros |
+
