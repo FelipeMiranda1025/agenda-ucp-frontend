@@ -1,70 +1,144 @@
+# Plan: Eliminación del formulario filtro, lógica dinámica de recomendaciones y reglas de bloqueo
 
+## Resumen
 
-# Plan: Formulario filtro siempre visible, botón Omitir, limpieza de agendas y total semanal global
+Eliminar el formulario filtro (PreAgendaQuestionnaire), ir directo a la página principal tras login, extender inactividad a 30 min, y reemplazar la lógica de horas obligatorias por un sistema de recomendaciones dinámicas basado en los registros activos en investigación, administrativas y formación docentes.
 
-## Cambios a implementar
+---
 
-### 1. Formulario filtro siempre visible al login
-**Archivo:** `src/App.tsx`
+## Bloque 1: Inactividad 30 minutos
 
-Cambiar la lógica de `AppContent` para que siempre muestre el `PreAgendaQuestionnaire` al iniciar sesión, independientemente de si `config.confirmed` es `true`. El formulario se mostrará como paso obligatorio post-login cada vez.
+**Archivo:** `src/components/InactivityWarning.tsx`
 
-- Eliminar la condición `!config || !config.confirmed` como gatekeeper
-- Mostrar siempre el cuestionario tras login y antes de cargar la agenda
-- Usar un estado local `showQuestionnaire` que inicie en `true` y se ponga en `false` al confirmar u omitir
+- Cambiar `INACTIVITY_TIMEOUT` de 5min a 30min (30 * 60 * 1000)
+- `WARNING_AT` se ajusta automáticamente (29 min)
 
-### 2. Botón "Omitir" en el formulario filtro
-**Archivo:** `src/components/PreAgendaQuestionnaire.tsx`
+## Bloque 2: Eliminar formulario filtro, login directo a página principal
 
-- Agregar prop `onSkip` además de `onConfirmed`
-- En el footer, junto al botón "Confirmar y continuar", agregar un botón secundario "Omitir"
-- Al presionar "Omitir", se invoca `onSkip()`
+**Archivos:** `src/App.tsx`
 
-### 3. Lógica de "Omitir": verificar agendas existentes
-**Archivo:** `src/App.tsx`
+- Eliminar el estado `showQuestionnaire` y toda la lógica del `PreAgendaQuestionnaire`
+- Tras autenticación, ir directo al `AgendaProvider` + `BrowserRouter` con las rutas
+- Ya no se importa `PreAgendaQuestionnaire`
 
-Al ejecutar `onSkip`:
-1. Consultar la tabla `agendas` filtrando por `docente_cc = user.id`
-2. Si existen agendas → cerrar el formulario y cargar la agenda con los registros guardados
-3. Si no existen agendas → mostrar un `toast.error("No existen agendas diligenciadas. Obligatorio llenar este formulario filtro.")` y mantener el formulario visible
+## Bloque 3: Eliminar obligatoriedad de horas docencia directa
 
-### 4. Borrar todas las agendas de la base de datos
-**Migración SQL:**
+**Archivos:** `src/components/SummaryPanel.tsx`, `src/components/SubfunctionForm.tsx`
 
-```sql
-DELETE FROM public.agendas;
-DELETE FROM public.agenda_comments;
+### SummaryPanel.tsx
+
+- Eliminar la validación de `handleConfirm` que exige horas exactas de docencia directa (líneas 35-52)
+- Eliminar imports de `useDocenteConfig`, `calculateHours`, `DocenteResponses` si ya no se usan
+
+### SubfunctionForm.tsx
+
+- Eliminar el bloque "Total de horas semanales" actual (líneas 677-696)
+- Eliminar las variables `dynamicRequirement`, `requirement`, `weeklyHoursColor`, `totalWeeklyHours` relacionadas con la validación obligatoria
+- Eliminar import de `useDocenteConfig`, `calculateHours`, `DocenteResponses`
+
+## Bloque 4: Mensajes recomendativos dinámicos en docencia directa
+
+**Archivo:** `src/components/SubfunctionForm.tsx`
+
+Reemplazar el bloque eliminado con dos mensajes en gris debajo del formulario de docencia directa:
+
+```
+Se recomienda Xh de docencia directa
+Se recomienda Y asignaturas
 ```
 
-Ejecutar con la herramienta de inserción (no migración, es operación de datos).
+**Valores por defecto:** X=16, Y=5. Estos valores cambian dinámicamente según registros en el panel resumen.
 
-### 5. Total semanal global encima de los totalizadores en el panel de resumen
-**Archivo:** `src/components/SummaryPanel.tsx`
+### Motor de recomendaciones (nuevo cálculo en SubfunctionForm o hook dedicado)
 
-- Calcular la sumatoria semanal de TODOS los registros: `records.reduce((sum, r) => sum + (Number(r.data["horasSemana"]) || r.totalHoras / 18), 0)`
-- Mostrar encima de la sección de métricas existente (Total semestral, Promedio/semana, etc.):
-  ```
-  Total semanal global: XXh
-  ```
-- Usar estilo destacado (font-bold, text-primary) para diferenciarlo
+Se lee `records` del `AgendaContext` y `user.rolId` del `AuthContext` para calcular:
 
-## Detalle técnico
+**Reglas de Investigación (cualquier rol):**
 
-### `src/App.tsx`
-- Agregar `useState<boolean>(true)` para `showQuestionnaire`
-- Mover la verificación de agendas existentes al handler `handleSkip`
-- Usar `supabase.from("agendas").select("id").eq("docente_cc", user.id).limit(1)` para la consulta
 
-### `src/components/PreAgendaQuestionnaire.tsx`
-- Agregar prop `onSkip?: () => void`
-- Botón "Omitir" con variant="outline" en el footer
+| Registros en investigación        | Horas | Asignaturas |
+| --------------------------------- | ----- | ----------- |
+| 1x Investigador principal         | 10h   | 3           |
+| 2x Investigador principal         | 4h    | 1           |
+| 1x Co-investigador                | 13h   | 4           |
+| 2x Co-investigador                | 9h    | 3           |
+| 3x Co-investigador                | 6h    | 2           |
+| 1x Inv. Principal + 2x Co-invest. | 3h    | 1           |
 
-### `src/components/SummaryPanel.tsx`
-- Nueva fila en la sección de métricas, antes de "Total semestral"
 
-## Orden de ejecución
-1. Migración: borrar agendas y comentarios
-2. Modificar `PreAgendaQuestionnaire` (agregar botón Omitir)
-3. Modificar `App.tsx` (formulario siempre visible + lógica de omitir)
-4. Modificar `SummaryPanel` (total semanal global)
+**Reglas Administrativas (aplican según rol y tienen PRIORIDAD sobre investigación):**
 
+
+| Actividad (rol)         | Horas | Asignaturas |
+| ----------------------- | ----- | ----------- |
+| Director depto/pregrado | 6h    | 2           |
+| Director posgrado x1    | 11h   | 4           |
+| Director posgrado x2    | 6h    | 3           |
+| Coordinador área        | 13h   | 4           |
+| Director doctorado      | 2h    | 1           |
+| Decano facultad         | 2h    | 1           |
+| Vicerrector académico   | 2h    | 1           |
+
+
+Cuando se selecciona una actividad administrativa, su valor de recomendación **prevalece** sobre investigación (no se acumulan). Si hay admin + investigación, se usa el valor de la administrativa.
+
+**Reglas Formación Docentes (cualquier rol, prevalece sobre investigación):**
+
+
+| Actividad            | Horas | Asignaturas |
+| -------------------- | ----- | ----------- |
+| Estudios maestría    | 12h   | 4           |
+| Estudios pedagógicos | 13h   | 4           |
+| Estudios doctorado   | 8h    | 2           |
+
+
+Formación docentes también prevalece sobre investigación.
+
+## Bloque 5: Reglas de bloqueo en formularios
+
+### Investigación (`investigacion`)
+
+- Máx 2 registros de "Investigador principal"
+- Máx 3 registros de "Co-investigador"  
+- Si hay 2x Inv. Principal → bloquear Co-investigador
+- Si hay 3x Co-investigador → bloquear Inv. Principal
+- Si hay 1x Inv. Principal + 2x Co-investigador → bloquear ambos
+- Implementar filtrando las opciones del dropdown según registros existentes
+
+### Administrativas (`administrativas`)
+
+- Máx 1 registro por actividad (excepto "Director de programa posgrado" que permite 2)
+- Si hay cualquier actividad que NO sea dir. posgrado → bloquear las demás (excepto dir. posgrado)
+- Si hay 2x dir. posgrado → bloquear todas las demás
+- Implementar filtrando opciones del dropdown
+
+### Formación docentes (`formacion-docentes`)
+
+- Máx 1 registro por actividad
+- Si hay 1 actividad → bloquear todas las demás
+- Si "Estudios doctorado" seleccionado → bloquear formularios: investigación, proyección social, administrativas (deshabilitar completamente esos formularios)
+
+## Bloque 6: Bloqueo de formularios por estudios doctorado
+
+**Archivo:** `src/context/AgendaContext.tsx` o `src/components/SubfunctionForm.tsx`
+
+- Exponer función `isFormBlocked(subfunctionId)` que retorna `true` si hay un registro de "Estudios doctorado" en formación-docentes
+- En SubfunctionForm, si el formulario está bloqueado, mostrar mensaje y deshabilitar inputs
+
+## Bloque 7: Color gris para mensajes recomendativos
+
+- Todos los mensajes "Se recomienda..." usan `text-muted-foreground` (gris) en lugar de azul
+- Aplica a: docencia directa, trabajos de grado, prácticas académicas
+
+---
+
+## Archivos a modificar
+
+
+| Archivo                                | Cambio                                                                                                         |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `src/components/InactivityWarning.tsx` | Timeout 30 min                                                                                                 |
+| `src/App.tsx`                          | Eliminar PreAgendaQuestionnaire, login directo                                                                 |
+| `src/components/SubfunctionForm.tsx`   | Eliminar validación obligatoria, agregar recomendaciones dinámicas, reglas de bloqueo en dropdowns, color gris |
+| `src/components/SummaryPanel.tsx`      | Eliminar validación obligatoria de horas DD                                                                    |
+| `src/context/AgendaContext.tsx`        | Función para verificar bloqueo por estudios doctorado                                                          |
