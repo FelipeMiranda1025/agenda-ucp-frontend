@@ -210,17 +210,40 @@ const Index = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0"
+                  className="relative text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0"
                 >
                   <MessageSquare className="h-5 w-5" />
+                  {isReturnedAgenda && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                      1
+                    </span>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72">
+              <DropdownMenuContent align="end" className="w-80">
                 <div className="px-3 py-2 text-sm font-semibold">{t("messages.title")}</div>
                 <DropdownMenuSeparator />
-                <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                  {t("messages.empty")}
-                </div>
+                {isReturnedAgenda ? (
+                  <div className="px-3 py-2 text-xs border-b bg-destructive/10">
+                    <p className="text-foreground font-medium">
+                      {t("messages.returned")} — {reviewerName || agendaView?.reviewer_cc}
+                    </p>
+                    {agendaView?.reviewer_comment && (
+                      <p className="text-muted-foreground mt-1 whitespace-pre-wrap">
+                        {agendaView.reviewer_comment}
+                      </p>
+                    )}
+                    {agendaView?.reviewed_at && (
+                      <span className="text-muted-foreground text-[10px]">
+                        {new Date(agendaView.reviewed_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                    {t("messages.empty")}
+                  </div>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
