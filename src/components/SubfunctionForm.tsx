@@ -26,17 +26,16 @@ import { useRecommendations, getBlockedInvestigationActivities, getBlockedAdminA
 // Persistent form data across subfunctions
 const formDataStore: { [subfunctionId: string]: { [key: string]: string | number } } = {};
 
-function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boolean; getSchedule: () => ScheduleData | null }) {
-  const { user } = useAuth();
+function ScheduleReadOnlyView({ hasSchedule, getSchedule, displayName }: { hasSchedule: boolean; getSchedule: () => ScheduleData | null; displayName: string }) {
   const { t } = useLanguage();
   if (!hasSchedule) {
     return (
       <div className="space-y-6">
         <div className="bg-ucp-red px-6 py-4 rounded-lg">
            <h1 className="text-xl font-bold text-primary-foreground">{t("schedule.title")}</h1>
-          {user && (
+          {displayName && (
             <p className="text-sm text-primary-foreground/80 mt-1">
-              {t("form.docente")}: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
+              {t("form.docente")}: {displayName}
             </p>
           )}
         </div>
@@ -57,9 +56,9 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
     <div className="space-y-6">
       <div className="bg-ucp-red px-6 py-4 rounded-lg">
         <h1 className="text-xl font-bold text-primary-foreground">{t("schedule.title")}</h1>
-        {user && (
+        {displayName && (
           <p className="text-sm text-primary-foreground/80 mt-1">
-            {t("form.docente")}: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
+            {t("form.docente")}: {displayName}
           </p>
         )}
         <p className="text-xs text-primary-foreground/60 mt-1">
@@ -106,9 +105,13 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
 }
 
 export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
-  const { activeSubfunction, records, dropdownOptions, addDropdownOption, addRecord, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord } = useAgenda();
+  const { activeSubfunction, records, dropdownOptions, addDropdownOption, addRecord, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord, selectedDocente } = useAgenda();
   const { user } = useAuth();
   const { t, language } = useLanguage();
+
+  const displayName = selectedDocente && selectedDocente.firstName !== "Yo"
+    ? [selectedDocente.firstName, selectedDocente.secondName, selectedDocente.firstLastName].filter(Boolean).join(' ')
+    : user ? [user.firstName, user.firstLastName].filter(Boolean).join(' ') : '';
   const resolvedId = subfunctionId || activeSubfunction;
   const [formData, setFormData] = useState<{ [key: string]: string | number }>(() => {
     return formDataStore[resolvedId] || {};
@@ -390,7 +393,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   if (!config) return null;
 
   if (resolvedId === "distribucion-horaria") {
-    return <ScheduleReadOnlyView hasSchedule={hasSchedule} getSchedule={getSchedule} />;
+    return <ScheduleReadOnlyView hasSchedule={hasSchedule} getSchedule={getSchedule} displayName={displayName} />;
   }
 
   const handleAddOption = () => {
@@ -425,9 +428,9 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       <div className="bg-ucp-red px-6 py-4 rounded-lg flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-primary-foreground">{t(config.titleKey || config.title)}</h1>
-          {user && (
+          {displayName && (
             <p className="text-sm text-primary-foreground/80 mt-1">
-              {t("form.docente")}: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
+              {t("form.docente")}: {displayName}
             </p>
           )}
         </div>
