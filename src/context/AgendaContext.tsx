@@ -3,8 +3,9 @@ import { DropdownOption, Record as AgendaRecord, MetricasPie, ScheduleBlock, Sch
 import { initialDropdownOptions } from "@/data/initialDropdownOptions";
 import { subfunctions } from "@/data/subfunctions";
 import { DocentePlanta } from "@/types/docentePlanta";
-import { docentesPlanta } from "@/data/docentesPlanta";
 import { supabase } from "@/integrations/supabase/client";
+import { useSubordinatesWithNames, SubordinateDocente } from "@/hooks/useDatabase";
+import { useAuth } from "@/context/AuthContext";
 
 interface AgendaContextType {
   dropdownOptions: DropdownOption[];
@@ -43,15 +44,49 @@ export const useAgenda = () => {
 };
 
 export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  const { data: subordinates = [] } = useSubordinatesWithNames(user?.id);
+
+  // Build dynamic docentes list: "Yo" (current user) + subordinates
+  const docentesList = useMemo<DocentePlanta[]>(() => {
+    const list: DocentePlanta[] = [];
+    if (user) {
+      list.push({
+        id: user.id,
+        firstName: "Yo",
+        secondName: "",
+        firstLastName: "",
+        secondLastName: "",
+      });
+    }
+    for (const sub of subordinates) {
+      list.push({
+        id: sub.id,
+        firstName: sub.firstName,
+        secondName: sub.secondName,
+        firstLastName: sub.firstLastName,
+        secondLastName: sub.secondLastName,
+      });
+    }
+    return list;
+  }, [user, subordinates]);
+
   const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>(initialDropdownOptions);
   const [recordsByDocente, setRecordsByDocente] = useState<{ [docenteId: string]: AgendaRecord[] }>({});
   const [scheduleByDocente, setScheduleByDocente] = useState<{ [docenteId: string]: ScheduleData }>({});
   const [horasSemestreDefecto, setHorasSemestreDefecto] = useState(920);
   const [activeSubfunction, setActiveSubfunction] = useState("docencia-directa");
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedDocente, setSelectedDocente] = useState<DocentePlanta | null>(docentesPlanta[0]);
+  const [selectedDocente, setSelectedDocente] = useState<DocentePlanta | null>(null);
   const [editingRecord, setEditingRecord] = useState<AgendaRecord | null>(null);
   const [hasPendingAgendaView, setHasPendingAgendaView] = useState(false);
+
+  // Auto-select first docente (Yo) when list changes and no selection
+  useEffect(() => {
+    if (!selectedDocente && docentesList.length > 0) {
+      setSelectedDocente(docentesList[0]);
+    }
+  }, [docentesList, selectedDocente]);
 
   const docenteId = selectedDocente?.id ?? "";
   const records = useMemo(() => recordsByDocente[docenteId] || [], [recordsByDocente, docenteId]);
@@ -280,7 +315,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setSearchTerm,
         selectedDocente,
         setSelectedDocente,
-        docentesList: docentesPlanta,
+        docentesList,
         saveSchedule,
         getSchedule,
         hasSchedule,

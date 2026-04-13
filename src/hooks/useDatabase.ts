@@ -449,6 +449,60 @@ export function usePendingAgendaViewsForSupervisor(supervisorCc?: string) {
   });
 }
 
+// =============================================
+// Subordinates with user data (for dynamic docente dropdown)
+// =============================================
+
+export interface SubordinateDocente {
+  id: string; // cc
+  firstName: string;
+  secondName: string;
+  firstLastName: string;
+  secondLastName: string;
+}
+
+export function useSubordinatesWithNames(supervisorCc?: string) {
+  return useQuery<SubordinateDocente[]>({
+    queryKey: ["subordinates_with_names", supervisorCc],
+    queryFn: async () => {
+      if (!supervisorCc) return [];
+
+      // 1. Get supervisor numeric ID
+      const { data: supUser, error: supErr } = await supabase
+        .from("users")
+        .select("id")
+        .eq("cc", supervisorCc)
+        .maybeSingle();
+      if (supErr || !supUser) return [];
+
+      // 2. Get subordinate user_ids
+      const { data: hierarchy, error: hErr } = await (supabase.from("user_hierarchy" as any) as any)
+        .select("user_id")
+        .eq("supervisor_id", supUser.id);
+      if (hErr || !hierarchy || hierarchy.length === 0) return [];
+
+      const subIds = hierarchy.map((h: any) => h.user_id);
+
+      // 3. Get full user data
+      const { data: users, error: uErr } = await supabase
+        .from("users")
+        .select("cc, first_name, second_name, first_last_name, second_last_name")
+        .in("id", subIds);
+      if (uErr || !users) return [];
+
+      return users.map((u: any) => ({
+        id: u.cc,
+        firstName: u.first_name || "",
+        secondName: u.second_name || "",
+        firstLastName: u.first_last_name || "",
+        secondLastName: u.second_last_name || "",
+      }));
+    },
+    enabled: !!supervisorCc,
+    staleTime: 1000 * 60 * 30,
+  });
+}
+
 export function useUpdateAgendaViewStatus() {
   const qc = useQueryClient();
   return useMutation({

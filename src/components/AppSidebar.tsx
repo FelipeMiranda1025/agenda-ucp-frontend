@@ -112,7 +112,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
           <SelectContent>
             {docentesList.map((d) => (
               <SelectItem key={d.id} value={d.id}>
-                {getDocenteFullName(d)}
+                {d.firstName === "Yo" ? "Yo" : getDocenteFullName(d)}
               </SelectItem>
             ))}
           </SelectContent>
