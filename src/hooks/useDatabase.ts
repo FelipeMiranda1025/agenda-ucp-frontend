@@ -503,6 +503,27 @@ export function useSubordinatesWithNames(supervisorCc?: string) {
   });
 }
 
+// Resolve a user's full name from their cc
+export function useUserNameByCc(cc?: string | null) {
+  return useQuery<string | null>({
+    queryKey: ["user_name_by_cc", cc],
+    queryFn: async () => {
+      if (!cc) return null;
+      const { data, error } = await supabase
+        .from("users")
+        .select("first_name, second_name, first_last_name, second_last_name")
+        .eq("cc", cc)
+        .maybeSingle();
+      if (error || !data) return null;
+      return [data.first_name, data.second_name, data.first_last_name, data.second_last_name]
+        .filter(Boolean)
+        .join(" ");
+    },
+    enabled: !!cc,
+    staleTime: 1000 * 60 * 30,
+  });
+}
+
 export function useUpdateAgendaViewStatus() {
   const qc = useQueryClient();
   return useMutation({
