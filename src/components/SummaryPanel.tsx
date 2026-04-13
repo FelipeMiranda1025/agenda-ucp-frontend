@@ -53,26 +53,6 @@ export function SummaryPanel() {
       );
       return;
     }
-    // Auto-insert conflicts/observations as agenda comments
-    if (docenteConfig && savedAgendas.length > 0) {
-      const allNotes = [
-        ...(docenteConfig.conflicts || []),
-        ...(docenteConfig.observations || []),
-      ];
-      const targetAgendaId = savedAgendas[0].id;
-      for (const note of allNotes) {
-        try {
-          await insertComment.mutateAsync({
-            agenda_id: targetAgendaId,
-            reviewer_cc: user?.id || "",
-            comment: `[Auto] ${note}`,
-          });
-        } catch (err) {
-          console.error("Error inserting conflict comment:", err);
-        }
-      }
-    }
-
     navigate("/schedule");
   };
 
