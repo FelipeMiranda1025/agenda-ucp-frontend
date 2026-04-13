@@ -11,8 +11,6 @@ import { useAgendas, useInsertAgendaComment } from "@/hooks/useDatabase";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { translateOption } from "@/i18n/optionTranslations";
-import { toast } from "sonner";
-import { translateOption } from "@/i18n/optionTranslations";
 
 export function SummaryPanel() {
   const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord } = useAgenda();
