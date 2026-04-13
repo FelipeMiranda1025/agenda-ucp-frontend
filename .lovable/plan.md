@@ -1,32 +1,30 @@
 
 
-# Plan: Botones Retornar/Aprobar para supervisor y Confirmar Datos para agenda propia
+# Plan: Agregar sección "Docente" al menú lateral izquierdo
 
 ## Resumen
 
-Cuando el director está revisando la agenda de un subordinado, reemplazar el botón "Confirmar Datos" por dos botones: "Retornar" (amarillo, requiere observación obligatoria) y "Aprobar" (verde, envía al decano cc=1234567890). Al volver a su propia agenda, se muestra el botón original "Confirmar Datos".
+Mover el dropdown de selección de docente desde la parte inferior del sidebar (border-t) a una nueva sección dentro del área scrollable, al mismo nivel visual que "Producción", "Actividades diferentes" y "Horario de permanencia". El título será "Docente" con el mismo estilo uppercase.
 
 ## Cambios
 
-### `src/components/SummaryPanel.tsx`
+### `src/components/AppSidebar.tsx`
 
-- Detectar si `selectedDocente` es un subordinado (`selectedDocente.firstName !== "Yo"`)
-- **Si es subordinado**: mostrar dos botones lado a lado:
-  - **Retornar** (izquierda, color `#a8822c`): antes de ejecutar, validar que el campo de observaciones/comentarios no esté vacío. Si está vacío, mostrar toast de error. Si tiene observación, llamar `useUpdateAgendaViewStatus` con `status: "returned"`, `reviewerCc: user.id`, `reviewerComment: observación`
-  - **Aprobar** (derecha, color verde): llamar `useUpdateAgendaViewStatus` con `status: "approved"`, `reviewerCc: user.id`. Esto marca la agenda como aprobada por el director para que el decano (cc=1234567890) la revise después
-- **Si es "Yo"**: mantener el botón "Confirmar Datos" actual sin cambios
-
-- Agregar un campo `Textarea` para la observación obligatoria al retornar, visible solo cuando se está revisando agenda de subordinado
-- Importar `useUpdateAgendaViewStatus` y `useAgendaView` con el cc del subordinado para obtener el `id` de la agenda_view a actualizar
+- Eliminar el bloque inferior fijo (`div.p-4.border-t`) que contiene el dropdown de docentes (líneas 101-131)
+- Agregar una nueva sección dentro del `div.flex-1.overflow-auto` (después de "Horario de permanencia") con:
+  - Título "Docente" con el mismo estilo `font-semibold uppercase text-xs tracking-wider text-muted-foreground`
+  - Debajo, una lista de botones con los nombres de cada docente subordinado y "Yo" (similar al estilo de los items de subfunciones)
+  - Al hacer click en un nombre, se ejecuta la misma lógica actual: `setSelectedDocente(d)` + `loadFromAgendaView()` + toast si no hay agenda
+  - El docente actualmente seleccionado se resaltará con el estilo `bg-accent`
 
 ### `src/i18n/translations.ts`
 
-- Agregar claves: `summary.return` ("Retornar"), `summary.approve` ("Aprobar"), `summary.observationRequired` ("La observación es obligatoria para retornar la agenda"), `summary.returnSuccess`, `summary.approveSuccess`
+- Agregar clave `sidebar.docenteSection` con valor "Docente" / "Teacher"
 
 ## Archivos a modificar
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/SummaryPanel.tsx` | Condicional para mostrar Retornar+Aprobar vs Confirmar Datos; textarea de observación; lógica de retorno/aprobación |
-| `src/i18n/translations.ts` | Nuevas claves de traducción |
+| `src/components/AppSidebar.tsx` | Reemplazar dropdown inferior por sección "Docente" en el área scrollable |
+| `src/i18n/translations.ts` | Nueva clave de traducción |
 
