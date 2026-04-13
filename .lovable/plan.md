@@ -1,144 +1,111 @@
-# Plan: Eliminación del formulario filtro, lógica dinámica de recomendaciones y reglas de bloqueo
+
+
+# Plan: Diálogo de confirmación, persistencia de agenda y flujo de aprobación
 
 ## Resumen
-
-Eliminar el formulario filtro (PreAgendaQuestionnaire), ir directo a la página principal tras login, extender inactividad a 30 min, y reemplazar la lógica de horas obligatorias por un sistema de recomendaciones dinámicas basado en los registros activos en investigación, administrativas y formación docentes.
-
----
-
-## Bloque 1: Inactividad 30 minutos
-
-**Archivo:** `src/components/InactivityWarning.tsx`
-
-- Cambiar `INACTIVITY_TIMEOUT` de 5min a 30min (30 * 60 * 1000)
-- `WARNING_AT` se ajusta automáticamente (29 min)
-
-## Bloque 2: Eliminar formulario filtro, login directo a página principal
-
-**Archivos:** `src/App.tsx`
-
-- Eliminar el estado `showQuestionnaire` y toda la lógica del `PreAgendaQuestionnaire`
-- Tras autenticación, ir directo al `AgendaProvider` + `BrowserRouter` con las rutas
-- Ya no se importa `PreAgendaQuestionnaire`
-
-## Bloque 3: Eliminar obligatoriedad de horas docencia directa
-
-**Archivos:** `src/components/SummaryPanel.tsx`, `src/components/SubfunctionForm.tsx`
-
-### SummaryPanel.tsx
-
-- Eliminar la validación de `handleConfirm` que exige horas exactas de docencia directa (líneas 35-52)
-- Eliminar imports de `useDocenteConfig`, `calculateHours`, `DocenteResponses` si ya no se usan
-
-### SubfunctionForm.tsx
-
-- Eliminar el bloque "Total de horas semanales" actual (líneas 677-696)
-- Eliminar las variables `dynamicRequirement`, `requirement`, `weeklyHoursColor`, `totalWeeklyHours` relacionadas con la validación obligatoria
-- Eliminar import de `useDocenteConfig`, `calculateHours`, `DocenteResponses`
-
-## Bloque 4: Mensajes recomendativos dinámicos en docencia directa
-
-**Archivo:** `src/components/SubfunctionForm.tsx`
-
-Reemplazar el bloque eliminado con dos mensajes en gris debajo del formulario de docencia directa:
-
-```
-Se recomienda Xh de docencia directa
-Se recomienda Y asignaturas
-```
-
-**Valores por defecto:** X=16, Y=5. Estos valores cambian dinámicamente según registros en el panel resumen.
-
-### Motor de recomendaciones (nuevo cálculo en SubfunctionForm o hook dedicado)
-
-Se lee `records` del `AgendaContext` y `user.rolId` del `AuthContext` para calcular:
-
-**Reglas de Investigación (cualquier rol):**
-
-
-| Registros en investigación        | Horas | Asignaturas |
-| --------------------------------- | ----- | ----------- |
-| 1x Investigador principal         | 10h   | 3           |
-| 2x Investigador principal         | 4h    | 1           |
-| 1x Co-investigador                | 13h   | 4           |
-| 2x Co-investigador                | 9h    | 3           |
-| 3x Co-investigador                | 6h    | 2           |
-| 1x Inv. Principal + 2x Co-invest. | 3h    | 1           |
-
-
-**Reglas Administrativas (aplican según rol y tienen PRIORIDAD sobre investigación):**
-
-
-| Actividad (rol)         | Horas | Asignaturas |
-| ----------------------- | ----- | ----------- |
-| Director depto/pregrado | 6h    | 2           |
-| Director posgrado x1    | 11h   | 4           |
-| Director posgrado x2    | 6h    | 3           |
-| Coordinador área        | 13h   | 4           |
-| Director doctorado      | 2h    | 1           |
-| Decano facultad         | 2h    | 1           |
-| Vicerrector académico   | 2h    | 1           |
-
-
-Cuando se selecciona una actividad administrativa, su valor de recomendación **prevalece** sobre investigación (no se acumulan). Si hay admin + investigación, se usa el valor de la administrativa.
-
-**Reglas Formación Docentes (cualquier rol, prevalece sobre investigación):**
-
-
-| Actividad            | Horas | Asignaturas |
-| -------------------- | ----- | ----------- |
-| Estudios maestría    | 12h   | 4           |
-| Estudios pedagógicos | 13h   | 4           |
-| Estudios doctorado   | 8h    | 2           |
-
-
-Formación docentes también prevalece sobre investigación.
-
-## Bloque 5: Reglas de bloqueo en formularios
-
-### Investigación (`investigacion`)
-
-- Máx 2 registros de "Investigador principal"
-- Máx 3 registros de "Co-investigador"  
-- Si hay 2x Inv. Principal → bloquear Co-investigador
-- Si hay 3x Co-investigador → bloquear Inv. Principal
-- Si hay 1x Inv. Principal + 2x Co-investigador → bloquear ambos
-- Implementar filtrando las opciones del dropdown según registros existentes
-
-### Administrativas (`administrativas`)
-
-- Máx 1 registro por actividad (excepto "Director de programa posgrado" que permite 2)
-- Si hay cualquier actividad que NO sea dir. posgrado → bloquear las demás (excepto dir. posgrado)
-- Si hay 2x dir. posgrado → bloquear todas las demás
-- Implementar filtrando opciones del dropdown
-
-### Formación docentes (`formacion-docentes`)
-
-- Máx 1 registro por actividad
-- Si hay 1 actividad → bloquear todas las demás
-- Si "Estudios doctorado" seleccionado → bloquear formularios: investigación, proyección social, administrativas (deshabilitar completamente esos formularios)
-
-## Bloque 6: Bloqueo de formularios por estudios doctorado
-
-**Archivo:** `src/context/AgendaContext.tsx` o `src/components/SubfunctionForm.tsx`
-
-- Exponer función `isFormBlocked(subfunctionId)` que retorna `true` si hay un registro de "Estudios doctorado" en formación-docentes
-- En SubfunctionForm, si el formulario está bloqueado, mostrar mensaje y deshabilitar inputs
-
-## Bloque 7: Color gris para mensajes recomendativos
-
-- Todos los mensajes "Se recomienda..." usan `text-muted-foreground` (gris) en lugar de azul
-- Aplica a: docencia directa, trabajos de grado, prácticas académicas
+Tras confirmar la agenda (910-930h), mostrar un diálogo de éxito antes del horario. Persistir la agenda en una nueva tabla `agenda_views`. Al re-loguearse, cargar la vista guardada. Si re-confirma sin respuesta, mostrar mensaje "Ups". Integrar notificaciones con el flujo de aprobación del supervisor.
 
 ---
 
-## Archivos a modificar
+## 1. Nueva tabla `agenda_views` (migración)
 
+```sql
+CREATE TABLE public.agenda_views (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_cc TEXT NOT NULL,
+  records JSONB NOT NULL DEFAULT '[]',
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'approved', 'returned'
+  reviewer_cc TEXT,
+  reviewer_comment TEXT,
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
-| Archivo                                | Cambio                                                                                                         |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `src/components/InactivityWarning.tsx` | Timeout 30 min                                                                                                 |
-| `src/App.tsx`                          | Eliminar PreAgendaQuestionnaire, login directo                                                                 |
-| `src/components/SubfunctionForm.tsx`   | Eliminar validación obligatoria, agregar recomendaciones dinámicas, reglas de bloqueo en dropdowns, color gris |
-| `src/components/SummaryPanel.tsx`      | Eliminar validación obligatoria de horas DD                                                                    |
-| `src/context/AgendaContext.tsx`        | Función para verificar bloqueo por estudios doctorado                                                          |
+ALTER TABLE public.agenda_views ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies (lectura/escritura para todos los autenticados y anon, igual que agendas)
+CREATE POLICY "Anyone can read agenda_views" ON public.agenda_views FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Anyone can insert agenda_views" ON public.agenda_views FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Anyone can update agenda_views" ON public.agenda_views FOR UPDATE TO anon, authenticated USING (true);
+CREATE POLICY "Anyone can delete agenda_views" ON public.agenda_views FOR DELETE TO anon, authenticated USING (true);
+
+-- Trigger updated_at
+CREATE TRIGGER update_agenda_views_updated_at
+  BEFORE UPDATE ON public.agenda_views
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+```
+
+## 2. Diálogo de confirmación exitosa
+**Archivo:** `src/components/ConfirmSuccessDialog.tsx` (nuevo)
+
+- Dialog/modal centrado con:
+  - Icono CheckCircle grande verde
+  - Texto grande "Se cargó con éxito"
+  - Subtexto "Espera que la agenda sea aprobada"
+  - Botón "Salir" que cierra el diálogo y navega a `/schedule`
+- Props: `open`, `onClose`, `variant: 'success' | 'pending'`
+- Variante "pending": emoji ❔, texto "Ups. Aún no dan respuesta"
+
+## 3. Lógica en SummaryPanel
+**Archivo:** `src/components/SummaryPanel.tsx`
+
+- Al confirmar (910-930h válido):
+  1. Guardar/actualizar registro en `agenda_views` con `user_cc`, `records` (JSON de todos los records actuales), `status: 'pending'`
+  2. Mostrar `ConfirmSuccessDialog` variante `success`
+  3. Al cerrar el diálogo, navegar a `/schedule`
+- Si ya existe un `agenda_views` con `status: 'pending'` para ese usuario:
+  - Mostrar variante `pending` ("Ups. Aún no dan respuesta")
+
+## 4. Carga de agenda al re-loguearse
+**Archivo:** `src/context/AgendaContext.tsx`
+
+- Nuevo efecto: al montar con un `docenteId`, consultar `agenda_views` donde `user_cc = docenteId` y `status = 'pending'`
+- Si existe, cargar los `records` del JSONB en el estado local `recordsByDocente`
+- Exponer `loadFromAgendaView()` y `hasPendingAgendaView` en el contexto
+
+## 5. Hooks de base de datos
+**Archivo:** `src/hooks/useDatabase.ts`
+
+- `useAgendaView(userCc)` — query para obtener la vista guardada
+- `useUpsertAgendaView()` — mutation para insertar/actualizar
+- `useUpdateAgendaViewStatus()` — mutation para que el supervisor cambie el status
+
+## 6. Notificaciones de respuesta del supervisor
+**Archivo:** `src/pages/Index.tsx`
+
+- Modificar el cálculo de `unreadCount` para incluir cambios en `agenda_views` donde `status !== 'pending'` y el usuario no haya leído la notificación
+- Solo se genera una notificación cuando el supervisor (según `user_hierarchy`) cambia el `status` a `approved` o `returned`
+- Si el supervisor no ha revisado (`status` sigue en `pending`), no llega notificación al docente
+
+## 7. Tipos
+**Archivo:** `src/types/database.ts`
+
+```typescript
+export interface DbAgendaView {
+  id: string;
+  user_cc: string;
+  records: Record<string, any>[];
+  status: 'pending' | 'approved' | 'returned';
+  reviewer_cc: string | null;
+  reviewer_comment: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+```
+
+---
+
+## Archivos a modificar/crear
+
+| Archivo | Cambio |
+|---|---|
+| Migración SQL | Crear tabla `agenda_views` con RLS |
+| `src/types/database.ts` | Tipo `DbAgendaView` |
+| `src/components/ConfirmSuccessDialog.tsx` | Nuevo componente con variantes success/pending |
+| `src/components/SummaryPanel.tsx` | Lógica de guardado en `agenda_views` + mostrar diálogo |
+| `src/hooks/useDatabase.ts` | Hooks para `agenda_views` |
+| `src/context/AgendaContext.tsx` | Cargar records desde `agenda_views` al montar |
+| `src/pages/Index.tsx` | Notificaciones basadas en status de `agenda_views` |
+
