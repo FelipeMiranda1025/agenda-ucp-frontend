@@ -4,6 +4,7 @@ import { initialDropdownOptions } from "@/data/initialDropdownOptions";
 import { subfunctions } from "@/data/subfunctions";
 import { DocentePlanta } from "@/types/docentePlanta";
 import { docentesPlanta } from "@/data/docentesPlanta";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AgendaContextType {
   dropdownOptions: DropdownOption[];
