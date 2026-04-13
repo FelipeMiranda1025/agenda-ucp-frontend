@@ -38,13 +38,19 @@ const Index = () => {
   // Global comments & notifications
   const { data: allComments = [] } = useAllAgendaComments();
   const markRead = useMarkCommentsRead();
+  const { data: agendaView } = useAgendaView(user?.id);
 
   const unreadCount = useMemo(() => {
     if (!user) return 0;
-    return allComments.filter(
+    let count = allComments.filter(
       (c) => c.reviewer_cc !== user.id && !(c.read_by || []).includes(user.id)
     ).length;
-  }, [allComments, user]);
+    // Add notification if agenda_views status changed from pending
+    if (agendaView && agendaView.status !== "pending") {
+      count += 1;
+    }
+    return count;
+  }, [allComments, user, agendaView]);
 
   const handleOpenNotifications = () => {
     if (!user || unreadCount === 0) return;
