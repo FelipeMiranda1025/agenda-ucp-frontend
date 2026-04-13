@@ -1,51 +1,55 @@
 
 
-# Plan: Notificaciones clickeables, dropdown de docentes subordinados y carga de registros
+# Plan: Mostrar nombre del docente seleccionado en formularios y resumen
 
 ## Resumen
 
-Tres cambios principales:
-1. Al hacer click en una notificación de agenda pendiente, cargar los registros del docente en el panel derecho (Resumen de Datos)
-2. En el sidebar izquierdo, reemplazar el dropdown de docentes con uno dinámico que muestre "Yo" + los docentes subordinados (para el director cc=123456789, mostrará "Yo" y el docente cc=12345678)
-3. Al seleccionar un docente en el dropdown, el Resumen de Datos carga sus registros desde `agenda_views`
+Tres cambios:
+1. En los formularios y el panel "Resumen de Datos", cuando se está revisando la agenda de un subordinado, mostrar el nombre del docente autor de la agenda en lugar del usuario logueado
+2. En el sidebar izquierdo debajo de "DOCENTE DE PLANTA", mostrar la lista de subordinados con sus nombres
+3. Al cambiar el docente seleccionado en el dropdown, cargar automáticamente su agenda pendiente
 
 ## Cambios
 
-### 1. Hacer las notificaciones clickeables (`src/pages/Index.tsx`)
+### 1. Mostrar nombre del docente seleccionado en formularios y resumen
 
-- Cada notificación de agenda pendiente será un botón/link clickeable
-- Al hacer click:
-  - Cambiar el `selectedDocente` en el contexto al docente correspondiente (cc del subordinado)
-  - Cargar los records de su `agenda_views` en `recordsByDocente`
-  - El SummaryPanel se actualizará automáticamente al cambiar el docente seleccionado
+**Archivos:** `src/components/SubfunctionForm.tsx`, `src/components/SummaryPanel.tsx`
 
-### 2. Dropdown dinámico de docentes en sidebar (`src/components/AppSidebar.tsx`)
+- Importar `useAgenda` para obtener `selectedDocente`
+- Cuando `selectedDocente` no es "Yo" (es decir, `selectedDocente.firstName !== "Yo"`), mostrar el nombre del docente seleccionado (`selectedDocente.firstName secondName firstLastName`) en lugar de `user.firstName user.firstLastName`
+- Cuando es "Yo", seguir mostrando el nombre del usuario logueado como actualmente
+- Afecta ~4 lugares en `SubfunctionForm.tsx` (líneas 39, 62, 430 y la sección de schedule) y 1 lugar en `SummaryPanel.tsx` (línea 101)
 
-- Reemplazar la lista estática `docentesPlanta` con una lista dinámica que incluye:
-  - **"Yo"**: referencia al usuario logueado (cc del usuario actual)
-  - Los docentes subordinados obtenidos de `usePendingAgendaViewsForSupervisor` o una nueva query a `user_hierarchy`
-- Para el rol `DocentePlanta` (sin subordinados), solo mostrar "Yo"
-- Para el rol `DirectorPrograma`, mostrar "Yo" + sus subordinados
+### 2. Lista de docentes en sidebar izquierdo (ya existe)
 
-### 3. Modificar `AgendaContext` para soportar docentes dinámicos
+**Archivo:** `src/components/AppSidebar.tsx`
+
+- El dropdown ya existe con "Yo" + subordinados. Verificar que se muestra correctamente debajo de "DOCENTE DE PLANTA" con los nombres completos de los subordinados
+
+### 3. Carga automática al cambiar docente (ya existe)
 
 **Archivo:** `src/context/AgendaContext.tsx`
 
-- Cambiar `docentesList` de estático (`docentesPlanta`) a dinámico, construido a partir del usuario logueado + subordinados
-- Agregar el usuario logueado como primer item con label "Yo"
-- Al seleccionar un docente del dropdown, `loadFromAgendaView` se ejecutará automáticamente para cargar sus registros guardados
+- Ya hay un `useEffect` en línea 271-278 que carga `loadFromAgendaView` al cambiar `docenteId`. Verificar que funciona correctamente
+- Ya existe el toast en `AppSidebar.tsx` cuando no hay agenda
 
-### 4. Nuevo hook para obtener subordinados (`src/hooks/useDatabase.ts`)
+## Detalle técnico
 
-- `useSubordinates(supervisorCc)`: obtiene los datos de los subordinados directos del usuario logueado desde `user_hierarchy` + `users`
-- Retorna un array de `DocentePlanta` compatible con el dropdown existente
+Crear un helper reutilizable para obtener el nombre a mostrar:
+
+```typescript
+// En cada componente que lo necesite:
+const displayName = selectedDocente && selectedDocente.firstName !== "Yo"
+  ? [selectedDocente.firstName, selectedDocente.secondName, selectedDocente.firstLastName].filter(Boolean).join(' ')
+  : [user?.firstName, user?.firstLastName].filter(Boolean).join(' ');
+```
+
+Reemplazar todas las instancias de `{[user.firstName, user.firstLastName].filter(Boolean).join(' ')}` con `{displayName}`.
 
 ## Archivos a modificar
 
 | Archivo | Cambio |
 |---|---|
-| `src/hooks/useDatabase.ts` | Nuevo hook `useSubordinates(supervisorCc)` |
-| `src/context/AgendaContext.tsx` | `docentesList` dinámico con "Yo" + subordinados; recibir user del AuthContext |
-| `src/components/AppSidebar.tsx` | Mostrar "Yo" en dropdown + subordinados dinámicos |
-| `src/pages/Index.tsx` | Notificaciones clickeables que cambian docente seleccionado y cargan registros |
+| `src/components/SubfunctionForm.tsx` | Usar nombre del docente seleccionado en ~4 encabezados de formulario |
+| `src/components/SummaryPanel.tsx` | Usar nombre del docente seleccionado en encabezado del panel |
 
