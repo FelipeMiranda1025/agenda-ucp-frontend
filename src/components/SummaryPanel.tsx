@@ -6,9 +6,10 @@ import { subfunctions } from "@/data/subfunctions";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { CheckCircle, ClipboardList, Trash2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { CheckCircle, ClipboardList, Trash2, RotateCcw, ThumbsUp } from "lucide-react";
 import { AgendaComments } from "@/components/AgendaComments";
-import { useAgendas, useInsertAgendaComment, useAgendaView, useUpsertAgendaView } from "@/hooks/useDatabase";
+import { useAgendas, useInsertAgendaComment, useAgendaView, useUpsertAgendaView, useUpdateAgendaViewStatus } from "@/hooks/useDatabase";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { translateOption } from "@/i18n/optionTranslations";
@@ -23,9 +24,16 @@ export function SummaryPanel() {
   const insertComment = useInsertAgendaComment();
   const { data: agendaView } = useAgendaView(user?.id);
   const upsertAgendaView = useUpsertAgendaView();
+  const updateAgendaViewStatus = useUpdateAgendaViewStatus();
+
+  // For subordinate review: get their agenda_view
+  const isReviewingSubordinate = selectedDocente && selectedDocente.firstName !== "Yo";
+  const subordinateCc = isReviewingSubordinate ? selectedDocente.id : undefined;
+  const { data: subordinateAgendaView } = useAgendaView(subordinateCc);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogVariant, setDialogVariant] = useState<"success" | "pending">("success");
+  const [returnObservation, setReturnObservation] = useState("");
 
   const grouped = subfunctions
     .filter((sf) => sf.sectionId !== "horario")
@@ -79,6 +87,40 @@ export function SummaryPanel() {
 
   const handleDialogClose = () => {
     setDialogOpen(false);
+  };
+
+  const handleReturn = async () => {
+    if (!returnObservation.trim()) {
+      toast.error(t("summary.observationRequired"));
+      return;
+    }
+    if (!subordinateAgendaView?.id || !user?.id) return;
+    try {
+      await updateAgendaViewStatus.mutateAsync({
+        id: subordinateAgendaView.id,
+        status: "returned",
+        reviewerCc: user.id,
+        reviewerComment: returnObservation.trim(),
+      });
+      toast.success(t("summary.returnSuccess"));
+      setReturnObservation("");
+    } catch {
+      toast.error("Error al retornar la agenda");
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!subordinateAgendaView?.id || !user?.id) return;
+    try {
+      await updateAgendaViewStatus.mutateAsync({
+        id: subordinateAgendaView.id,
+        status: "approved",
+        reviewerCc: user.id,
+      });
+      toast.success(t("summary.approveSuccess"));
+    } catch {
+      toast.error("Error al aprobar la agenda");
+    }
   };
 
   const scrollToSection = (subfunctionId: string) => {
@@ -208,15 +250,42 @@ export function SummaryPanel() {
       <AgendaComments agendaIds={savedAgendas.map(a => a.id)} />
 
       <div className="p-4 border-t">
-        <Button
-          onClick={handleConfirm}
-          className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
-        >
-          <CheckCircle className="h-4 w-4" />
-          {t("summary.confirm")}
-        </Button>
+        {isReviewingSubordinate ? (
+          <div className="space-y-3">
+            <Textarea
+              placeholder={t("summary.observationPlaceholder")}
+              value={returnObservation}
+              onChange={(e) => setReturnObservation(e.target.value)}
+              className="min-h-[60px] text-sm"
+            />
+            <div className="flex gap-2">
+              <Button
+                onClick={handleReturn}
+                className="flex-1 gap-2 text-white hover:opacity-90"
+                style={{ backgroundColor: "#a8822c" }}
+              >
+                <RotateCcw className="h-4 w-4" />
+                {t("summary.return")}
+              </Button>
+              <Button
+                onClick={handleApprove}
+                className="flex-1 gap-2 bg-green-600 hover:bg-green-700 text-white"
+              >
+                <ThumbsUp className="h-4 w-4" />
+                {t("summary.approve")}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            onClick={handleConfirm}
+            className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+          >
+            <CheckCircle className="h-4 w-4" />
+            {t("summary.confirm")}
+          </Button>
+        )}
       </div>
-
       <ConfirmSuccessDialog
         open={dialogOpen}
         onClose={handleDialogClose}

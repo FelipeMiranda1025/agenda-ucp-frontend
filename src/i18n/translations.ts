@@ -200,6 +200,14 @@ const translations: Record<string, Record<Language, string>> = {
   "comments.add": { es: "Agregar comentario", en: "Add comment" },
   "comments.empty": { es: "Sin observaciones aún", en: "No comments yet" },
   "comments.by": { es: "por", en: "by" },
+
+  // Supervisor actions
+  "summary.return": { es: "Retornar", en: "Return" },
+  "summary.approve": { es: "Aprobar", en: "Approve" },
+  "summary.observationRequired": { es: "La observación es obligatoria para retornar la agenda", en: "Observation is required to return the agenda" },
+  "summary.returnSuccess": { es: "Agenda retornada al docente para corrección", en: "Agenda returned to teacher for correction" },
+  "summary.approveSuccess": { es: "Agenda aprobada y enviada al decano", en: "Agenda approved and sent to dean" },
+  "summary.observationPlaceholder": { es: "Escribe la observación para el docente...", en: "Write observation for the teacher..." },
 };
 
 export function getTranslation(key: string, lang: Language): string {
