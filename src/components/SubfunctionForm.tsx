@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Plus, CalendarX, Eraser, ChevronsUpDown, Check, Pencil } from "lucide-react";
+import { Plus, CalendarX, Eraser, ChevronsUpDown, Check, Pencil, Lock } from "lucide-react";
 import { SubjectManagementDialog } from "@/components/SubjectManagementDialog";
 import { ActivityManagementDialog, type ActivityTableType } from "@/components/ActivityManagementDialog";
 import { cn } from "@/lib/utils";
@@ -21,8 +21,7 @@ import { toast } from "sonner";
 import { SUBFUNCTION_COLORS, HOURS, formatHour, getTranslatedDays } from "@/data/scheduleConstants";
 import { DocentePlanta } from "@/types/docentePlanta";
 import { useSubjects, useSemesters, useFaculties, useEducationLevels, useProfessionalCareers, useDegreeWorks, useAcademicPractices, useInvestigations, useSocialProjects, useComplementaryActivities, useTeacherTraining, useAdministrativeActivities, useIndirectTeaching } from "@/hooks/useDatabase";
-import { useDocenteConfig, calculateHours } from "@/hooks/useDocenteConfig";
-import { DocenteResponses, DEFAULT_RESPONSES } from "@/types/docenteConfig";
+import { useRecommendations, getBlockedInvestigationActivities, getBlockedAdminActivities, getBlockedFormacionActivities, isFormBlockedByDoctorado } from "@/hooks/useRecommendations";
 
 // Persistent form data across subfunctions
 const formDataStore: { [subfunctionId: string]: { [key: string]: string | number } } = {};
