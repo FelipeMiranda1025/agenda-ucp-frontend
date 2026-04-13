@@ -24,9 +24,16 @@ export function SummaryPanel() {
   const insertComment = useInsertAgendaComment();
   const { data: agendaView } = useAgendaView(user?.id);
   const upsertAgendaView = useUpsertAgendaView();
+  const updateAgendaViewStatus = useUpdateAgendaViewStatus();
+
+  // For subordinate review: get their agenda_view
+  const isReviewingSubordinate = selectedDocente && selectedDocente.firstName !== "Yo";
+  const subordinateCc = isReviewingSubordinate ? selectedDocente.id : undefined;
+  const { data: subordinateAgendaView } = useAgendaView(subordinateCc);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogVariant, setDialogVariant] = useState<"success" | "pending">("success");
+  const [returnObservation, setReturnObservation] = useState("");
 
   const grouped = subfunctions
     .filter((sf) => sf.sectionId !== "horario")
