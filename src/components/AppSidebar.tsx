@@ -1,5 +1,6 @@
-import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain, Building2, Lightbulb, Heart, Award, Calendar, User } from "lucide-react";
+import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain, Building2, Lightbulb, Heart, Award, Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAgenda } from "@/context/AgendaContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { subfunctions } from "@/data/subfunctions";
@@ -98,37 +99,34 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
         {docentesList.length > 1 && (
           <div>
             <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">{t("sidebar.docenteSection")}</p>
-            <div className="space-y-0.5">
-              {docentesList.map((d) => {
-                const isSelected = selectedDocente?.id === d.id;
-                const label = d.firstName === "Yo" ? "Yo" : getDocenteFullName(d);
-                return (
-                  <button
-                    key={d.id}
-                    onClick={async () => {
-                      setSelectedDocente(d);
-                      onClose();
-                      if (d.firstName !== "Yo") {
-                        setTimeout(async () => {
-                          const found = await loadFromAgendaView();
-                          if (!found) {
-                            toast.info(`Docente ${getDocenteFullName(d)} no ha diligenciado su agenda`);
-                          }
-                        }, 100);
-                      }
-                    }}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
-                      isSelected
-                        ? "bg-accent text-accent-foreground font-medium"
-                        : "text-foreground/80 hover:bg-accent/50"
-                    }`}
-                  >
-                    <User className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{label}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <Select
+              value={selectedDocente?.id || ""}
+              onValueChange={async (val) => {
+                const d = docentesList.find((doc) => doc.id === val);
+                if (!d) return;
+                setSelectedDocente(d);
+                onClose();
+                if (d.firstName !== "Yo") {
+                  setTimeout(async () => {
+                    const found = await loadFromAgendaView();
+                    if (!found) {
+                      toast.info(`Docente ${getDocenteFullName(d)} no ha diligenciado su agenda`);
+                    }
+                  }, 100);
+                }
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t("sidebar.docenteSection")} />
+              </SelectTrigger>
+              <SelectContent>
+                {docentesList.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>
+                    {d.firstName === "Yo" ? "Yo" : getDocenteFullName(d)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
       </div>
