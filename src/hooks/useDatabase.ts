@@ -387,6 +387,68 @@ export function useUpsertAgendaView() {
   });
 }
 
+export interface PendingAgendaForSupervisor {
+  agendaView: DbAgendaView;
+  docenteName: string;
+  docenteCc: string;
+  createdAt: string;
+}
+
+export function usePendingAgendaViewsForSupervisor(supervisorCc?: string) {
+  return useQuery<PendingAgendaForSupervisor[]>({
+    queryKey: ["pending_agenda_views_supervisor", supervisorCc],
+    queryFn: async () => {
+      if (!supervisorCc) return [];
+
+      // 1. Get the numeric user ID of the supervisor from their cc
+      const { data: supervisorUser, error: supErr } = await supabase
+        .from("users")
+        .select("id")
+        .eq("cc", supervisorCc)
+        .maybeSingle();
+      if (supErr || !supervisorUser) return [];
+
+      // 2. Get subordinate user_ids from hierarchy
+      const { data: hierarchy, error: hErr } = await (supabase.from("user_hierarchy" as any) as any)
+        .select("user_id")
+        .eq("supervisor_id", supervisorUser.id);
+      if (hErr || !hierarchy || hierarchy.length === 0) return [];
+
+      const subordinateIds = hierarchy.map((h: any) => h.user_id);
+
+      // 3. Get cc values for those subordinates
+      const { data: subordinateUsers, error: uErr } = await supabase
+        .from("users")
+        .select("id, cc, first_name, second_name, first_last_name")
+        .in("id", subordinateIds);
+      if (uErr || !subordinateUsers || subordinateUsers.length === 0) return [];
+
+      const ccList = subordinateUsers.map((u: any) => u.cc);
+
+      // 4. Get pending agenda_views for those ccs
+      const { data: pendingViews, error: vErr } = await (supabase.from("agenda_views" as any) as any)
+        .select("*")
+        .in("user_cc", ccList)
+        .eq("status", "pending");
+      if (vErr || !pendingViews || pendingViews.length === 0) return [];
+
+      // 5. Map agenda views to include docente name
+      return pendingViews.map((view: any) => {
+        const user = subordinateUsers.find((u: any) => u.cc === view.user_cc);
+        const nameParts = [user?.first_name, user?.second_name, user?.first_last_name].filter(Boolean);
+        return {
+          agendaView: view as DbAgendaView,
+          docenteName: nameParts.join(" "),
+          docenteCc: view.user_cc,
+          createdAt: view.created_at,
+        } as PendingAgendaForSupervisor;
+      });
+    },
+    enabled: !!supervisorCc,
+    refetchInterval: 15000,
+  });
+}
+
 export function useUpdateAgendaViewStatus() {
   const qc = useQueryClient();
   return useMutation({
