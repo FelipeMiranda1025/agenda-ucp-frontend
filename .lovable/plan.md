@@ -1,33 +1,35 @@
 
-
-# Plan: Diálogo de confirmación sin redirección hasta aprobación
+# Plan: Notificaciones de agendas pendientes para supervisores
 
 ## Resumen
 
-El sistema ya tiene implementado el diálogo de confirmación con las dos variantes (success/pending) y la persistencia en `agenda_views`. El cambio principal es: **no redirigir a `/schedule` al cerrar el diálogo**. El usuario permanece en la página principal hasta que su supervisor apruebe o retorne la agenda.
+Cuando el docente (cc=12345678) confirma su agenda, el director (cc=123456789) debe ver una notificación en la campanita con el nombre del docente y "Agenda pendiente por revisar". Se necesita:
+
+1. Un nuevo hook que obtenga las `agenda_views` pendientes de los subordinados del usuario logueado
+2. Modificar la lógica de notificaciones en `Index.tsx` para mostrar estas agendas pendientes con nombre completo del docente
 
 ## Cambios
 
-### 1. Modificar `handleDialogClose` en `SummaryPanel.tsx`
+### 1. Nuevo hook `usePendingAgendaViewsForSupervisor` en `useDatabase.ts`
 
-**Archivo:** `src/components/SummaryPanel.tsx`
+- Recibe el `user.id` (cc) del supervisor logueado
+- Busca en `user_hierarchy` los `user_id` donde `supervisor_id` coincide con el ID numérico del supervisor
+- Luego busca en `users` las cédulas de esos subordinados
+- Consulta `agenda_views` con `status = 'pending'` y `user_cc` IN (cédulas subordinados)
+- Retorna un array con los datos de la agenda view + datos del usuario (nombre completo)
 
-- Eliminar la navegación a `/schedule` cuando `dialogVariant === "success"`
-- En ambas variantes (success y pending), simplemente cerrar el diálogo y el usuario permanece en la misma página
-- El usuario solo podrá acceder a `/schedule` (Distribución Horaria) cuando el status de su `agenda_views` sea `approved`
+### 2. Modificar notificaciones en `Index.tsx`
 
-### 2. Proteger la ruta `/schedule`
-
-**Archivo:** `src/App.tsx` o `src/pages/ScheduleBuilder.tsx`
-
-- Verificar el status del `agenda_views` del usuario actual
-- Si `status !== 'approved'`, redirigir de vuelta a `/` o mostrar un mensaje indicando que la agenda está pendiente de aprobación
-- Solo permitir acceso a la página de Distribución Horaria si el director ha aprobado la agenda
+- Importar el nuevo hook
+- Incluir las agendas pendientes de subordinados en el `unreadCount`
+- En el dropdown de notificaciones, renderizar cada agenda pendiente con:
+  - **Nombre**: `{first_name} {second_name} {first_last_name}` del docente
+  - **Descripción**: "Agenda pendiente por revisar"
+  - Fecha de creación
 
 ## Archivos a modificar
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/SummaryPanel.tsx` | Eliminar `navigate("/schedule")` del `handleDialogClose` |
-| `src/pages/ScheduleBuilder.tsx` | Agregar verificación de status `approved` antes de renderizar |
-
+| `src/hooks/useDatabase.ts` | Nuevo hook `usePendingAgendaViewsForSupervisor` |
+| `src/pages/Index.tsx` | Integrar notificaciones de agendas pendientes de subordinados |
