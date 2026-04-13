@@ -467,27 +467,12 @@ export function useSubordinatesWithNames(supervisorCc?: string) {
     queryFn: async () => {
       if (!supervisorCc) return [];
 
-      // 1. Get supervisor numeric ID
-      const { data: supUser, error: supErr } = await supabase
-        .from("users")
-        .select("id")
-        .eq("cc", supervisorCc)
-        .maybeSingle();
-      if (supErr || !supUser) return [];
-
-      // 2. Get subordinate user_ids
-      const { data: hierarchy, error: hErr } = await (supabase.from("user_hierarchy" as any) as any)
-        .select("user_id")
-        .eq("supervisor_id", supUser.id);
-      if (hErr || !hierarchy || hierarchy.length === 0) return [];
-
-      const subIds = hierarchy.map((h: any) => h.user_id);
-
-      // 3. Get full user data
+      // Fetch all users with role docentePlanta (id_rol = 1), excluding the current user
       const { data: users, error: uErr } = await supabase
         .from("users")
         .select("cc, first_name, second_name, first_last_name, second_last_name")
-        .in("id", subIds);
+        .eq("id_rol", 1)
+        .neq("cc", supervisorCc);
       if (uErr || !users) return [];
 
       return users.map((u: any) => ({
