@@ -144,13 +144,10 @@ const Index = () => {
                     key={pa.agendaView.id}
                     className="w-full text-left px-3 py-2 text-xs border-b last:border-0 bg-accent/30 hover:bg-accent/50 cursor-pointer transition-colors"
                     onClick={() => {
-                      // Set the selected docente to the subordinate and load their records
-                      const { setSelectedDocente, docentesList, loadFromAgendaView } = agendaCtx;
                       const docente = docentesList.find((d) => d.id === pa.docenteCc);
                       if (docente) {
                         setSelectedDocente(docente);
                       } else {
-                        // Create a temporary docente entry
                         setSelectedDocente({
                           id: pa.docenteCc,
                           firstName: pa.docenteName.split(" ")[0] || "",
