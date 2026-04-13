@@ -558,7 +558,12 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                                 };
                                 const dbData = DB_CATEGORY_MAP[field.category!];
                                 if (dbData) {
-                                  return dbData.map((item) => (
+                                  // Filter out blocked activities for investigacion/administrativas/formacion-docentes
+                                  const shouldFilter = ["actividad_investigacion", "actividad_administrativa", "actividad_formacion"].includes(field.category!);
+                                  const filtered = shouldFilter
+                                    ? dbData.filter((item: any) => !blockedActivities.has(item.name))
+                                    : dbData;
+                                  return filtered.map((item: any) => (
                                     <SelectItem key={item.id} value={item.name}>
                                       {translateOption(item.name, language)}
                                     </SelectItem>
