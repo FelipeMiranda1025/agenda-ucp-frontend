@@ -43,18 +43,24 @@ const Index = () => {
   const { data: agendaView } = useAgendaView(user?.id);
   const { data: pendingSubordinateAgendas = [] } = usePendingAgendaViewsForSupervisor(user?.id);
 
+  // Resolve reviewer name when agenda is returned
+  const reviewerCc = agendaView?.status === "returned" ? agendaView.reviewer_cc : null;
+  const { data: reviewerName } = useUserNameByCc(reviewerCc);
+
+  const isReturnedAgenda = agendaView?.status === "returned";
+
   const unreadCount = useMemo(() => {
     if (!user) return 0;
     let count = allComments.filter(
       (c) => c.reviewer_cc !== user.id && !(c.read_by || []).includes(user.id)
     ).length;
-    if (agendaView && agendaView.status !== "pending") {
+    if (isReturnedAgenda) {
       count += 1;
     }
     // Add pending subordinate agendas as notifications for supervisors
     count += pendingSubordinateAgendas.length;
     return count;
-  }, [allComments, user, agendaView, pendingSubordinateAgendas]);
+  }, [allComments, user, isReturnedAgenda, pendingSubordinateAgendas]);
 
   const handleOpenNotifications = () => {
     if (!user || unreadCount === 0) return;
