@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
-import { useAllAgendaComments, useMarkCommentsRead, useAgendaView } from "@/hooks/useDatabase";
+import { useAllAgendaComments, useMarkCommentsRead, useAgendaView, usePendingAgendaViewsForSupervisor } from "@/hooks/useDatabase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,18 +39,20 @@ const Index = () => {
   const { data: allComments = [] } = useAllAgendaComments();
   const markRead = useMarkCommentsRead();
   const { data: agendaView } = useAgendaView(user?.id);
+  const { data: pendingSubordinateAgendas = [] } = usePendingAgendaViewsForSupervisor(user?.id);
 
   const unreadCount = useMemo(() => {
     if (!user) return 0;
     let count = allComments.filter(
       (c) => c.reviewer_cc !== user.id && !(c.read_by || []).includes(user.id)
     ).length;
-    // Add notification if agenda_views status changed from pending
     if (agendaView && agendaView.status !== "pending") {
       count += 1;
     }
+    // Add pending subordinate agendas as notifications for supervisors
+    count += pendingSubordinateAgendas.length;
     return count;
-  }, [allComments, user, agendaView]);
+  }, [allComments, user, agendaView, pendingSubordinateAgendas]);
 
   const handleOpenNotifications = () => {
     if (!user || unreadCount === 0) return;
@@ -134,7 +136,18 @@ const Index = () => {
               <DropdownMenuContent align="end" className="w-80 max-h-72 overflow-auto">
                 <div className="px-3 py-2 text-sm font-semibold">{t("notifications.title")}</div>
                 <DropdownMenuSeparator />
-                {allComments.filter((c) => c.reviewer_cc !== user?.id).length === 0 ? (
+                {/* Pending subordinate agendas for supervisors */}
+                {pendingSubordinateAgendas.map((pa) => (
+                  <div key={pa.agendaView.id} className="px-3 py-2 text-xs border-b last:border-0 bg-accent/30">
+                    <p className="text-foreground font-medium">{pa.docenteName}</p>
+                    <p className="text-muted-foreground">{t("notifications.pendingReview")}</p>
+                    <span className="text-muted-foreground text-[10px]">
+                      {new Date(pa.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                ))}
+                {/* Regular comment notifications */}
+                {allComments.filter((c) => c.reviewer_cc !== user?.id).length === 0 && pendingSubordinateAgendas.length === 0 ? (
                   <div className="px-3 py-4 text-sm text-muted-foreground text-center">
                     {t("notifications.empty")}
                   </div>
