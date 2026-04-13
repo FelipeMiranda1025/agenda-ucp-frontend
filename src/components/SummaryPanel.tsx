@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useAgenda } from "@/context/AgendaContext";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -7,10 +8,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, ClipboardList, Trash2 } from "lucide-react";
 import { AgendaComments } from "@/components/AgendaComments";
-import { useAgendas, useInsertAgendaComment } from "@/hooks/useDatabase";
+import { useAgendas, useInsertAgendaComment, useAgendaView, useUpsertAgendaView } from "@/hooks/useDatabase";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { translateOption } from "@/i18n/optionTranslations";
+import { ConfirmSuccessDialog } from "@/components/ConfirmSuccessDialog";
 
 export function SummaryPanel() {
   const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord } = useAgenda();
@@ -19,6 +21,11 @@ export function SummaryPanel() {
   const navigate = useNavigate();
   const { data: savedAgendas = [] } = useAgendas(user?.id);
   const insertComment = useInsertAgendaComment();
+  const { data: agendaView } = useAgendaView(user?.id);
+  const upsertAgendaView = useUpsertAgendaView();
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [dialogVariant, setDialogVariant] = useState<"success" | "pending">("success");
 
   const grouped = subfunctions
     .filter((sf) => sf.sectionId !== "horario")
@@ -46,7 +53,35 @@ export function SummaryPanel() {
       }
       return;
     }
-    navigate("/schedule");
+
+    // Check if there's already a pending agenda view
+    if (agendaView && agendaView.status === "pending") {
+      setDialogVariant("pending");
+      setDialogOpen(true);
+      return;
+    }
+
+    // Save to agenda_views
+    if (user?.id) {
+      try {
+        await upsertAgendaView.mutateAsync({
+          userCc: user.id,
+          records: records.map((r) => ({ ...r })),
+          status: "pending",
+        });
+        setDialogVariant("success");
+        setDialogOpen(true);
+      } catch (err) {
+        toast.error("Error al guardar la agenda");
+      }
+    }
+  };
+
+  const handleDialogClose = () => {
+    setDialogOpen(false);
+    if (dialogVariant === "success") {
+      navigate("/schedule");
+    }
   };
 
   const scrollToSection = (subfunctionId: string) => {
@@ -181,6 +216,12 @@ export function SummaryPanel() {
           {t("summary.confirm")}
         </Button>
       </div>
+
+      <ConfirmSuccessDialog
+        open={dialogOpen}
+        onClose={handleDialogClose}
+        variant={dialogVariant}
+      />
     </div>
   );
 }

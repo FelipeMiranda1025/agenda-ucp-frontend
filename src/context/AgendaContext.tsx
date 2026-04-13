@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
 import { DropdownOption, Record as AgendaRecord, MetricasPie, ScheduleBlock, ScheduleData } from "@/types/agenda";
 import { initialDropdownOptions } from "@/data/initialDropdownOptions";
 import { subfunctions } from "@/data/subfunctions";
 import { DocentePlanta } from "@/types/docentePlanta";
 import { docentesPlanta } from "@/data/docentesPlanta";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AgendaContextType {
   dropdownOptions: DropdownOption[];
@@ -29,6 +30,8 @@ interface AgendaContextType {
   hasSchedule: boolean;
   editingRecord: AgendaRecord | null;
   setEditingRecord: (r: AgendaRecord | null) => void;
+  hasPendingAgendaView: boolean;
+  loadFromAgendaView: () => void;
 }
 
 const AgendaContext = createContext<AgendaContextType | null>(null);
@@ -48,6 +51,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDocente, setSelectedDocente] = useState<DocentePlanta | null>(docentesPlanta[0]);
   const [editingRecord, setEditingRecord] = useState<AgendaRecord | null>(null);
+  const [hasPendingAgendaView, setHasPendingAgendaView] = useState(false);
 
   const docenteId = selectedDocente?.id ?? "";
   const records = useMemo(() => recordsByDocente[docenteId] || [], [recordsByDocente, docenteId]);
@@ -200,6 +204,42 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return !!s && s.blocks.length > 0;
   }, [scheduleByDocente, docenteId]);
 
+  // Load agenda from agenda_views on login
+  const loadFromAgendaView = useCallback(async () => {
+    if (!docenteId) return;
+    try {
+      const { data, error } = await (supabase.from("agenda_views" as any) as any)
+        .select("*")
+        .eq("user_cc", docenteId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error || !data) return;
+      if (data.status === "pending") {
+        setHasPendingAgendaView(true);
+      }
+      const savedRecords = data.records as AgendaRecord[];
+      if (savedRecords && savedRecords.length > 0) {
+        setRecordsByDocente((prev) => ({
+          ...prev,
+          [docenteId]: savedRecords,
+        }));
+      }
+    } catch {
+      // silently fail
+    }
+  }, [docenteId]);
+
+  // Auto-load on docente change
+  useEffect(() => {
+    if (docenteId) {
+      const existing = recordsByDocente[docenteId];
+      if (!existing || existing.length === 0) {
+        loadFromAgendaView();
+      }
+    }
+  }, [docenteId]);
+
   const metricas = useMemo<MetricasPie>(() => {
     const prodIds = subfunctions.filter((s) => s.sectionId === "produccion").map((s) => s.id);
     const actIds = subfunctions.filter((s) => s.sectionId === "actividades").map((s) => s.id);
@@ -246,6 +286,8 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         hasSchedule,
         editingRecord,
         setEditingRecord,
+        hasPendingAgendaView,
+        loadFromAgendaView,
       }}
     >
       {children}

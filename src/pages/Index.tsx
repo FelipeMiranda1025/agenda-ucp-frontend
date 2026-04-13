@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
-import { useAllAgendaComments, useMarkCommentsRead } from "@/hooks/useDatabase";
+import { useAllAgendaComments, useMarkCommentsRead, useAgendaView } from "@/hooks/useDatabase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,13 +38,19 @@ const Index = () => {
   // Global comments & notifications
   const { data: allComments = [] } = useAllAgendaComments();
   const markRead = useMarkCommentsRead();
+  const { data: agendaView } = useAgendaView(user?.id);
 
   const unreadCount = useMemo(() => {
     if (!user) return 0;
-    return allComments.filter(
+    let count = allComments.filter(
       (c) => c.reviewer_cc !== user.id && !(c.read_by || []).includes(user.id)
     ).length;
-  }, [allComments, user]);
+    // Add notification if agenda_views status changed from pending
+    if (agendaView && agendaView.status !== "pending") {
+      count += 1;
+    }
+    return count;
+  }, [allComments, user, agendaView]);
 
   const handleOpenNotifications = () => {
     if (!user || unreadCount === 0) return;

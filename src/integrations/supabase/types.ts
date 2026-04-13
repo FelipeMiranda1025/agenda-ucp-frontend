@@ -91,6 +91,42 @@ export type Database = {
           },
         ]
       }
+      agenda_views: {
+        Row: {
+          created_at: string
+          id: string
+          records: Json
+          reviewed_at: string | null
+          reviewer_cc: string | null
+          reviewer_comment: string | null
+          status: string
+          updated_at: string
+          user_cc: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          records?: Json
+          reviewed_at?: string | null
+          reviewer_cc?: string | null
+          reviewer_comment?: string | null
+          status?: string
+          updated_at?: string
+          user_cc: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          records?: Json
+          reviewed_at?: string | null
+          reviewer_cc?: string | null
+          reviewer_comment?: string | null
+          status?: string
+          updated_at?: string
+          user_cc?: string
+        }
+        Relationships: []
+      }
       agendas: {
         Row: {
           confirmed_at: string
