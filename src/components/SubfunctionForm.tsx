@@ -151,38 +151,19 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
 
   const currentTotal = computeTotal(formData);
 
-  // Calculate total weekly hours for all records in this subfunction
-  const totalWeeklyHours = useMemo(() => {
-    const records = getRecordsBySubfunction(resolvedId);
-    // Determine which field holds "weekly hours" based on subfunction
-    const weeklyField = resolvedId === "trabajos-grado" || resolvedId === "practicas-academicas"
-      ? null // These don't have a direct weekly hours concept
-      : "horasSemana";
-    
-    if (!weeklyField) return null;
-    
-    return records.reduce((sum, r) => sum + (Number(r.data[weeklyField]) || 0), 0);
-  }, [getRecordsBySubfunction, resolvedId]);
+  // Dynamic recommendations based on records
+  const recommendation = useRecommendations(records, user?.rolId);
 
-  const { data: docenteConfig } = useDocenteConfig(user?.id);
-  const dynamicRequirement = useMemo(() => {
-    if (resolvedId !== "docencia-directa") return null;
-    if (docenteConfig?.responses) {
-      const responses = docenteConfig.responses as unknown as DocenteResponses;
-      const calc = calculateHours(responses);
-      return calc.finalDirectHours;
-    }
-    return 16;
-  }, [resolvedId, docenteConfig]);
+  // Check if this form is blocked by "Estudios doctorado"
+  const formBlocked = isFormBlockedByDoctorado(records, resolvedId);
 
-  const requirement = dynamicRequirement;
-
-  const weeklyHoursColor = useMemo(() => {
-    if (totalWeeklyHours === null || requirement === null) return "text-muted-foreground";
-    if (totalWeeklyHours < requirement) return "text-destructive";
-    if (totalWeeklyHours === requirement) return "text-primary";
-    return "text-yellow-600";
-  }, [totalWeeklyHours, requirement]);
+  // Get blocked activities for filtering dropdowns
+  const blockedActivities = useMemo(() => {
+    if (resolvedId === "investigacion") return getBlockedInvestigationActivities(records);
+    if (resolvedId === "administrativas") return getBlockedAdminActivities(records);
+    if (resolvedId === "formacion-docentes") return getBlockedFormacionActivities(records);
+    return new Set<string>();
+  }, [records, resolvedId]);
 
   // Persist formData to store
   useEffect(() => {
