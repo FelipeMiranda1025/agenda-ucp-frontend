@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
-import { useAllAgendaComments, useMarkCommentsRead, useAgendaView, usePendingAgendaViewsForSupervisor } from "@/hooks/useDatabase";
+import { useAllAgendaComments, useMarkCommentsRead, useAgendaView, usePendingAgendaViewsForSupervisor, useUserNameByCc } from "@/hooks/useDatabase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,18 +43,24 @@ const Index = () => {
   const { data: agendaView } = useAgendaView(user?.id);
   const { data: pendingSubordinateAgendas = [] } = usePendingAgendaViewsForSupervisor(user?.id);
 
+  // Resolve reviewer name when agenda is returned
+  const reviewerCc = agendaView?.status === "returned" ? agendaView.reviewer_cc : null;
+  const { data: reviewerName } = useUserNameByCc(reviewerCc);
+
+  const isReturnedAgenda = agendaView?.status === "returned";
+
   const unreadCount = useMemo(() => {
     if (!user) return 0;
     let count = allComments.filter(
       (c) => c.reviewer_cc !== user.id && !(c.read_by || []).includes(user.id)
     ).length;
-    if (agendaView && agendaView.status !== "pending") {
+    if (isReturnedAgenda) {
       count += 1;
     }
     // Add pending subordinate agendas as notifications for supervisors
     count += pendingSubordinateAgendas.length;
     return count;
-  }, [allComments, user, agendaView, pendingSubordinateAgendas]);
+  }, [allComments, user, isReturnedAgenda, pendingSubordinateAgendas]);
 
   const handleOpenNotifications = () => {
     if (!user || unreadCount === 0) return;
@@ -138,6 +144,18 @@ const Index = () => {
               <DropdownMenuContent align="end" className="w-80 max-h-72 overflow-auto">
                 <div className="px-3 py-2 text-sm font-semibold">{t("notifications.title")}</div>
                 <DropdownMenuSeparator />
+                {/* Returned agenda notification for docentes */}
+                {isReturnedAgenda && (
+                  <div className="px-3 py-2 text-xs border-b bg-destructive/10">
+                    <p className="text-foreground font-medium">{reviewerName || agendaView?.reviewer_cc}</p>
+                    <p className="text-muted-foreground">{t("notifications.returned")}</p>
+                    {agendaView?.reviewed_at && (
+                      <span className="text-muted-foreground text-[10px]">
+                        {new Date(agendaView.reviewed_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                )}
                 {/* Pending subordinate agendas for supervisors */}
                 {pendingSubordinateAgendas.map((pa) => (
                   <button
@@ -166,7 +184,7 @@ const Index = () => {
                   </button>
                 ))}
                 {/* Regular comment notifications */}
-                {allComments.filter((c) => c.reviewer_cc !== user?.id).length === 0 && pendingSubordinateAgendas.length === 0 ? (
+                {allComments.filter((c) => c.reviewer_cc !== user?.id).length === 0 && pendingSubordinateAgendas.length === 0 && !isReturnedAgenda ? (
                   <div className="px-3 py-4 text-sm text-muted-foreground text-center">
                     {t("notifications.empty")}
                   </div>
@@ -192,17 +210,40 @@ const Index = () => {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0"
+                  className="relative text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 shrink-0"
                 >
                   <MessageSquare className="h-5 w-5" />
+                  {isReturnedAgenda && (
+                    <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+                      1
+                    </span>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72">
+              <DropdownMenuContent align="end" className="w-80">
                 <div className="px-3 py-2 text-sm font-semibold">{t("messages.title")}</div>
                 <DropdownMenuSeparator />
-                <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                  {t("messages.empty")}
-                </div>
+                {isReturnedAgenda ? (
+                  <div className="px-3 py-2 text-xs border-b bg-destructive/10">
+                    <p className="text-foreground font-medium">
+                      {t("messages.returned")} — {reviewerName || agendaView?.reviewer_cc}
+                    </p>
+                    {agendaView?.reviewer_comment && (
+                      <p className="text-muted-foreground mt-1 whitespace-pre-wrap">
+                        {agendaView.reviewer_comment}
+                      </p>
+                    )}
+                    {agendaView?.reviewed_at && (
+                      <span className="text-muted-foreground text-[10px]">
+                        {new Date(agendaView.reviewed_at).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                    {t("messages.empty")}
+                  </div>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
