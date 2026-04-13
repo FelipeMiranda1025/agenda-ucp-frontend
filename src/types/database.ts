@@ -183,3 +183,21 @@ export const DB_TABLES = {
 } as const;
 
 export type DbTableName = keyof typeof DB_TABLES;
+
+// =============================================
+// Agenda Views (persistencia de agenda confirmada)
+// =============================================
+
+export interface DbAgendaView {
+  id: string;
+  user_cc: string;
+  records: Record<string, any>[];
+  status: 'pending' | 'approved' | 'returned';
+  reviewer_cc: string | null;
+  reviewer_comment: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type DbAgendaViewInsert = Omit<DbAgendaView, 'id' | 'created_at' | 'updated_at' | 'reviewed_at'>;
