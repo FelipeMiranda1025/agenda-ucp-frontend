@@ -367,7 +367,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     setFormData({});
     formDataStore[resolvedId] = {};
     setEditingRecordId(null);
-  }, [formData, resolvedId, config, inputFields, computeTotal, upsertRecord, updateRecord, editingRecordId]);
+  }, [formData, resolvedId, config, inputFields, computeTotal, addRecord, upsertRecord, updateRecord, editingRecordId]);
 
   const handleClearForm = () => {
     setFormData({});
