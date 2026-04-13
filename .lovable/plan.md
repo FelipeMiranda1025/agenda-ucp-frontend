@@ -1,55 +1,32 @@
 
 
-# Plan: Mostrar nombre del docente seleccionado en formularios y resumen
+# Plan: Botones Retornar/Aprobar para supervisor y Confirmar Datos para agenda propia
 
 ## Resumen
 
-Tres cambios:
-1. En los formularios y el panel "Resumen de Datos", cuando se está revisando la agenda de un subordinado, mostrar el nombre del docente autor de la agenda en lugar del usuario logueado
-2. En el sidebar izquierdo debajo de "DOCENTE DE PLANTA", mostrar la lista de subordinados con sus nombres
-3. Al cambiar el docente seleccionado en el dropdown, cargar automáticamente su agenda pendiente
+Cuando el director está revisando la agenda de un subordinado, reemplazar el botón "Confirmar Datos" por dos botones: "Retornar" (amarillo, requiere observación obligatoria) y "Aprobar" (verde, envía al decano cc=1234567890). Al volver a su propia agenda, se muestra el botón original "Confirmar Datos".
 
 ## Cambios
 
-### 1. Mostrar nombre del docente seleccionado en formularios y resumen
+### `src/components/SummaryPanel.tsx`
 
-**Archivos:** `src/components/SubfunctionForm.tsx`, `src/components/SummaryPanel.tsx`
+- Detectar si `selectedDocente` es un subordinado (`selectedDocente.firstName !== "Yo"`)
+- **Si es subordinado**: mostrar dos botones lado a lado:
+  - **Retornar** (izquierda, color `#a8822c`): antes de ejecutar, validar que el campo de observaciones/comentarios no esté vacío. Si está vacío, mostrar toast de error. Si tiene observación, llamar `useUpdateAgendaViewStatus` con `status: "returned"`, `reviewerCc: user.id`, `reviewerComment: observación`
+  - **Aprobar** (derecha, color verde): llamar `useUpdateAgendaViewStatus` con `status: "approved"`, `reviewerCc: user.id`. Esto marca la agenda como aprobada por el director para que el decano (cc=1234567890) la revise después
+- **Si es "Yo"**: mantener el botón "Confirmar Datos" actual sin cambios
 
-- Importar `useAgenda` para obtener `selectedDocente`
-- Cuando `selectedDocente` no es "Yo" (es decir, `selectedDocente.firstName !== "Yo"`), mostrar el nombre del docente seleccionado (`selectedDocente.firstName secondName firstLastName`) en lugar de `user.firstName user.firstLastName`
-- Cuando es "Yo", seguir mostrando el nombre del usuario logueado como actualmente
-- Afecta ~4 lugares en `SubfunctionForm.tsx` (líneas 39, 62, 430 y la sección de schedule) y 1 lugar en `SummaryPanel.tsx` (línea 101)
+- Agregar un campo `Textarea` para la observación obligatoria al retornar, visible solo cuando se está revisando agenda de subordinado
+- Importar `useUpdateAgendaViewStatus` y `useAgendaView` con el cc del subordinado para obtener el `id` de la agenda_view a actualizar
 
-### 2. Lista de docentes en sidebar izquierdo (ya existe)
+### `src/i18n/translations.ts`
 
-**Archivo:** `src/components/AppSidebar.tsx`
-
-- El dropdown ya existe con "Yo" + subordinados. Verificar que se muestra correctamente debajo de "DOCENTE DE PLANTA" con los nombres completos de los subordinados
-
-### 3. Carga automática al cambiar docente (ya existe)
-
-**Archivo:** `src/context/AgendaContext.tsx`
-
-- Ya hay un `useEffect` en línea 271-278 que carga `loadFromAgendaView` al cambiar `docenteId`. Verificar que funciona correctamente
-- Ya existe el toast en `AppSidebar.tsx` cuando no hay agenda
-
-## Detalle técnico
-
-Crear un helper reutilizable para obtener el nombre a mostrar:
-
-```typescript
-// En cada componente que lo necesite:
-const displayName = selectedDocente && selectedDocente.firstName !== "Yo"
-  ? [selectedDocente.firstName, selectedDocente.secondName, selectedDocente.firstLastName].filter(Boolean).join(' ')
-  : [user?.firstName, user?.firstLastName].filter(Boolean).join(' ');
-```
-
-Reemplazar todas las instancias de `{[user.firstName, user.firstLastName].filter(Boolean).join(' ')}` con `{displayName}`.
+- Agregar claves: `summary.return` ("Retornar"), `summary.approve` ("Aprobar"), `summary.observationRequired` ("La observación es obligatoria para retornar la agenda"), `summary.returnSuccess`, `summary.approveSuccess`
 
 ## Archivos a modificar
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/SubfunctionForm.tsx` | Usar nombre del docente seleccionado en ~4 encabezados de formulario |
-| `src/components/SummaryPanel.tsx` | Usar nombre del docente seleccionado en encabezado del panel |
+| `src/components/SummaryPanel.tsx` | Condicional para mostrar Retornar+Aprobar vs Confirmar Datos; textarea de observación; lógica de retorno/aprobación |
+| `src/i18n/translations.ts` | Nuevas claves de traducción |
 
