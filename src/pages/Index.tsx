@@ -37,6 +37,7 @@ const Index = () => {
   const mainRef = useRef<HTMLDivElement>(null);
 
   // Global comments & notifications
+  const { setSelectedDocente, docentesList, loadFromAgendaView } = useAgenda();
   const { data: allComments = [] } = useAllAgendaComments();
   const markRead = useMarkCommentsRead();
   const { data: agendaView } = useAgendaView(user?.id);
