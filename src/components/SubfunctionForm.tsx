@@ -106,7 +106,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
 }
 
 export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
-  const { activeSubfunction, records, dropdownOptions, addDropdownOption, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord } = useAgenda();
+  const { activeSubfunction, records, dropdownOptions, addDropdownOption, addRecord, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord } = useAgenda();
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const resolvedId = subfunctionId || activeSubfunction;
@@ -353,7 +353,13 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       updateRecord(editingRecordId, { ...formData }, total);
       toast.success(t("form.updatedRecord"));
     } else {
-      upsertRecord(resolvedId, { ...formData }, total);
+      // Forms that allow duplicate activities use addRecord to create independent records
+      const allowDuplicates = ["investigacion", "administrativas"];
+      if (allowDuplicates.includes(resolvedId)) {
+        addRecord({ subfunctionId: resolvedId, data: { ...formData }, totalHoras: total });
+      } else {
+        upsertRecord(resolvedId, { ...formData }, total);
+      }
       toast.success(t("form.savedRecord"));
     }
     
@@ -361,7 +367,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     setFormData({});
     formDataStore[resolvedId] = {};
     setEditingRecordId(null);
-  }, [formData, resolvedId, config, inputFields, computeTotal, upsertRecord, updateRecord, editingRecordId]);
+  }, [formData, resolvedId, config, inputFields, computeTotal, addRecord, upsertRecord, updateRecord, editingRecordId]);
 
   const handleClearForm = () => {
     setFormData({});
