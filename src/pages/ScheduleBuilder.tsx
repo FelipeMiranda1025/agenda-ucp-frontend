@@ -1,13 +1,14 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAgenda } from "@/context/AgendaContext";
 import { useAuth } from "@/context/AuthContext";
+import { useAgendaView } from "@/hooks/useDatabase";
 import { subfunctions } from "@/data/subfunctions";
 import { ScheduleBlock } from "@/types/agenda";
 import { SUBFUNCTION_COLORS, SUBFUNCTION_BORDER_COLORS, DAYS, HOURS, formatHour } from "@/data/scheduleConstants";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
 interface DraggableItem {
@@ -23,6 +24,26 @@ export default function ScheduleBuilder() {
   const navigate = useNavigate();
   const { records, saveSchedule, getSchedule } = useAgenda();
   const { user } = useAuth();
+  const { data: agendaView, isLoading: loadingView } = useAgendaView(user?.id);
+
+  // Protect route: only allow access if agenda is approved
+  useEffect(() => {
+    if (!loadingView && (!agendaView || agendaView.status !== "approved")) {
+      navigate("/", { replace: true });
+    }
+  }, [agendaView, loadingView, navigate]);
+
+  if (loadingView) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <p className="text-muted-foreground">Cargando...</p>
+      </div>
+    );
+  }
+
+  if (!agendaView || agendaView.status !== "approved") {
+    return null;
+  }
 
   const existingSchedule = getSchedule();
 

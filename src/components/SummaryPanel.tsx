@@ -79,9 +79,6 @@ export function SummaryPanel() {
 
   const handleDialogClose = () => {
     setDialogOpen(false);
-    if (dialogVariant === "success") {
-      navigate("/schedule");
-    }
   };
 
   const scrollToSection = (subfunctionId: string) => {
