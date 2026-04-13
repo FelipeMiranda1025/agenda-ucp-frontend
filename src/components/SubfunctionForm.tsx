@@ -332,7 +332,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     }
   }, [editingRecord, resolvedId, setEditingRecord]);
 
-  // Auto-upsert when all fields are filled, with debounce to allow typing 2-digit numbers
+  // Auto-upsert when all fields are filled; instant for docencia-directa, debounced for others
   useEffect(() => {
     if (!config || resolvedId === "distribucion-horaria") return;
 
@@ -348,7 +348,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     const sig = JSON.stringify({ resolvedId, data: formData, total });
     if (sig === lastUpsertRef.current) return;
 
-    const timer = setTimeout(() => {
+    const doSave = () => {
       lastUpsertRef.current = "";
 
       if (editingRecordId) {
@@ -367,8 +367,16 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       setFormData({});
       formDataStore[resolvedId] = {};
       setEditingRecordId(null);
-    }, 800);
+    };
 
+    // Docencia directa: instant save (no debounce)
+    if (resolvedId === "docencia-directa") {
+      doSave();
+      return;
+    }
+
+    // Other forms: 800ms debounce for multi-digit typing
+    const timer = setTimeout(doSave, 800);
     return () => clearTimeout(timer);
   }, [formData, resolvedId, config, inputFields, computeTotal, addRecord, upsertRecord, updateRecord, editingRecordId]);
 

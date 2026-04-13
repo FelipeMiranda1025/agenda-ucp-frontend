@@ -29,28 +29,21 @@ export function SummaryPanel() {
     .filter((g) => g.records.length > 0);
 
   const handleConfirm = async () => {
-
     const total = metricas.totalHorasSemestrales;
-    if (total > horasSemestreDefecto) {
-      const exceso = total - horasSemestreDefecto;
-      const sugerencias = [...grouped]
-        .sort((a, b) =>
-          b.records.reduce((s, r) => s + r.totalHoras, 0) -
-          a.records.reduce((s, r) => s + r.totalHoras, 0)
-        )
-        .slice(0, 2)
-        .map(g => g.shortTitle);
-      toast.error(
-        t("validation.exceeds", { max: horasSemestreDefecto, excess: exceso, suggestions: sugerencias.join(", ") }),
-        { duration: 7000 }
-      );
-      return;
-    }
-    if (total < horasSemestreDefecto - 6) {
-      toast.error(
-        t("validation.missing", { missing: horasSemestreDefecto - total, max: horasSemestreDefecto }),
-        { duration: 6000 }
-      );
+    if (total < 910 || total > 930) {
+      if (total > 930) {
+        const exceso = total - 930;
+        toast.error(
+          t("validation.exceeds", { max: 930, excess: exceso, suggestions: "" }),
+          { duration: 7000 }
+        );
+      } else {
+        const faltante = 910 - total;
+        toast.error(
+          t("validation.missing", { missing: faltante, max: 910 }),
+          { duration: 6000 }
+        );
+      }
       return;
     }
     navigate("/schedule");
