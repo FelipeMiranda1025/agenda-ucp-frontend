@@ -136,7 +136,18 @@ const Index = () => {
               <DropdownMenuContent align="end" className="w-80 max-h-72 overflow-auto">
                 <div className="px-3 py-2 text-sm font-semibold">{t("notifications.title")}</div>
                 <DropdownMenuSeparator />
-                {allComments.filter((c) => c.reviewer_cc !== user?.id).length === 0 ? (
+                {/* Pending subordinate agendas for supervisors */}
+                {pendingSubordinateAgendas.map((pa) => (
+                  <div key={pa.agendaView.id} className="px-3 py-2 text-xs border-b last:border-0 bg-accent/30">
+                    <p className="text-foreground font-medium">{pa.docenteName}</p>
+                    <p className="text-muted-foreground">{t("notifications.pendingReview")}</p>
+                    <span className="text-muted-foreground text-[10px]">
+                      {new Date(pa.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                ))}
+                {/* Regular comment notifications */}
+                {allComments.filter((c) => c.reviewer_cc !== user?.id).length === 0 && pendingSubordinateAgendas.length === 0 ? (
                   <div className="px-3 py-4 text-sm text-muted-foreground text-center">
                     {t("notifications.empty")}
                   </div>
