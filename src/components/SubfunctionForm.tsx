@@ -654,31 +654,26 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
         </CardContent>
       </Card>
 
-      {/* Total de horas semanales - SOLO para docencia directa */}
-      {resolvedId === "docencia-directa" && totalWeeklyHours !== null && (
+      {/* Mensajes recomendativos dinámicos - docencia directa */}
+      {resolvedId === "docencia-directa" && (
         <div className="space-y-1 px-2">
           <div className="flex justify-end">
-            <p className={`text-sm font-semibold ${weeklyHoursColor}`}>
-              {t("form.totalWeeklyHours")}: {totalWeeklyHours}h
-              {requirement !== null && (
-                <span className="text-muted-foreground font-normal"> / {requirement}h {t("form.required")}</span>
-              )}
+            <p className="text-sm text-muted-foreground font-medium">
+              Se recomienda {recommendation.hours}h de docencia directa
             </p>
           </div>
-          {docenteConfig?.responses && (
-            <div className="flex justify-end">
-              <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
-                Se recomiendan {calculateHours(docenteConfig.responses as unknown as DocenteResponses).recommendedSubjects} asignaturas
-              </p>
-            </div>
-          )}
+          <div className="flex justify-end">
+            <p className="text-sm text-muted-foreground font-medium">
+              Se recomienda {recommendation.subjects} asignaturas
+            </p>
+          </div>
         </div>
       )}
 
       {/* Mensaje recomendativo de asesorías para trabajos de grado y prácticas académicas */}
       {(resolvedId === "trabajos-grado" || resolvedId === "practicas-academicas") && (
         <div className="flex justify-end px-2">
-          <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+          <p className="text-sm text-muted-foreground font-medium">
             Se recomienda {Math.max(0, 4 - (getRecordsBySubfunction("trabajos-grado").length + getRecordsBySubfunction("practicas-academicas").length))} asesorías
           </p>
         </div>
