@@ -330,3 +330,77 @@ export function useDeleteUserHierarchy() {
     },
   });
 }
+
+// =============================================
+// Agenda Views (persistencia de agenda confirmada)
+// =============================================
+
+export function useAgendaView(userCc?: string) {
+  return useQuery<DbAgendaView | null>({
+    queryKey: ["agenda_views", userCc],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("agenda_views" as any) as any)
+        .select("*")
+        .eq("user_cc", userCc)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as DbAgendaView | null;
+    },
+    enabled: !!userCc,
+  });
+}
+
+export function useUpsertAgendaView() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ userCc, records, status }: { userCc: string; records: any[]; status?: string }) => {
+      // Check if there's an existing view for this user
+      const { data: existing } = await (supabase.from("agenda_views" as any) as any)
+        .select("id")
+        .eq("user_cc", userCc)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        const { data, error } = await (supabase.from("agenda_views" as any) as any)
+          .update({ records, status: status || "pending" })
+          .eq("id", existing.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data as DbAgendaView;
+      } else {
+        const { data, error } = await (supabase.from("agenda_views" as any) as any)
+          .insert({ user_cc: userCc, records, status: status || "pending" })
+          .select()
+          .single();
+        if (error) throw error;
+        return data as DbAgendaView;
+      }
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agenda_views"] });
+    },
+  });
+}
+
+export function useUpdateAgendaViewStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, status, reviewerCc, reviewerComment }: { id: string; status: string; reviewerCc: string; reviewerComment?: string }) => {
+      const { data, error } = await (supabase.from("agenda_views" as any) as any)
+        .update({ status, reviewer_cc: reviewerCc, reviewer_comment: reviewerComment || null, reviewed_at: new Date().toISOString() })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as DbAgendaView;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agenda_views"] });
+    },
+  });
+}
