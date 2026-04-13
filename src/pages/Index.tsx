@@ -3,6 +3,8 @@ import { SubfunctionForm } from "@/components/SubfunctionForm";
 import { SummaryPanel } from "@/components/SummaryPanel";
 import { AppSidebar } from "@/components/AppSidebar";
 import { subfunctions } from "@/data/subfunctions";
+import { useAgenda } from "@/context/AgendaContext";
+import { subfunctions } from "@/data/subfunctions";
 
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -138,13 +140,33 @@ const Index = () => {
                 <DropdownMenuSeparator />
                 {/* Pending subordinate agendas for supervisors */}
                 {pendingSubordinateAgendas.map((pa) => (
-                  <div key={pa.agendaView.id} className="px-3 py-2 text-xs border-b last:border-0 bg-accent/30">
+                  <button
+                    key={pa.agendaView.id}
+                    className="w-full text-left px-3 py-2 text-xs border-b last:border-0 bg-accent/30 hover:bg-accent/50 cursor-pointer transition-colors"
+                    onClick={() => {
+                      // Set the selected docente to the subordinate and load their records
+                      const { setSelectedDocente, docentesList, loadFromAgendaView } = agendaCtx;
+                      const docente = docentesList.find((d) => d.id === pa.docenteCc);
+                      if (docente) {
+                        setSelectedDocente(docente);
+                      } else {
+                        // Create a temporary docente entry
+                        setSelectedDocente({
+                          id: pa.docenteCc,
+                          firstName: pa.docenteName.split(" ")[0] || "",
+                          secondName: pa.docenteName.split(" ").length > 2 ? pa.docenteName.split(" ")[1] : "",
+                          firstLastName: pa.docenteName.split(" ").slice(-1)[0] || "",
+                          secondLastName: "",
+                        });
+                      }
+                    }}
+                  >
                     <p className="text-foreground font-medium">{pa.docenteName}</p>
                     <p className="text-muted-foreground">{t("notifications.pendingReview")}</p>
                     <span className="text-muted-foreground text-[10px]">
                       {new Date(pa.createdAt).toLocaleDateString()}
                     </span>
-                  </div>
+                  </button>
                 ))}
                 {/* Regular comment notifications */}
                 {allComments.filter((c) => c.reviewer_cc !== user?.id).length === 0 && pendingSubordinateAgendas.length === 0 ? (
