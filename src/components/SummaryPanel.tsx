@@ -89,6 +89,40 @@ export function SummaryPanel() {
     setDialogOpen(false);
   };
 
+  const handleReturn = async () => {
+    if (!returnObservation.trim()) {
+      toast.error(t("summary.observationRequired"));
+      return;
+    }
+    if (!subordinateAgendaView?.id || !user?.id) return;
+    try {
+      await updateAgendaViewStatus.mutateAsync({
+        id: subordinateAgendaView.id,
+        status: "returned",
+        reviewerCc: user.id,
+        reviewerComment: returnObservation.trim(),
+      });
+      toast.success(t("summary.returnSuccess"));
+      setReturnObservation("");
+    } catch {
+      toast.error("Error al retornar la agenda");
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!subordinateAgendaView?.id || !user?.id) return;
+    try {
+      await updateAgendaViewStatus.mutateAsync({
+        id: subordinateAgendaView.id,
+        status: "approved",
+        reviewerCc: user.id,
+      });
+      toast.success(t("summary.approveSuccess"));
+    } catch {
+      toast.error("Error al aprobar la agenda");
+    }
+  };
+
   const scrollToSection = (subfunctionId: string) => {
     setActiveSubfunction(subfunctionId);
     const el = document.getElementById(`section-${subfunctionId}`);
