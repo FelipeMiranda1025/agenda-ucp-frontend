@@ -30,6 +30,8 @@ interface AgendaContextType {
   hasSchedule: boolean;
   editingRecord: AgendaRecord | null;
   setEditingRecord: (r: AgendaRecord | null) => void;
+  hasPendingAgendaView: boolean;
+  loadFromAgendaView: () => void;
 }
 
 const AgendaContext = createContext<AgendaContextType | null>(null);
