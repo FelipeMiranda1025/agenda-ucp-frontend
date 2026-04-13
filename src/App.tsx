@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,10 +8,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 import { AgendaProvider } from "@/context/AgendaContext";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { LoginDialog } from "@/components/LoginDialog";
-import { PreAgendaQuestionnaire } from "@/components/PreAgendaQuestionnaire";
 import { InactivityWarning } from "@/components/InactivityWarning";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import Index from "./pages/Index";
 import Profile from "./pages/Profile";
 import ScheduleBuilder from "./pages/ScheduleBuilder";
@@ -24,37 +20,10 @@ const queryClient = new QueryClient({
 });
 
 const AppContent = () => {
-  const { isAuthenticated, user } = useAuth();
-  const [showQuestionnaire, setShowQuestionnaire] = useState(true);
+  const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
     return <LoginDialog />;
-  }
-
-  if (showQuestionnaire) {
-    const handleSkip = async () => {
-      if (!user) return;
-      const { data, error } = await supabase
-        .from("agendas")
-        .select("id")
-        .eq("docente_cc", user.id)
-        .limit(1);
-      if (error || !data || data.length === 0) {
-        toast.error("No existen agendas diligenciadas. Obligatorio llenar este formulario filtro.");
-        return;
-      }
-      setShowQuestionnaire(false);
-    };
-
-    return (
-      <>
-        <InactivityWarning />
-        <PreAgendaQuestionnaire
-          onConfirmed={() => setShowQuestionnaire(false)}
-          onSkip={handleSkip}
-        />
-      </>
-    );
   }
 
   return (

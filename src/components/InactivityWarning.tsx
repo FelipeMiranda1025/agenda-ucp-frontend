@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { AlertTriangle } from "lucide-react";
 
-const INACTIVITY_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 const WARNING_BEFORE = 60 * 1000; // 1 minute before
 const WARNING_AT = INACTIVITY_TIMEOUT - WARNING_BEFORE; // 4 minutes
 

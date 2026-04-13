@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Plus, CalendarX, Eraser, ChevronsUpDown, Check, Pencil } from "lucide-react";
+import { Plus, CalendarX, Eraser, ChevronsUpDown, Check, Pencil, Lock } from "lucide-react";
 import { SubjectManagementDialog } from "@/components/SubjectManagementDialog";
 import { ActivityManagementDialog, type ActivityTableType } from "@/components/ActivityManagementDialog";
 import { cn } from "@/lib/utils";
@@ -21,8 +21,7 @@ import { toast } from "sonner";
 import { SUBFUNCTION_COLORS, HOURS, formatHour, getTranslatedDays } from "@/data/scheduleConstants";
 import { DocentePlanta } from "@/types/docentePlanta";
 import { useSubjects, useSemesters, useFaculties, useEducationLevels, useProfessionalCareers, useDegreeWorks, useAcademicPractices, useInvestigations, useSocialProjects, useComplementaryActivities, useTeacherTraining, useAdministrativeActivities, useIndirectTeaching } from "@/hooks/useDatabase";
-import { useDocenteConfig, calculateHours } from "@/hooks/useDocenteConfig";
-import { DocenteResponses, DEFAULT_RESPONSES } from "@/types/docenteConfig";
+import { useRecommendations, getBlockedInvestigationActivities, getBlockedAdminActivities, getBlockedFormacionActivities, isFormBlockedByDoctorado } from "@/hooks/useRecommendations";
 
 // Persistent form data across subfunctions
 const formDataStore: { [subfunctionId: string]: { [key: string]: string | number } } = {};
@@ -107,7 +106,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
 }
 
 export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
-  const { activeSubfunction, dropdownOptions, addDropdownOption, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord } = useAgenda();
+  const { activeSubfunction, records, dropdownOptions, addDropdownOption, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord } = useAgenda();
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const resolvedId = subfunctionId || activeSubfunction;
@@ -152,38 +151,19 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
 
   const currentTotal = computeTotal(formData);
 
-  // Calculate total weekly hours for all records in this subfunction
-  const totalWeeklyHours = useMemo(() => {
-    const records = getRecordsBySubfunction(resolvedId);
-    // Determine which field holds "weekly hours" based on subfunction
-    const weeklyField = resolvedId === "trabajos-grado" || resolvedId === "practicas-academicas"
-      ? null // These don't have a direct weekly hours concept
-      : "horasSemana";
-    
-    if (!weeklyField) return null;
-    
-    return records.reduce((sum, r) => sum + (Number(r.data[weeklyField]) || 0), 0);
-  }, [getRecordsBySubfunction, resolvedId]);
+  // Dynamic recommendations based on records
+  const recommendation = useRecommendations(records, user?.rolId);
 
-  const { data: docenteConfig } = useDocenteConfig(user?.id);
-  const dynamicRequirement = useMemo(() => {
-    if (resolvedId !== "docencia-directa") return null;
-    if (docenteConfig?.responses) {
-      const responses = docenteConfig.responses as unknown as DocenteResponses;
-      const calc = calculateHours(responses);
-      return calc.finalDirectHours;
-    }
-    return 16;
-  }, [resolvedId, docenteConfig]);
+  // Check if this form is blocked by "Estudios doctorado"
+  const formBlocked = isFormBlockedByDoctorado(records, resolvedId);
 
-  const requirement = dynamicRequirement;
-
-  const weeklyHoursColor = useMemo(() => {
-    if (totalWeeklyHours === null || requirement === null) return "text-muted-foreground";
-    if (totalWeeklyHours < requirement) return "text-destructive";
-    if (totalWeeklyHours === requirement) return "text-primary";
-    return "text-yellow-600";
-  }, [totalWeeklyHours, requirement]);
+  // Get blocked activities for filtering dropdowns
+  const blockedActivities = useMemo(() => {
+    if (resolvedId === "investigacion") return getBlockedInvestigationActivities(records);
+    if (resolvedId === "administrativas") return getBlockedAdminActivities(records);
+    if (resolvedId === "formacion-docentes") return getBlockedFormacionActivities(records);
+    return new Set<string>();
+  }, [records, resolvedId]);
 
   // Persist formData to store
   useEffect(() => {
@@ -404,6 +384,25 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     toast.success(t("form.optionAdded"));
   };
 
+  // If form is blocked by Estudios doctorado, show blocked message
+  if (formBlocked) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-ucp-red px-6 py-4 rounded-lg">
+          <h1 className="text-xl font-bold text-primary-foreground">{t(config.titleKey || config.title)}</h1>
+        </div>
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <Lock className="h-12 w-12 text-muted-foreground/40 mb-4" />
+            <p className="text-muted-foreground text-center font-medium">
+              Este formulario está bloqueado porque se ha registrado "Estudios doctorado" en Formación de docentes.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-ucp-red px-6 py-4 rounded-lg flex items-center justify-between">
@@ -559,7 +558,12 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                                 };
                                 const dbData = DB_CATEGORY_MAP[field.category!];
                                 if (dbData) {
-                                  return dbData.map((item) => (
+                                  // Filter out blocked activities for investigacion/administrativas/formacion-docentes
+                                  const shouldFilter = ["actividad_investigacion", "actividad_administrativa", "actividad_formacion"].includes(field.category!);
+                                  const filtered = shouldFilter
+                                    ? dbData.filter((item: any) => !blockedActivities.has(item.name))
+                                    : dbData;
+                                  return filtered.map((item: any) => (
                                     <SelectItem key={item.id} value={item.name}>
                                       {translateOption(item.name, language)}
                                     </SelectItem>
@@ -674,31 +678,26 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
         </CardContent>
       </Card>
 
-      {/* Total de horas semanales - SOLO para docencia directa */}
-      {resolvedId === "docencia-directa" && totalWeeklyHours !== null && (
+      {/* Mensajes recomendativos dinámicos - docencia directa */}
+      {resolvedId === "docencia-directa" && (
         <div className="space-y-1 px-2">
           <div className="flex justify-end">
-            <p className={`text-sm font-semibold ${weeklyHoursColor}`}>
-              {t("form.totalWeeklyHours")}: {totalWeeklyHours}h
-              {requirement !== null && (
-                <span className="text-muted-foreground font-normal"> / {requirement}h {t("form.required")}</span>
-              )}
+            <p className="text-sm text-muted-foreground font-medium">
+              Se recomienda {recommendation.hours}h de docencia directa
             </p>
           </div>
-          {docenteConfig?.responses && (
-            <div className="flex justify-end">
-              <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
-                Se recomiendan {calculateHours(docenteConfig.responses as unknown as DocenteResponses).recommendedSubjects} asignaturas
-              </p>
-            </div>
-          )}
+          <div className="flex justify-end">
+            <p className="text-sm text-muted-foreground font-medium">
+              Se recomienda {recommendation.subjects} asignaturas
+            </p>
+          </div>
         </div>
       )}
 
       {/* Mensaje recomendativo de asesorías para trabajos de grado y prácticas académicas */}
       {(resolvedId === "trabajos-grado" || resolvedId === "practicas-academicas") && (
         <div className="flex justify-end px-2">
-          <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+          <p className="text-sm text-muted-foreground font-medium">
             Se recomienda {Math.max(0, 4 - (getRecordsBySubfunction("trabajos-grado").length + getRecordsBySubfunction("practicas-academicas").length))} asesorías
           </p>
         </div>
