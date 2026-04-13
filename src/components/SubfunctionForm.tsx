@@ -26,17 +26,16 @@ import { useRecommendations, getBlockedInvestigationActivities, getBlockedAdminA
 // Persistent form data across subfunctions
 const formDataStore: { [subfunctionId: string]: { [key: string]: string | number } } = {};
 
-function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boolean; getSchedule: () => ScheduleData | null }) {
-  const { user } = useAuth();
+function ScheduleReadOnlyView({ hasSchedule, getSchedule, displayName }: { hasSchedule: boolean; getSchedule: () => ScheduleData | null; displayName: string }) {
   const { t } = useLanguage();
   if (!hasSchedule) {
     return (
       <div className="space-y-6">
         <div className="bg-ucp-red px-6 py-4 rounded-lg">
            <h1 className="text-xl font-bold text-primary-foreground">{t("schedule.title")}</h1>
-          {user && (
+          {displayName && (
             <p className="text-sm text-primary-foreground/80 mt-1">
-              {t("form.docente")}: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
+              {t("form.docente")}: {displayName}
             </p>
           )}
         </div>
@@ -57,9 +56,9 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule }: { hasSchedule: boole
     <div className="space-y-6">
       <div className="bg-ucp-red px-6 py-4 rounded-lg">
         <h1 className="text-xl font-bold text-primary-foreground">{t("schedule.title")}</h1>
-        {user && (
+        {displayName && (
           <p className="text-sm text-primary-foreground/80 mt-1">
-            {t("form.docente")}: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
+            {t("form.docente")}: {displayName}
           </p>
         )}
         <p className="text-xs text-primary-foreground/60 mt-1">
@@ -425,9 +424,9 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       <div className="bg-ucp-red px-6 py-4 rounded-lg flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-primary-foreground">{t(config.titleKey || config.title)}</h1>
-          {user && (
+          {displayName && (
             <p className="text-sm text-primary-foreground/80 mt-1">
-              {t("form.docente")}: {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
+              {t("form.docente")}: {displayName}
             </p>
           )}
         </div>

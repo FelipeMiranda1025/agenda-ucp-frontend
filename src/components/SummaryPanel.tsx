@@ -96,11 +96,12 @@ export function SummaryPanel() {
     <div className="w-[420px] shrink-0 flex flex-col bg-background border-l pt-6">
       <div className="px-4 py-3 border-b bg-ucp-red">
         <h2 className="text-sm font-bold text-primary-foreground">{t("summary.title")}</h2>
-        {user && (
-          <p className="text-xs text-primary-foreground/80 mt-0.5">
-            {[user.firstName, user.firstLastName].filter(Boolean).join(' ')}
-          </p>
-        )}
+        {(() => {
+          const dn = selectedDocente && selectedDocente.firstName !== "Yo"
+            ? [selectedDocente.firstName, selectedDocente.secondName, selectedDocente.firstLastName].filter(Boolean).join(' ')
+            : user ? [user.firstName, user.firstLastName].filter(Boolean).join(' ') : '';
+          return dn ? <p className="text-xs text-primary-foreground/80 mt-0.5">{dn}</p> : null;
+        })()}
       </div>
 
       <ScrollArea className="flex-1 px-4 py-3 bg-white dark:bg-[#1f1f1f]">
