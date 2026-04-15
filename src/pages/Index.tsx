@@ -33,6 +33,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showNotifHistory, setShowNotifHistory] = useState(false);
   const [visibleSection, setVisibleSection] = useState<string>("header.production");
   const mainRef = useRef<HTMLDivElement>(null);
 

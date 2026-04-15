@@ -15,6 +15,10 @@ const translations: Record<string, Record<Language, string>> = {
   "messages.title": { es: "Mensajes", en: "Messages" },
   "messages.empty": { es: "No hay mensajes", en: "No messages" },
   "messages.returned": { es: "Retorno", en: "Returned" },
+  "notifications.viewHistory": { es: "Ver historial", en: "View history" },
+  "notifications.viewNew": { es: "Ver nuevas", en: "View new" },
+  "notifications.read": { es: "Leída", en: "Read" },
+  "messages.returned": { es: "Retorno", en: "Returned" },
 
   // Profile dropdown
   "profile.view": { es: "Ver perfil", en: "View profile" },
