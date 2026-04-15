@@ -1,3 +1,4 @@
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -19,6 +20,25 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 });
 
+class AgendaErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: any, info: any) {
+    console.error("AgendaProvider error:", error, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return <div className="flex items-center justify-center h-screen text-destructive">Error al cargar la agenda. Recarga la página.</div>;
+    }
+    return this.props.children;
+  }
+}
+
 const AppContent = () => {
   const { isAuthenticated } = useAuth();
 
@@ -27,18 +47,20 @@ const AppContent = () => {
   }
 
   return (
-    <AgendaProvider>
-      <InactivityWarning />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/schedule" element={<ScheduleBuilder />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/audit" element={<AuditLog />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </AgendaProvider>
+    <AgendaErrorBoundary>
+      <AgendaProvider>
+        <InactivityWarning />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/schedule" element={<ScheduleBuilder />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/audit" element={<AuditLog />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </AgendaProvider>
+    </AgendaErrorBoundary>
   );
 };
 
