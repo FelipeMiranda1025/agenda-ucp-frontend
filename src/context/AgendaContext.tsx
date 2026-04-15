@@ -267,13 +267,10 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
   }, [docenteId]);
 
-  // Auto-load on docente change
+  // Auto-load on docente change — always fetch fresh data
   useEffect(() => {
     if (docenteId) {
-      const existing = recordsByDocente[docenteId];
-      if (!existing || existing.length === 0) {
-        loadFromAgendaView();
-      }
+      loadFromAgendaView();
     }
   }, [docenteId]);
 

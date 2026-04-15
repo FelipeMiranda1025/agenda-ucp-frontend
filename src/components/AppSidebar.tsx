@@ -101,11 +101,10 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
             <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">{t("sidebar.docenteSection")}</p>
             <Select
               value={selectedDocente?.id || ""}
-              onValueChange={async (val) => {
+            onValueChange={async (val) => {
                 const d = docentesList.find((doc) => doc.id === val);
                 if (!d) return;
                 setSelectedDocente(d);
-                onClose();
                 if (d.firstName !== "Yo") {
                   setTimeout(async () => {
                     const found = await loadFromAgendaView();
