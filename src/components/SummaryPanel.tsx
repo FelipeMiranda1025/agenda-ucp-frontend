@@ -18,7 +18,7 @@ import { ConfirmSuccessDialog } from "@/components/ConfirmSuccessDialog";
 import { getDocenteFullName } from "@/types/docentePlanta";
 
 export function SummaryPanel() {
-  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord, selectedDocente } = useAgenda();
+  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView } = useAgenda();
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
