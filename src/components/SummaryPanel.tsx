@@ -148,6 +148,38 @@ export function SummaryPanel() {
         })()}
       </div>
 
+      {docentesList.length > 1 && (
+        <div className="px-4 py-2 border-b bg-muted/30">
+          <Select
+            value={selectedDocente?.id || ""}
+            onValueChange={async (val) => {
+              const d = docentesList.find((doc) => doc.id === val);
+              if (!d) return;
+              setSelectedDocente(d);
+              if (d.firstName !== "Yo") {
+                setTimeout(async () => {
+                  const found = await loadFromAgendaView();
+                  if (!found) {
+                    toast.info(`Docente ${getDocenteFullName(d)} no ha diligenciado su agenda`);
+                  }
+                }, 100);
+              }
+            }}
+          >
+            <SelectTrigger className="w-full h-8 text-xs">
+              <SelectValue placeholder={t("sidebar.docenteSection")} />
+            </SelectTrigger>
+            <SelectContent>
+              {docentesList.map((d) => (
+                <SelectItem key={d.id} value={d.id}>
+                  {d.firstName === "Yo" ? "Yo" : getDocenteFullName(d)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       <ScrollArea className="flex-1 px-4 py-3 bg-white dark:bg-[#1f1f1f]">
         {grouped.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
