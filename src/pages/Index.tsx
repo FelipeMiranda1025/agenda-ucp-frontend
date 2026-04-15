@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, ClipboardList } from "lucide-react";
+import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, ClipboardList, History } from "lucide-react";
 
 // Roles that can see the audit log — currently all roles; restrict later as needed
 const AUDIT_VISIBLE_ROLES = [1, 2, 3, 4];
@@ -33,6 +33,7 @@ const Index = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showNotifHistory, setShowNotifHistory] = useState(false);
   const [visibleSection, setVisibleSection] = useState<string>("header.production");
   const mainRef = useRef<HTMLDivElement>(null);
 
@@ -49,26 +50,35 @@ const Index = () => {
 
   const isReturnedAgenda = agendaView?.status === "returned";
 
+  // Dismissed returned notifications tracked in localStorage
+  const isDismissedReturn = useMemo(() => {
+    if (!agendaView?.id) return false;
+    return localStorage.getItem(`dismissed_return_${agendaView.id}`) === "1";
+  }, [agendaView?.id]);
+
   const unreadCount = useMemo(() => {
     if (!user) return 0;
     let count = allComments.filter(
       (c) => c.reviewer_cc !== user.id && !(c.read_by || []).includes(user.id)
     ).length;
-    if (isReturnedAgenda) {
+    if (isReturnedAgenda && !isDismissedReturn) {
       count += 1;
     }
-    // Add pending subordinate agendas as notifications for supervisors
     count += pendingSubordinateAgendas.length;
     return count;
-  }, [allComments, user, isReturnedAgenda, pendingSubordinateAgendas]);
+  }, [allComments, user, isReturnedAgenda, isDismissedReturn, pendingSubordinateAgendas]);
 
   const handleOpenNotifications = () => {
-    if (!user || unreadCount === 0) return;
+    if (!user) return;
     const unreadIds = allComments
       .filter((c) => c.reviewer_cc !== user.id && !(c.read_by || []).includes(user.id))
       .map((c) => c.id);
     if (unreadIds.length > 0) {
       markRead.mutate({ commentIds: unreadIds, userCc: user.id });
+    }
+    // Dismiss returned notification
+    if (isReturnedAgenda && agendaView?.id) {
+      localStorage.setItem(`dismissed_return_${agendaView.id}`, "1");
     }
   };
 
@@ -141,13 +151,28 @@ const Index = () => {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-80 max-h-72 overflow-auto">
-                <div className="px-3 py-2 text-sm font-semibold">{t("notifications.title")}</div>
+              <DropdownMenuContent align="end" className="w-80 max-h-80 overflow-auto">
+                <div className="px-3 py-2 flex items-center justify-between">
+                  <span className="text-sm font-semibold">{t("notifications.title")}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs gap-1 text-muted-foreground"
+                    onClick={(e) => { e.preventDefault(); setShowNotifHistory(!showNotifHistory); }}
+                  >
+                    <History className="h-3.5 w-3.5" />
+                    {showNotifHistory ? t("notifications.viewNew") : t("notifications.viewHistory")}
+                  </Button>
+                </div>
                 <DropdownMenuSeparator />
-                {/* Returned agenda notification for docentes */}
-                {isReturnedAgenda && (
-                  <div className="px-3 py-2 text-xs border-b bg-destructive/10">
-                    <p className="text-foreground font-medium">{reviewerName || agendaView?.reviewer_cc}</p>
+
+                {/* Returned agenda notification */}
+                {isReturnedAgenda && (showNotifHistory || !isDismissedReturn) && (
+                  <div className={`px-3 py-2 text-xs border-b bg-destructive/10 ${isDismissedReturn ? "opacity-60" : ""}`}>
+                    <div className="flex items-center justify-between">
+                      <p className="text-foreground font-medium">{reviewerName || agendaView?.reviewer_cc}</p>
+                      {isDismissedReturn && <span className="text-[10px] text-muted-foreground italic">{t("notifications.read")}</span>}
+                    </div>
                     <p className="text-muted-foreground">{t("notifications.returned")}</p>
                     {agendaView?.reviewed_at && (
                       <span className="text-muted-foreground text-[10px]">
@@ -156,7 +181,8 @@ const Index = () => {
                     )}
                   </div>
                 )}
-                {/* Pending subordinate agendas for supervisors */}
+
+                {/* Pending subordinate agendas */}
                 {pendingSubordinateAgendas.map((pa) => (
                   <button
                     key={pa.agendaView.id}
@@ -183,24 +209,36 @@ const Index = () => {
                     </span>
                   </button>
                 ))}
-                {/* Regular comment notifications */}
-                {allComments.filter((c) => c.reviewer_cc !== user?.id).length === 0 && pendingSubordinateAgendas.length === 0 && !isReturnedAgenda ? (
-                  <div className="px-3 py-4 text-sm text-muted-foreground text-center">
-                    {t("notifications.empty")}
-                  </div>
-                ) : (
-                  allComments
-                    .filter((c) => c.reviewer_cc !== user?.id)
-                    .slice(0, 10)
-                    .map((c) => (
-                      <div key={c.id} className="px-3 py-2 text-xs border-b last:border-0">
-                        <p className="text-foreground line-clamp-2">{c.comment}</p>
+
+                {/* Comment notifications — filtered by read status */}
+                {(() => {
+                  const userComments = allComments.filter((c) => c.reviewer_cc !== user?.id);
+                  const visibleComments = showNotifHistory
+                    ? userComments
+                    : userComments.filter((c) => !(c.read_by || []).includes(user?.id || ""));
+                  
+                  if (visibleComments.length === 0 && pendingSubordinateAgendas.length === 0 && !(isReturnedAgenda && (showNotifHistory || !isDismissedReturn))) {
+                    return (
+                      <div className="px-3 py-4 text-sm text-muted-foreground text-center">
+                        {t("notifications.empty")}
+                      </div>
+                    );
+                  }
+                  return visibleComments.slice(0, 10).map((c) => {
+                    const isRead = (c.read_by || []).includes(user?.id || "");
+                    return (
+                      <div key={c.id} className={`px-3 py-2 text-xs border-b last:border-0 ${isRead ? "opacity-60" : ""}`}>
+                        <div className="flex items-center justify-between">
+                          <p className="text-foreground line-clamp-2 flex-1">{c.comment}</p>
+                          {isRead && <span className="text-[10px] text-muted-foreground italic ml-2 shrink-0">{t("notifications.read")}</span>}
+                        </div>
                         <span className="text-muted-foreground">
                           {c.reviewer_cc} · {new Date(c.created_at).toLocaleDateString()}
                         </span>
                       </div>
-                    ))
-                )}
+                    );
+                  });
+                })()}
               </DropdownMenuContent>
             </DropdownMenu>
 
