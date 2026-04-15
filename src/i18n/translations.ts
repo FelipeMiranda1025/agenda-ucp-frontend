@@ -18,7 +18,6 @@ const translations: Record<string, Record<Language, string>> = {
   "notifications.viewHistory": { es: "Ver historial", en: "View history" },
   "notifications.viewNew": { es: "Ver nuevas", en: "View new" },
   "notifications.read": { es: "Leída", en: "Read" },
-  "messages.returned": { es: "Retorno", en: "Returned" },
 
   // Profile dropdown
   "profile.view": { es: "Ver perfil", en: "View profile" },
