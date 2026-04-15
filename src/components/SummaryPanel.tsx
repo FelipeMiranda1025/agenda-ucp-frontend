@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle, ClipboardList, Trash2, RotateCcw, ThumbsUp } from "lucide-react";
 import { AgendaComments } from "@/components/AgendaComments";
 import { useAgendas, useInsertAgendaComment, useAgendaView, useUpsertAgendaView, useUpdateAgendaViewStatus } from "@/hooks/useDatabase";
@@ -14,6 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { translateOption } from "@/i18n/optionTranslations";
 import { ConfirmSuccessDialog } from "@/components/ConfirmSuccessDialog";
+import { getDocenteFullName } from "@/types/docentePlanta";
 
 export function SummaryPanel() {
   const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord, selectedDocente } = useAgenda();
