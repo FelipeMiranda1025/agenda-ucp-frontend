@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CheckCircle, ClipboardList, Trash2, RotateCcw, ThumbsUp } from "lucide-react";
 import { AgendaComments } from "@/components/AgendaComments";
 import { useAgendas, useInsertAgendaComment, useAgendaView, useUpsertAgendaView, useUpdateAgendaViewStatus } from "@/hooks/useDatabase";
@@ -14,9 +15,10 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { translateOption } from "@/i18n/optionTranslations";
 import { ConfirmSuccessDialog } from "@/components/ConfirmSuccessDialog";
+import { getDocenteFullName } from "@/types/docentePlanta";
 
 export function SummaryPanel() {
-  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord, selectedDocente } = useAgenda();
+  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView } = useAgenda();
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
@@ -145,6 +147,38 @@ export function SummaryPanel() {
           return dn ? <p className="text-xs text-primary-foreground/80 mt-0.5">{dn}</p> : null;
         })()}
       </div>
+
+      {docentesList.length > 1 && (
+        <div className="px-4 py-2 border-b bg-muted/30">
+          <Select
+            value={selectedDocente?.id || ""}
+            onValueChange={async (val) => {
+              const d = docentesList.find((doc) => doc.id === val);
+              if (!d) return;
+              setSelectedDocente(d);
+              if (d.firstName !== "Yo") {
+                setTimeout(async () => {
+                  const found = await loadFromAgendaView();
+                  if (!found) {
+                    toast.info(`Docente ${getDocenteFullName(d)} no ha diligenciado su agenda`);
+                  }
+                }, 100);
+              }
+            }}
+          >
+            <SelectTrigger className="w-full h-8 text-xs">
+              <SelectValue placeholder={t("sidebar.docenteSection")} />
+            </SelectTrigger>
+            <SelectContent>
+              {docentesList.map((d) => (
+                <SelectItem key={d.id} value={d.id}>
+                  {d.firstName === "Yo" ? "Yo" : getDocenteFullName(d)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <ScrollArea className="flex-1 px-4 py-3 bg-white dark:bg-[#1f1f1f]">
         {grouped.length === 0 ? (
