@@ -35,16 +35,13 @@ interface AgendaContextType {
   loadFromAgendaView: () => Promise<boolean>;
 }
 
-const AgendaContext = createContext<AgendaContextType | undefined>(undefined);
+const AgendaContext = createContext<AgendaContextType | null>(null);
 
-export const useAgenda = (): AgendaContextType => {
+export const useAgenda = () => {
   const ctx = useContext(AgendaContext);
   if (!ctx) throw new Error("useAgenda must be used within AgendaProvider");
   return ctx;
 };
-
-// Re-export context for HMR stability
-export { AgendaContext };
 
 export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
