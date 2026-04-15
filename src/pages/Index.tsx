@@ -50,26 +50,35 @@ const Index = () => {
 
   const isReturnedAgenda = agendaView?.status === "returned";
 
+  // Dismissed returned notifications tracked in localStorage
+  const isDismissedReturn = useMemo(() => {
+    if (!agendaView?.id) return false;
+    return localStorage.getItem(`dismissed_return_${agendaView.id}`) === "1";
+  }, [agendaView?.id]);
+
   const unreadCount = useMemo(() => {
     if (!user) return 0;
     let count = allComments.filter(
       (c) => c.reviewer_cc !== user.id && !(c.read_by || []).includes(user.id)
     ).length;
-    if (isReturnedAgenda) {
+    if (isReturnedAgenda && !isDismissedReturn) {
       count += 1;
     }
-    // Add pending subordinate agendas as notifications for supervisors
     count += pendingSubordinateAgendas.length;
     return count;
-  }, [allComments, user, isReturnedAgenda, pendingSubordinateAgendas]);
+  }, [allComments, user, isReturnedAgenda, isDismissedReturn, pendingSubordinateAgendas]);
 
   const handleOpenNotifications = () => {
-    if (!user || unreadCount === 0) return;
+    if (!user) return;
     const unreadIds = allComments
       .filter((c) => c.reviewer_cc !== user.id && !(c.read_by || []).includes(user.id))
       .map((c) => c.id);
     if (unreadIds.length > 0) {
       markRead.mutate({ commentIds: unreadIds, userCc: user.id });
+    }
+    // Dismiss returned notification
+    if (isReturnedAgenda && agendaView?.id) {
+      localStorage.setItem(`dismissed_return_${agendaView.id}`, "1");
     }
   };
 
