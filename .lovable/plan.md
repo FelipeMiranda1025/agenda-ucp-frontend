@@ -1,27 +1,36 @@
 
 
-# Plan: Permitir navegación libre entre agendas (Yo y subordinados)
+# Plan: Notificaciones leídas desaparecen + botón historial
 
-## Problema actual
+## Resumen
 
-Cuando el usuario con rol `directorPrograma` cambia de docente en el dropdown, la agenda del subordinado solo se carga si no hay registros previos en memoria (`recordsByDocente[docenteId]`). Además, al volver a "Yo", los datos propios pueden no recargarse correctamente. El sidebar también se cierra al cambiar (`onClose()`), lo cual dificulta la navegación rápida.
+Las notificaciones leídas se ocultarán de la vista principal del dropdown de la campanita. Se agregará un botón "Ver historial" dentro del mismo dropdown que al activarse mostrará todas las notificaciones (leídas y no leídas).
 
 ## Cambios
 
-### 1. `src/context/AgendaContext.tsx` — Siempre recargar al cambiar docente
+### 1. `src/pages/Index.tsx`
 
-- En el `useEffect` de auto-load (línea 271-278), **eliminar la condición** `if (!existing || existing.length === 0)` para que **siempre** llame `loadFromAgendaView()` al cambiar de docente, garantizando datos frescos.
-- Esto permite ir y venir entre "Yo" y cualquier subordinado sin restricciones.
+- Agregar estado local `showHistory` (boolean, default false) para alternar entre vista activa e historial.
+- **Vista principal (showHistory=false):** Solo mostrar notificaciones no leídas:
+  - Comentarios donde `!(read_by).includes(user.id)`
+  - Returned agenda (si no ha sido "dismissed" — usar `localStorage` key `dismissed_return_<agenda_id>`)
+  - Pending subordinate agendas (ya desaparecen cuando se aprueban/retornan)
+- **Vista historial (showHistory=true):** Mostrar TODAS las notificaciones (comentarios leídos + no leídos, returned, pending).
+- Agregar botón al final del dropdown: icono `History`/`Clock` + texto "Ver historial" / "Ver nuevas" que alterna `showHistory`.
+- Al abrir el dropdown y marcar como leídos (`handleOpenNotifications`), la notificación de retorno se marca como dismissed en `localStorage`.
+- El `unreadCount` del badge solo cuenta las NO leídas (sin cambios en la lógica actual, solo agregar el dismiss de returned).
 
-### 2. `src/components/AppSidebar.tsx` — No cerrar sidebar al cambiar docente
+### 2. `src/i18n/translations.ts`
 
-- Eliminar la llamada `onClose()` dentro del `onValueChange` del Select (línea 108), para que el usuario pueda seguir cambiando entre docentes sin que el sidebar se cierre.
-- Mantener la llamada `loadFromAgendaView()` con toast para subordinados sin agenda.
+- Agregar claves:
+  - `notifications.viewHistory` → "Ver historial" / "View history"
+  - `notifications.viewNew` → "Ver nuevas" / "View new"
+  - `notifications.read` → "Leída" / "Read" (badge opcional en historial)
 
 ## Archivos a modificar
 
 | Archivo | Cambio |
 |---|---|
-| `src/context/AgendaContext.tsx` | Eliminar condición en useEffect para siempre recargar agenda al cambiar docente |
-| `src/components/AppSidebar.tsx` | Eliminar `onClose()` del onValueChange del dropdown docente |
+| `src/pages/Index.tsx` | Estado `showHistory`, filtrar notificaciones leídas, botón toggle historial, dismiss returned en localStorage |
+| `src/i18n/translations.ts` | Nuevas claves de traducción para historial |
 
