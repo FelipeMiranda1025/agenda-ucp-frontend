@@ -239,7 +239,11 @@ const Index = () => {
                     ? userComments
                     : userComments.filter((c) => !(c.read_by || []).includes(user?.id || ""));
                   
-                  if (visibleComments.length === 0 && pendingSubordinateAgendas.length === 0 && !(isReturnedAgenda && (showNotifHistory || !isDismissedReturn))) {
+                  const visiblePendingCount = (showNotifHistory
+                    ? pendingSubordinateAgendas
+                    : pendingSubordinateAgendas.filter((pa) => !isPendingRead(pa.agendaView.id))
+                  ).length;
+                  if (visibleComments.length === 0 && visiblePendingCount === 0 && !(isReturnedAgenda && (showNotifHistory || !isDismissedReturn))) {
                     return (
                       <div className="px-3 py-4 text-sm text-muted-foreground text-center">
                         {t("notifications.empty")}
