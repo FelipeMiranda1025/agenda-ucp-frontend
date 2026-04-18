@@ -96,9 +96,9 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
           <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">{t("sidebar.schedule")}</p>
           <div className="space-y-0.5">{renderItems(horSubs)}</div>
         </div>
-        {docentesList.length > 1 && (
+        {docentesList.length >= 1 && (
           <div>
-            <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">{t("sidebar.docenteSection")}</p>
+            <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">{t("sidebar.docenteSection")} ({docentesList.length})</p>
             <Select
               value={selectedDocente?.id || ""}
             onValueChange={async (val) => {
