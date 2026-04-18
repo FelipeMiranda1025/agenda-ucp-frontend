@@ -560,6 +560,12 @@ export default function SupportPanel() {
                         <TableCell>
                           <Badge variant="secondary">{roleName(u.id_rol)}</Badge>
                         </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[180px] truncate" title={facultyName(u.id_faculty)}>
+                          {facultyName(u.id_faculty)}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[180px] truncate" title={careerName(u.id_professional_career)}>
+                          {careerName(u.id_professional_career)}
+                        </TableCell>
                         <TableCell>
                           <Badge
                             variant={u.id_state === 1 ? "default" : "outline"}
