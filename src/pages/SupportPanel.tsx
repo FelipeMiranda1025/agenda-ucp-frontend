@@ -173,6 +173,27 @@ export default function SupportPanel() {
     },
   });
 
+  const { data: faculties = [] } = useQuery<FacultyRow[]>({
+    queryKey: ["sp_faculties"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("faculties").select("id,name").order("name");
+      if (error) throw error;
+      return (data ?? []) as FacultyRow[];
+    },
+  });
+
+  const { data: careers = [] } = useQuery<CareerRow[]>({
+    queryKey: ["sp_careers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("professional_careers")
+        .select("id,name,id_faculty")
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as CareerRow[];
+    },
+  });
+
   // ----- Mutations
   const createUser = useMutation({
     mutationFn: async (payload: typeof emptyForm) => {
