@@ -47,7 +47,7 @@ export function SummaryPanel() {
 
   const handleConfirm = async () => {
     const total = metricas.totalHorasSemestrales;
-    if (total < 910 || total > 930) {
+    if (total < 900 || total > 930) {
       if (total > 930) {
         const exceso = total - 930;
         toast.error(
@@ -55,9 +55,9 @@ export function SummaryPanel() {
           { duration: 7000 }
         );
       } else {
-        const faltante = 910 - total;
+        const faltante = 900 - total;
         toast.error(
-          t("validation.missing", { missing: faltante, max: 910 }),
+          t("validation.missing", { missing: faltante, max: 900 }),
           { duration: 6000 }
         );
       }
