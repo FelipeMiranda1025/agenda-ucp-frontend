@@ -79,6 +79,8 @@ interface UserRow {
   id_rol: number;
   id_state: number;
   password: string;
+  id_faculty: number | null;
+  id_professional_career: number | null;
 }
 
 interface RoleRow {
@@ -94,6 +96,15 @@ interface HierarchyRow {
   user_id: number;
   supervisor_id: number;
 }
+interface FacultyRow {
+  id: number;
+  name: string;
+}
+interface CareerRow {
+  id: number;
+  name: string;
+  id_faculty: number | null;
+}
 
 const emptyForm = {
   cc: "",
@@ -105,6 +116,8 @@ const emptyForm = {
   id_rol: 1,
   id_state: 1,
   password: "",
+  id_faculty: null as number | null,
+  id_professional_career: null as number | null,
 };
 
 export default function SupportPanel() {
