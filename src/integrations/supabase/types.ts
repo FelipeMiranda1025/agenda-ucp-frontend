@@ -613,6 +613,8 @@ export type Database = {
           first_last_name: string
           first_name: string
           id: number
+          id_faculty: number | null
+          id_professional_career: number | null
           id_rol: number
           id_state: number
           password: string
@@ -625,6 +627,8 @@ export type Database = {
           first_last_name: string
           first_name: string
           id?: number
+          id_faculty?: number | null
+          id_professional_career?: number | null
           id_rol: number
           id_state: number
           password: string
@@ -637,6 +641,8 @@ export type Database = {
           first_last_name?: string
           first_name?: string
           id?: number
+          id_faculty?: number | null
+          id_professional_career?: number | null
           id_rol?: number
           id_state?: number
           password?: string
@@ -644,6 +650,20 @@ export type Database = {
           second_name?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "users_id_faculty_fkey"
+            columns: ["id_faculty"]
+            isOneToOne: false
+            referencedRelation: "faculties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "users_id_professional_career_fkey"
+            columns: ["id_professional_career"]
+            isOneToOne: false
+            referencedRelation: "professional_careers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "users_id_rol_fkey"
             columns: ["id_rol"]
