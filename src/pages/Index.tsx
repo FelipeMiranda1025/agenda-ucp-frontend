@@ -141,7 +141,7 @@ const Index = () => {
           {/* Right-side toolbar */}
           <div className="flex items-center gap-1">
             {/* Notifications */}
-            <DropdownMenu onOpenChange={(open) => { if (open) handleOpenNotifications(); }}>
+            <DropdownMenu open={notifOpen} onOpenChange={(open) => { setNotifOpen(open); if (open) handleOpenNotifications(); }}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
