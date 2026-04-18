@@ -124,6 +124,8 @@ export default function SupportPanel() {
   const { user, logout } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
+  const [filterFaculty, setFilterFaculty] = useState<string>("all");
+  const [filterCareer, setFilterCareer] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
