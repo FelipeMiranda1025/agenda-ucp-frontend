@@ -69,9 +69,9 @@ const Index = () => {
     if (isReturnedAgenda && !isDismissedReturn) {
       count += 1;
     }
-    count += pendingSubordinateAgendas.length;
+    count += pendingSubordinateAgendas.filter((pa) => !isPendingRead(pa.agendaView.id)).length;
     return count;
-  }, [allComments, user, isReturnedAgenda, isDismissedReturn, pendingSubordinateAgendas]);
+  }, [allComments, user, isReturnedAgenda, isDismissedReturn, pendingSubordinateAgendas, readTick]);
 
   const handleOpenNotifications = () => {
     if (!user) return;
