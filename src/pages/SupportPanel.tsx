@@ -373,6 +373,8 @@ export default function SupportPanel() {
       id_rol: u.id_rol,
       id_state: u.id_state,
       password: "",
+      id_faculty: u.id_faculty,
+      id_professional_career: u.id_professional_career,
     });
     setDialogOpen(true);
   };
