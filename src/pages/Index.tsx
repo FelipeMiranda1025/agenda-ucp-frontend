@@ -188,32 +188,49 @@ const Index = () => {
                 )}
 
                 {/* Pending subordinate agendas */}
-                {pendingSubordinateAgendas.map((pa) => (
-                  <button
-                    key={pa.agendaView.id}
-                    className="w-full text-left px-3 py-2 text-xs border-b last:border-0 bg-accent/30 hover:bg-accent/50 cursor-pointer transition-colors"
-                    onClick={() => {
-                      const docente = docentesList.find((d) => d.id === pa.docenteCc);
-                      if (docente) {
-                        setSelectedDocente(docente);
-                      } else {
-                        setSelectedDocente({
-                          id: pa.docenteCc,
-                          firstName: pa.docenteName.split(" ")[0] || "",
-                          secondName: pa.docenteName.split(" ").length > 2 ? pa.docenteName.split(" ")[1] : "",
-                          firstLastName: pa.docenteName.split(" ").slice(-1)[0] || "",
-                          secondLastName: "",
-                        });
-                      }
-                    }}
-                  >
-                    <p className="text-foreground font-medium">{pa.docenteName}</p>
-                    <p className="text-muted-foreground">{t("notifications.pendingReview")}</p>
-                    <span className="text-muted-foreground text-[10px]">
-                      {new Date(pa.createdAt).toLocaleDateString()}
-                    </span>
-                  </button>
-                ))}
+                {(showNotifHistory
+                  ? pendingSubordinateAgendas
+                  : pendingSubordinateAgendas.filter((pa) => !isPendingRead(pa.agendaView.id))
+                ).map((pa) => {
+                  const read = isPendingRead(pa.agendaView.id);
+                  return (
+                    <button
+                      key={pa.agendaView.id}
+                      className={`w-full text-left px-3 py-2 text-xs border-b last:border-0 bg-accent/30 hover:bg-accent/50 cursor-pointer transition-colors ${read ? "opacity-60" : ""}`}
+                      onClick={async () => {
+                        const docente = docentesList.find((d) => d.id === pa.docenteCc);
+                        if (docente) {
+                          setSelectedDocente(docente);
+                        } else {
+                          setSelectedDocente({
+                            id: pa.docenteCc,
+                            firstName: pa.docenteName.split(" ")[0] || "",
+                            secondName: pa.docenteName.split(" ").length > 2 ? pa.docenteName.split(" ")[1] : "",
+                            firstLastName: pa.docenteName.split(" ").slice(-1)[0] || "",
+                            secondLastName: "",
+                          });
+                        }
+                        try {
+                          await loadFromAgendaView();
+                        } catch {
+                          // noop
+                        }
+                        localStorage.setItem(`read_pending_${pa.agendaView.id}`, "1");
+                        setReadTick((n) => n + 1);
+                        setNotifOpen(false);
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-foreground font-medium">{pa.docenteName}</p>
+                        {read && <span className="text-[10px] text-muted-foreground italic ml-2 shrink-0">{t("notifications.read")}</span>}
+                      </div>
+                      <p className="text-muted-foreground">{t("notifications.pendingReview")}</p>
+                      <span className="text-muted-foreground text-[10px]">
+                        {new Date(pa.createdAt).toLocaleDateString()}
+                      </span>
+                    </button>
+                  );
+                })}
 
                 {/* Comment notifications — filtered by read status */}
                 {(() => {
