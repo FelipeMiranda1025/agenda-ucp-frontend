@@ -45,7 +45,15 @@ export const useAgenda = () => {
 
 export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
-  const { data: subordinates = [] } = useSubordinatesWithNames(user?.id);
+  const { data: subordinates = [], isLoading: loadingSubs, error: subsError } = useSubordinatesWithNames(user?.id);
+
+  // Debug: trace subordinate loading to diagnose why dropdown shows only "Yo"
+  useEffect(() => {
+    if (user) {
+      console.log("[AgendaContext] user.id (cc):", user.id, "rolId:", user.rolId);
+      console.log("[AgendaContext] subordinates →", { loading: loadingSubs, error: subsError, count: subordinates.length, data: subordinates });
+    }
+  }, [user, subordinates, loadingSubs, subsError]);
 
   // Build dynamic docentes list: "Yo" (current user) + subordinates
   const docentesList = useMemo<DocentePlanta[]>(() => {
