@@ -307,6 +307,10 @@ export default function SupportPanel() {
   // ----- Helpers
   const roleName = (id: number) => roles.find((r) => r.id === id)?.name ?? "—";
   const stateName = (id: number) => states.find((s) => s.id === id)?.name ?? "—";
+  const facultyName = (id: number | null) =>
+    id ? faculties.find((f) => f.id === id)?.name ?? "—" : "—";
+  const careerName = (id: number | null) =>
+    id ? careers.find((c) => c.id === id)?.name ?? "—" : "—";
   const fullName = (u: UserRow) =>
     [u.first_name, u.second_name, u.first_last_name, u.second_last_name]
       .filter(Boolean)
@@ -317,17 +321,35 @@ export default function SupportPanel() {
     return users.find((x) => x.id === h.supervisor_id) || null;
   };
 
+  // Carreras filtradas por facultad seleccionada (para el filtro de la tabla)
+  const careersForFilter = useMemo(() => {
+    if (filterFaculty === "all") return careers;
+    return careers.filter((c) => c.id_faculty === Number(filterFaculty));
+  }, [careers, filterFaculty]);
+
+  // Carreras filtradas por facultad del formulario (para el select del diálogo)
+  const careersForForm = useMemo(() => {
+    if (form.id_faculty === null) return careers;
+    return careers.filter((c) => c.id_faculty === form.id_faculty);
+  }, [careers, form.id_faculty]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter(
-      (u) =>
+    return users.filter((u) => {
+      const matchesSearch =
+        !q ||
         u.cc.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
         fullName(u).toLowerCase().includes(q) ||
-        roleName(u.id_rol).toLowerCase().includes(q),
-    );
-  }, [users, search, roles]);
+        roleName(u.id_rol).toLowerCase().includes(q);
+      const matchesFaculty =
+        filterFaculty === "all" || u.id_faculty === Number(filterFaculty);
+      const matchesCareer =
+        filterCareer === "all" ||
+        u.id_professional_career === Number(filterCareer);
+      return matchesSearch && matchesFaculty && matchesCareer;
+    });
+  }, [users, search, roles, filterFaculty, filterCareer]);
 
   // Roles que pueden ser supervisores (excluye Soporte y al propio usuario)
   const possibleSupervisors = (forUserId: number) =>
