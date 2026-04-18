@@ -210,6 +210,8 @@ export default function SupportPanel() {
           id_rol: payload.id_rol,
           id_state: payload.id_state,
           password: hashed,
+          id_faculty: payload.id_faculty,
+          id_professional_career: payload.id_professional_career,
         })
         .select()
         .single();
