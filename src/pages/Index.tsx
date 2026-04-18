@@ -34,7 +34,12 @@ const Index = () => {
   const { theme, setTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showNotifHistory, setShowNotifHistory] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [readTick, setReadTick] = useState(0);
   const [visibleSection, setVisibleSection] = useState<string>("header.production");
+
+  const isPendingRead = (id: string) =>
+    typeof window !== "undefined" && localStorage.getItem(`read_pending_${id}`) === "1";
   const mainRef = useRef<HTMLDivElement>(null);
 
   // Global comments & notifications
