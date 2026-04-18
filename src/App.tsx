@@ -15,6 +15,7 @@ import Profile from "./pages/Profile";
 import ScheduleBuilder from "./pages/ScheduleBuilder";
 import AuditLog from "./pages/AuditLog";
 import NotFound from "./pages/NotFound";
+import SupportPanel from "./pages/SupportPanel";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -40,10 +41,15 @@ class AgendaErrorBoundary extends React.Component<{ children: React.ReactNode },
 }
 
 const AppContent = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, roleName } = useAuth();
 
   if (!isAuthenticated) {
     return <LoginDialog />;
+  }
+
+  // Rol Soporte: panel exclusivo de gestión de usuarios. No carga AgendaProvider ni rutas normales.
+  if (roleName === "Soporte") {
+    return <SupportPanel />;
   }
 
   return (
