@@ -527,6 +527,8 @@ export default function SupportPanel() {
                   <TableHead>Nombre completo</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Rol</TableHead>
+                  <TableHead>Facultad</TableHead>
+                  <TableHead>Carrera</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Supervisor</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -535,13 +537,13 @@ export default function SupportPanel() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       Cargando usuarios...
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       No se encontraron usuarios
                     </TableCell>
                   </TableRow>
