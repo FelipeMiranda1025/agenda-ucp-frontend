@@ -2,67 +2,61 @@
 
 ## Análisis
 
-El icono de la campanita en `Index.tsx` muestra notificaciones de:
-1. **Agendas pendientes de subordinados** (`pendingSubordinateAgendas`): docentes que enviaron su agenda para revisión.
-2. **Comentarios sin leer** (filtrados por `read_by`).
-3. **Agenda devuelta** al docente (notificación inversa).
+Reviso el panel Soporte y la estructura actual.
+<lov-tool-use id="toolu_vrtx_01S8Aw3euvLkXtarhGkx85y4" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/SupportPanel.tsx\"}">
+</lov-tool-use>
 
-Hoy, al hacer click en una notificación de agenda subordinada se cambia `setSelectedDocente`, pero:
-- **NO se desaparece** de la lista al ser "leída".
-- **NO aparece en historial**: porque no hay tracking individual de "leídas" para estos items (a diferencia de comentarios que usan `read_by` en BD).
-- El cierre del dropdown al hacer click sí dispara `handleOpenNotifications`, pero ese handler solo marca comentarios y la agenda devuelta, no las pendientes de subordinados.
+<lov-tool-use id="toolu_vrtx_01KMgF2wcs24C1s7v1M4q4JM" name="supabase--read_query" integration-id="supabase" data="{\"query\": \"SELECT id, name, id_faculty FROM professional_careers ORDER BY id\"}">
+</lov-tool-use>
 
-## Solución
+<lov-tool-use id="toolu_vrtx_01RyGBZzCfm4TehuUAqx2mwz" name="supabase--read_query" integration-id="supabase" data="{\"query\": \"SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema='public' AND table_name='users' ORDER BY ordinal_position\"}">
+</lov-tool-use>
 
-Implementar tracking de notificaciones leídas en **`localStorage`** (igual al patrón ya usado para `dismissed_return_<id>`), con clave `read_pending_<agendaViewId>`. Al click en un item pendiente:
+<lov-tool-use id="toolu_vrtx_01CN1o1px8GF9cG7bMLxaxeN" name="code--view" integration-id="code" data="{\"file_path\": \"src/pages/SupportPanel.tsx\"}">
+</lov-tool-use>
 
-1. Cambia el docente seleccionado (ya funciona, pero se reforzará invocando `loadFromAgendaView()` después).
-2. Marca la notificación como leída en localStorage.
-3. Cierra el dropdown.
-4. Re-render: el item desaparece de "Nuevas" y aparece en "Historial" (con badge "Leída" y `opacity-60`).
+<lov-tool-use id="toolu_vrtx_01PLfRGKkhyPd4okZVKKSA2t" name="supabase--read_query" integration-id="supabase" data="{\"query\": \"SELECT id, name, id_faculty FROM professional_careers ORDER BY id\"}">
+</lov-tool-use>
 
-El selector de Docente del sidebar ya refleja `selectedDocente` automáticamente vía contexto, así que el cambio se verá ahí sin tocar `AppSidebar.tsx`.
+<lov-tool-use id="toolu_vrtx_01CbdpTsMhyoCF6wnsbz9V3v" name="supabase--read_query" integration-id="supabase" data="{\"query\": \"SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema='public' AND table_name='users' ORDER BY ordinal_position\"}">
+</lov-tool-use>
+The `users` table doesn't have `id_faculty` or `id_professional_career` columns. Need to add them. The faculty is derivable from the career (career → faculty), so storing only `id_professional_career` on users is enough — but adding both is also fine for query simplicity. I'll go with just `id_professional_career` (faculty derived) to avoid duplication.
 
-## Cambios técnicos
+<lov-plan>
 
-**Archivo único:** `src/pages/Index.tsx`
+## Análisis
 
-1. **Estado de lecturas locales** — usar un `useState` con un contador trigger (`readTick`) para forzar re-render cuando se actualiza localStorage:
-   ```tsx
-   const [readTick, setReadTick] = useState(0);
-   const isPendingRead = (id: string) => 
-     localStorage.getItem(`read_pending_${id}`) === "1";
-   ```
+- Tabla `users` actual no tiene columnas para facultad/carrera.
+- Tabla `professional_careers` ya tiene `id_faculty` (relación carrera → facultad ya existe).
+- Tabla `faculties` ya existe con datos.
+- `SupportPanel.tsx` usa React Query y muestra una tabla con búsqueda; hay que agregar dos `Select` de filtro y dos `Select` en el formulario de creación/edición.
 
-2. **Filtrar pendientes por estado leído**:
-   ```tsx
-   const visiblePending = showNotifHistory
-     ? pendingSubordinateAgendas
-     : pendingSubordinateAgendas.filter(pa => !isPendingRead(pa.agendaView.id));
-   ```
+Como la carrera ya pertenece a una facultad, basta con almacenar `id_professional_career` en `users` y derivar la facultad. Pero para soportar el filtro por facultad de forma directa y permitir asignación explícita, agregaré ambas columnas (`id_faculty` y `id_professional_career`) — el formulario forzará coherencia (al elegir carrera se autocompleta la facultad y al elegir facultad se filtran las carreras).
 
-3. **Actualizar `unreadCount`** para descontar las leídas:
-   ```tsx
-   count += pendingSubordinateAgendas.filter(pa => !isPendingRead(pa.agendaView.id)).length;
-   ```
-   (incluir `readTick` en deps).
+## Cambios
 
-4. **Handler `onClick` del botón de notificación pendiente**:
-   - Marca `localStorage.setItem('read_pending_${pa.agendaView.id}', '1')`.
-   - Llama `setSelectedDocente(docente)`.
-   - Llama `loadFromAgendaView()` después del cambio (para refrescar la agenda en pantalla).
-   - Incrementa `readTick` para forzar re-render.
-   - Cierra el dropdown (controlando `open` con `useState`).
+### 1. Migración BD (`users`)
+- Agregar columnas: `id_faculty INT REFERENCES faculties(id)` y `id_professional_career INT REFERENCES professional_careers(id)`, ambas **nullable** (para no romper usuarios existentes ni el rol Soporte que no pertenece a ninguna).
 
-5. **Render visual en historial**: items leídos con `opacity-60` y badge "Leída" (igual que los comentarios).
+### 2. `src/pages/SupportPanel.tsx`
+- **Queries nuevas**: `sp_faculties` y `sp_careers` (con `id_faculty`).
+- **Estado de filtros**: `filterFaculty` y `filterCareer` (`"all"` por defecto).
+- **UI filtros**: dos `Select` arriba de la tabla, junto al buscador. Carreras se filtran por facultad seleccionada.
+- **Filtrado**: `filtered` aplica búsqueda + filtro facultad + filtro carrera.
+- **Columnas tabla**: agregar "Facultad" y "Carrera" mostrando el nombre.
+- **Formulario crear/editar** (`emptyForm`):
+  - Agregar `id_faculty: null` y `id_professional_career: null`.
+  - Dos `Select` en el diálogo: Facultad → al cambiar, resetea carrera y filtra opciones; Carrera → al cambiar, autocompleta facultad.
+  - El rol Soporte (id=5) puede dejarlos vacíos (opcional, mostrar nota).
+- **Mutations** `createUser` / `updateUser`: incluir `id_faculty` y `id_professional_career` en el payload.
 
-6. **Control del dropdown abierto**: cambiar `<DropdownMenu onOpenChange>` a estado controlado (`notifOpen`, `setNotifOpen`) para poder cerrarlo programáticamente al hacer click.
+### 3. `src/integrations/supabase/types.ts`
+Se regenera automáticamente con la migración.
 
-## Resumen de archivos
+## Archivos
 
 | Archivo | Cambio |
 |---|---|
-| `src/pages/Index.tsx` | Estado `readTick` + `notifOpen`, helper `isPendingRead`, filtrado de pendientes en "Nuevas" vs "Historial", handler de click que marca leída + cambia docente + carga agenda + cierra dropdown, badge "Leída" en historial |
-
-No se requiere migración de BD: el tracking es por usuario/navegador en localStorage, consistente con el patrón existente de `dismissed_return_<id>`.
+| Migración SQL | `ALTER TABLE users ADD COLUMN id_faculty`, `id_professional_career` con FK |
+| `src/pages/SupportPanel.tsx` | Filtros (facultad/carrera), columnas adicionales en tabla, selects en formulario con dependencia jerárquica |
 
