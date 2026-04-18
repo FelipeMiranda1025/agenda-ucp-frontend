@@ -118,7 +118,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
               <SelectTrigger className="w-full">
                 <SelectValue placeholder={t("sidebar.docenteSection")} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[70]">
                 {docentesList.map((d) => (
                   <SelectItem key={d.id} value={d.id}>
                     {d.firstName === "Yo" ? "Yo" : getDocenteFullName(d)}
