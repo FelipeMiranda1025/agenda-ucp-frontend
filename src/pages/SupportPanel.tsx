@@ -464,6 +464,61 @@ export default function SupportPanel() {
             </div>
           </CardHeader>
 
+          {/* Filtros facultad / carrera */}
+          <div className="border-b bg-muted/30 px-6 py-3 flex flex-col sm:flex-row gap-3 sm:items-center">
+            <div className="flex-1 space-y-1">
+              <Label className="text-xs text-muted-foreground">Facultad</Label>
+              <Select
+                value={filterFaculty}
+                onValueChange={(v) => {
+                  setFilterFaculty(v);
+                  setFilterCareer("all");
+                }}
+              >
+                <SelectTrigger className="bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="all">Todas las facultades</SelectItem>
+                  {faculties.map((f) => (
+                    <SelectItem key={f.id} value={String(f.id)}>
+                      {f.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 space-y-1">
+              <Label className="text-xs text-muted-foreground">Carrera profesional</Label>
+              <Select value={filterCareer} onValueChange={setFilterCareer}>
+                <SelectTrigger className="bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="all">Todas las carreras</SelectItem>
+                  {careersForFilter.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {(filterFaculty !== "all" || filterCareer !== "all") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="self-end"
+                onClick={() => {
+                  setFilterFaculty("all");
+                  setFilterCareer("all");
+                }}
+              >
+                Limpiar filtros
+              </Button>
+            )}
+          </div>
+
           <CardContent className="p-0">
             <Table>
               <TableHeader>
