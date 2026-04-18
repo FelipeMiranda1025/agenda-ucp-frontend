@@ -731,6 +731,78 @@ export default function SupportPanel() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Facultad</Label>
+              <Select
+                value={form.id_faculty === null ? "none" : String(form.id_faculty)}
+                onValueChange={(v) =>
+                  setForm({
+                    ...form,
+                    id_faculty: v === "none" ? null : Number(v),
+                    // Reset carrera si ya no pertenece a la nueva facultad
+                    id_professional_career:
+                      v === "none"
+                        ? form.id_professional_career
+                        : careers.find((c) => c.id === form.id_professional_career)?.id_faculty === Number(v)
+                          ? form.id_professional_career
+                          : null,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona facultad" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="none">— Sin facultad —</SelectItem>
+                  {faculties.map((f) => (
+                    <SelectItem key={f.id} value={String(f.id)}>
+                      {f.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Carrera profesional</Label>
+              <Select
+                value={
+                  form.id_professional_career === null
+                    ? "none"
+                    : String(form.id_professional_career)
+                }
+                onValueChange={(v) => {
+                  if (v === "none") {
+                    setForm({ ...form, id_professional_career: null });
+                  } else {
+                    const careerId = Number(v);
+                    const career = careers.find((c) => c.id === careerId);
+                    // Auto-asigna la facultad de la carrera elegida
+                    setForm({
+                      ...form,
+                      id_professional_career: careerId,
+                      id_faculty: career?.id_faculty ?? form.id_faculty,
+                    });
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona carrera" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="none">— Sin carrera —</SelectItem>
+                  {careersForForm.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {form.id_rol === 5 && (
+              <div className="sm:col-span-2 text-xs text-muted-foreground italic">
+                Nota: el rol Soporte normalmente no pertenece a ninguna facultad/carrera.
+              </div>
+            )}
             <div className="space-y-2 sm:col-span-2">
               <Label>
                 Contraseña {editing ? "(dejar vacío para no cambiar)" : "*"}
