@@ -79,6 +79,8 @@ interface UserRow {
   id_rol: number;
   id_state: number;
   password: string;
+  id_faculty: number | null;
+  id_professional_career: number | null;
 }
 
 interface RoleRow {
@@ -94,6 +96,15 @@ interface HierarchyRow {
   user_id: number;
   supervisor_id: number;
 }
+interface FacultyRow {
+  id: number;
+  name: string;
+}
+interface CareerRow {
+  id: number;
+  name: string;
+  id_faculty: number | null;
+}
 
 const emptyForm = {
   cc: "",
@@ -105,12 +116,16 @@ const emptyForm = {
   id_rol: 1,
   id_state: 1,
   password: "",
+  id_faculty: null as number | null,
+  id_professional_career: null as number | null,
 };
 
 export default function SupportPanel() {
   const { user, logout } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
+  const [filterFaculty, setFilterFaculty] = useState<string>("all");
+  const [filterCareer, setFilterCareer] = useState<string>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
@@ -158,6 +173,27 @@ export default function SupportPanel() {
     },
   });
 
+  const { data: faculties = [] } = useQuery<FacultyRow[]>({
+    queryKey: ["sp_faculties"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("faculties").select("id,name").order("name");
+      if (error) throw error;
+      return (data ?? []) as FacultyRow[];
+    },
+  });
+
+  const { data: careers = [] } = useQuery<CareerRow[]>({
+    queryKey: ["sp_careers"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("professional_careers")
+        .select("id,name,id_faculty")
+        .order("name");
+      if (error) throw error;
+      return (data ?? []) as CareerRow[];
+    },
+  });
+
   // ----- Mutations
   const createUser = useMutation({
     mutationFn: async (payload: typeof emptyForm) => {
@@ -174,6 +210,8 @@ export default function SupportPanel() {
           id_rol: payload.id_rol,
           id_state: payload.id_state,
           password: hashed,
+          id_faculty: payload.id_faculty,
+          id_professional_career: payload.id_professional_career,
         })
         .select()
         .single();
@@ -199,6 +237,8 @@ export default function SupportPanel() {
         second_last_name: payload.second_last_name.trim() || null,
         id_rol: payload.id_rol,
         id_state: payload.id_state,
+        id_faculty: payload.id_faculty,
+        id_professional_career: payload.id_professional_career,
       };
       if (payload.password && payload.password.length > 0) {
         updates.password = await hashPassword(payload.password);
@@ -267,6 +307,10 @@ export default function SupportPanel() {
   // ----- Helpers
   const roleName = (id: number) => roles.find((r) => r.id === id)?.name ?? "—";
   const stateName = (id: number) => states.find((s) => s.id === id)?.name ?? "—";
+  const facultyName = (id: number | null) =>
+    id ? faculties.find((f) => f.id === id)?.name ?? "—" : "—";
+  const careerName = (id: number | null) =>
+    id ? careers.find((c) => c.id === id)?.name ?? "—" : "—";
   const fullName = (u: UserRow) =>
     [u.first_name, u.second_name, u.first_last_name, u.second_last_name]
       .filter(Boolean)
@@ -277,17 +321,35 @@ export default function SupportPanel() {
     return users.find((x) => x.id === h.supervisor_id) || null;
   };
 
+  // Carreras filtradas por facultad seleccionada (para el filtro de la tabla)
+  const careersForFilter = useMemo(() => {
+    if (filterFaculty === "all") return careers;
+    return careers.filter((c) => c.id_faculty === Number(filterFaculty));
+  }, [careers, filterFaculty]);
+
+  // Carreras filtradas por facultad del formulario (para el select del diálogo)
+  const careersForForm = useMemo(() => {
+    if (form.id_faculty === null) return careers;
+    return careers.filter((c) => c.id_faculty === form.id_faculty);
+  }, [careers, form.id_faculty]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return users;
-    return users.filter(
-      (u) =>
+    return users.filter((u) => {
+      const matchesSearch =
+        !q ||
         u.cc.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
         fullName(u).toLowerCase().includes(q) ||
-        roleName(u.id_rol).toLowerCase().includes(q),
-    );
-  }, [users, search, roles]);
+        roleName(u.id_rol).toLowerCase().includes(q);
+      const matchesFaculty =
+        filterFaculty === "all" || u.id_faculty === Number(filterFaculty);
+      const matchesCareer =
+        filterCareer === "all" ||
+        u.id_professional_career === Number(filterCareer);
+      return matchesSearch && matchesFaculty && matchesCareer;
+    });
+  }, [users, search, roles, filterFaculty, filterCareer]);
 
   // Roles que pueden ser supervisores (excluye Soporte y al propio usuario)
   const possibleSupervisors = (forUserId: number) =>
@@ -311,6 +373,8 @@ export default function SupportPanel() {
       id_rol: u.id_rol,
       id_state: u.id_state,
       password: "",
+      id_faculty: u.id_faculty,
+      id_professional_career: u.id_professional_career,
     });
     setDialogOpen(true);
   };
@@ -400,6 +464,61 @@ export default function SupportPanel() {
             </div>
           </CardHeader>
 
+          {/* Filtros facultad / carrera */}
+          <div className="border-b bg-muted/30 px-6 py-3 flex flex-col sm:flex-row gap-3 sm:items-center">
+            <div className="flex-1 space-y-1">
+              <Label className="text-xs text-muted-foreground">Facultad</Label>
+              <Select
+                value={filterFaculty}
+                onValueChange={(v) => {
+                  setFilterFaculty(v);
+                  setFilterCareer("all");
+                }}
+              >
+                <SelectTrigger className="bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="all">Todas las facultades</SelectItem>
+                  {faculties.map((f) => (
+                    <SelectItem key={f.id} value={String(f.id)}>
+                      {f.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex-1 space-y-1">
+              <Label className="text-xs text-muted-foreground">Carrera profesional</Label>
+              <Select value={filterCareer} onValueChange={setFilterCareer}>
+                <SelectTrigger className="bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="all">Todas las carreras</SelectItem>
+                  {careersForFilter.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {(filterFaculty !== "all" || filterCareer !== "all") && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="self-end"
+                onClick={() => {
+                  setFilterFaculty("all");
+                  setFilterCareer("all");
+                }}
+              >
+                Limpiar filtros
+              </Button>
+            )}
+          </div>
+
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -408,6 +527,8 @@ export default function SupportPanel() {
                   <TableHead>Nombre completo</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Rol</TableHead>
+                  <TableHead>Facultad</TableHead>
+                  <TableHead>Carrera</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>Supervisor</TableHead>
                   <TableHead className="text-right">Acciones</TableHead>
@@ -416,13 +537,13 @@ export default function SupportPanel() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       Cargando usuarios...
                     </TableCell>
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                       No se encontraron usuarios
                     </TableCell>
                   </TableRow>
@@ -438,6 +559,12 @@ export default function SupportPanel() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="secondary">{roleName(u.id_rol)}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[180px] truncate" title={facultyName(u.id_faculty)}>
+                          {facultyName(u.id_faculty)}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[180px] truncate" title={careerName(u.id_professional_career)}>
+                          {careerName(u.id_professional_career)}
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -604,6 +731,78 @@ export default function SupportPanel() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Facultad</Label>
+              <Select
+                value={form.id_faculty === null ? "none" : String(form.id_faculty)}
+                onValueChange={(v) =>
+                  setForm({
+                    ...form,
+                    id_faculty: v === "none" ? null : Number(v),
+                    // Reset carrera si ya no pertenece a la nueva facultad
+                    id_professional_career:
+                      v === "none"
+                        ? form.id_professional_career
+                        : careers.find((c) => c.id === form.id_professional_career)?.id_faculty === Number(v)
+                          ? form.id_professional_career
+                          : null,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona facultad" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="none">— Sin facultad —</SelectItem>
+                  {faculties.map((f) => (
+                    <SelectItem key={f.id} value={String(f.id)}>
+                      {f.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Carrera profesional</Label>
+              <Select
+                value={
+                  form.id_professional_career === null
+                    ? "none"
+                    : String(form.id_professional_career)
+                }
+                onValueChange={(v) => {
+                  if (v === "none") {
+                    setForm({ ...form, id_professional_career: null });
+                  } else {
+                    const careerId = Number(v);
+                    const career = careers.find((c) => c.id === careerId);
+                    // Auto-asigna la facultad de la carrera elegida
+                    setForm({
+                      ...form,
+                      id_professional_career: careerId,
+                      id_faculty: career?.id_faculty ?? form.id_faculty,
+                    });
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona carrera" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  <SelectItem value="none">— Sin carrera —</SelectItem>
+                  {careersForForm.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {form.id_rol === 5 && (
+              <div className="sm:col-span-2 text-xs text-muted-foreground italic">
+                Nota: el rol Soporte normalmente no pertenece a ninguna facultad/carrera.
+              </div>
+            )}
             <div className="space-y-2 sm:col-span-2">
               <Label>
                 Contraseña {editing ? "(dejar vacío para no cambiar)" : "*"}
