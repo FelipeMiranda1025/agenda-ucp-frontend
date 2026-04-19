@@ -164,13 +164,13 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
         else careerMap.set(cid, (careerMap.get(cid) ?? 0) + 1);
       });
     const facultyCareers = careers.filter((c) => c.id_faculty === selectedFacultyId);
-    const list = isVicerrector
+    const list = (isVicerrector || isDecano)
       ? facultyCareers.map((c) => ({ career: c, count: careerMap.get(c.id) ?? 0 }))
       : facultyCareers
           .filter((c) => careerMap.has(c.id))
           .map((c) => ({ career: c, count: careerMap.get(c.id)! }));
     return { list, unassigned };
-  }, [subordinates, careers, selectedFacultyId, isVicerrector]);
+  }, [subordinates, careers, selectedFacultyId, isVicerrector, isDecano]);
 
   // Docentes within selected career (or unassigned bucket)
   const docentesInCareer = useMemo(() => {
