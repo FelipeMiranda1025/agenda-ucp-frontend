@@ -305,10 +305,17 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
             {/* NIVEL 1 — CARRERAS DE LA FACULTAD */}
             {navView === "careers" && selectedFacultyId != null && (
               <div className="space-y-0.5">
-                <button onClick={goRoot} className={`${itemBtnClass} font-medium`}>
-                  <ChevronLeft className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{selectedFacultyName}</span>
-                </button>
+                {isDecano ? (
+                  <div className={`${itemBtnClass} font-medium cursor-default hover:bg-transparent`}>
+                    <Building2 className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{selectedFacultyName}</span>
+                  </div>
+                ) : (
+                  <button onClick={goRoot} className={`${itemBtnClass} font-medium`}>
+                    <ChevronLeft className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{selectedFacultyName}</span>
+                  </button>
+                )}
 
                 {careersWithSubs.list.map(({ career, count }) => {
                   const disabled = count === 0;
