@@ -252,4 +252,7 @@ export default function ScheduleBuilder() {
             </ScrollArea>
           </div>
         )}
+      </div>
+    </div>
+  );
 }
