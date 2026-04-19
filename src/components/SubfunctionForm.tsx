@@ -669,7 +669,62 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                               );
                             }
 
-                            // Default: plain Select for facultad/programa/semestre/jornada/nivel and custom dropdowns
+                            // Searchable combobox for "programa" category (carreras profesionales)
+                            if (field.category === "programa") {
+                              const allCareers = dbProfessionalCareers || [];
+                              const careerOptions = (hasMultipleVariants && resolvedId === "docencia-directa")
+                                ? allCareers.filter((c) => filteredCareerIds.has(c.id))
+                                : allCareers;
+                              const isOpen = activityComboboxOpen === field.name;
+                              return (
+                                <Popover open={isOpen} onOpenChange={(o) => setActivityComboboxOpen(o ? field.name : null)}>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      aria-expanded={isOpen}
+                                      disabled={isAgendaReadOnly}
+                                      className="flex-1 justify-between font-normal h-auto min-h-10 whitespace-normal text-left"
+                                    >
+                                      {formData[field.name]
+                                        ? translateOption(String(formData[field.name]), language)
+                                        : t("form.select")}
+                                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                    <Command>
+                                      <CommandInput placeholder={t("form.filterType")} />
+                                      <CommandList>
+                                        <CommandEmpty>{t("form.noSubjects")}</CommandEmpty>
+                                        <CommandGroup>
+                                          {careerOptions.map((c) => (
+                                            <CommandItem
+                                              key={c.id}
+                                              value={c.name}
+                                              onSelect={(value) => {
+                                                setFormData((p) => ({ ...p, [field.name]: value }));
+                                                setActivityComboboxOpen(null);
+                                              }}
+                                            >
+                                              <Check
+                                                className={cn(
+                                                  "mr-2 h-4 w-4",
+                                                  String(formData[field.name]).toLowerCase() === c.name.toLowerCase() ? "opacity-100" : "opacity-0"
+                                                )}
+                                              />
+                                              {translateOption(c.name, language)}
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      </CommandList>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
+                              );
+                            }
+
+                            // Default: plain Select for facultad/semestre/jornada/nivel and custom dropdowns
                             return (
                               <Select
                                 value={String(formData[field.name] || "")}
@@ -681,13 +736,6 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                                 </SelectTrigger>
                                 <SelectContent>
                                   {(() => {
-                                    if (hasMultipleVariants && resolvedId === "docencia-directa") {
-                                      if (field.category === "programa") {
-                                        return dbProfessionalCareers?.filter((c) => filteredCareerIds.has(c.id)).map((c) => (
-                                          <SelectItem key={c.id} value={c.name}>{translateOption(c.name, language)}</SelectItem>
-                                        ));
-                                      }
-                                    }
                                     const dbData = DB_CATEGORY_MAP[field.category!];
                                     if (dbData) {
                                       return dbData.map((item: any) => (
