@@ -221,6 +221,30 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     const subjects = dbSubjects.filter((s) => s.name.toLowerCase() === String(selectedSubjectName).toLowerCase());
     if (subjects.length === 0) return;
 
+    // If multiple variants exist, require user to manually select the program
+    const hasMultiple = subjects.length > 1;
+    const currentPrograma = formData["programa"] as string;
+    const programaBelongsToVariants = currentPrograma
+      ? subjects.some((s) => {
+          const car = dbProfessionalCareers?.find((c) => c.id === s.id_professional_career);
+          return car?.name === currentPrograma;
+        })
+      : false;
+
+    if (hasMultiple && !programaBelongsToVariants) {
+      // Clear dependent fields and let user pick the program from "Seleccionar..."
+      setFormData((prev) => ({
+        ...prev,
+        programa: "",
+        facultad: "",
+        semestre: "",
+        nivel: "",
+        horasSemana: "",
+        cantidadSemanas: "",
+      }));
+      return;
+    }
+
     const subject = resolveSubjectRecord(subjects, formData["facultad"] as string, formData["programa"] as string);
     if (!subject) return;
 
