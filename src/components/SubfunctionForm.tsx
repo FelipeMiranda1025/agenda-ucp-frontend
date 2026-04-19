@@ -401,12 +401,20 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     };
 
     // Docencia directa: instant save (no debounce)
-    if (resolvedId === "docencia-directa") {
+    const TRIGGER_FIELDS = ["horasSemana", "cantidadEstudiantes", "cantidadProyectos"];
+    const hasMultiDigit = inputFields.some(
+      (f) =>
+        f.type === "number" &&
+        TRIGGER_FIELDS.includes(f.name) &&
+        String(formData[f.name] ?? "").length >= 2
+    );
+
+    if (resolvedId === "docencia-directa" || hasMultiDigit) {
       doSave();
       return;
     }
 
-    // Other forms: 800ms debounce for multi-digit typing
+    // Other forms: 800ms debounce for single-digit typing
     const timer = setTimeout(doSave, 800);
     return () => clearTimeout(timer);
   }, [formData, resolvedId, config, inputFields, computeTotal, addRecord, upsertRecord, updateRecord, editingRecordId]);
