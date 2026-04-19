@@ -127,9 +127,9 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
   // - Decano: only docentes whose agenda was approved by their director.
   const subordinates = useMemo(() => {
     const base = docentesList.filter((d) => d.firstName !== "Yo");
-    if (isVicerrector || isDecano) return base.filter((d) => approvedSet.has(d.id));
+    if (isVicerrector || isDecano || isDirector) return base.filter((d) => approvedSet.has(d.id));
     return base;
-  }, [docentesList, isVicerrector, isDecano, approvedSet]);
+  }, [docentesList, isVicerrector, isDecano, isDirector, approvedSet]);
   const selfDocente = useMemo(
     () => docentesList.find((d) => d.firstName === "Yo"),
     [docentesList]
