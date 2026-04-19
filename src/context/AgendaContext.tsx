@@ -33,6 +33,7 @@ interface AgendaContextType {
   setEditingRecord: (r: AgendaRecord | null) => void;
   hasPendingAgendaView: boolean;
   loadFromAgendaView: () => Promise<boolean>;
+  isAgendaReadOnly: boolean;
 }
 
 export const AgendaContext = createContext<AgendaContextType | null>(null);
@@ -108,6 +109,12 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const docenteId = selectedDocente?.id ?? "";
   const records = useMemo(() => recordsByDocente[docenteId] || [], [recordsByDocente, docenteId]);
+
+  // Read-only when reviewing someone else's agenda (no role can fill another user's agenda)
+  const isAgendaReadOnly = useMemo(
+    () => !!(selectedDocente && user && selectedDocente.id !== user.id),
+    [selectedDocente, user]
+  );
 
   // Helper: generate indirect teaching records from all docencia-directa records
   const generateIndirectRecords = useCallback((allRecords: AgendaRecord[]): AgendaRecord[] => {
