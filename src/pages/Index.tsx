@@ -79,11 +79,11 @@ const Index = () => {
       count += 1;
     }
     count += pendingSubordinateAgendas.filter((pa) => !isPendingRead(pa.agendaView.id)).length;
-    if (isVicerrector) {
+    if (isVicerrector || isDecano) {
       count += fullyApprovedCareers.filter((c) => !isCareerRead(c.careerId)).length;
     }
     return count;
-  }, [allComments, user, isReturnedAgenda, isDismissedReturn, pendingSubordinateAgendas, readTick, isVicerrector, fullyApprovedCareers]);
+  }, [allComments, user, isReturnedAgenda, isDismissedReturn, pendingSubordinateAgendas, readTick, isVicerrector, isDecano, fullyApprovedCareers]);
 
   const handleOpenNotifications = () => {
     if (!user) return;
