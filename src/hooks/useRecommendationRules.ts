@@ -11,6 +11,7 @@ export interface RecommendationRule {
   default_hours: number;
   default_subjects: number;
   priority: number;
+  active: boolean;
   updated_at: string;
 }
 
@@ -23,7 +24,7 @@ export function useRecommendationRules() {
         .select("*")
         .order("priority", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as RecommendationRule[];
+      return (data ?? []) as unknown as RecommendationRule[];
     },
   });
 }
@@ -56,6 +57,49 @@ export function useResetRecommendationRules() {
           .update({ hours: row.default_hours, subjects: row.default_subjects })
           .eq("id", row.id);
       }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["recommendation_rules"] }),
+  });
+}
+
+export function useToggleRecommendationRuleActive() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { id: string; active: boolean }) => {
+      const { error } = await supabase
+        .from("recommendation_rules")
+        .update({ active: input.active } as never)
+        .eq("id", input.id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["recommendation_rules"] }),
+  });
+}
+
+export function useCreateRecommendationRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      category: RecommendationRule["category"];
+      label: string;
+      hours: number;
+      subjects: number;
+    }) => {
+      const rule_key = `custom_${Date.now()}`;
+      const { error } = await supabase
+        .from("recommendation_rules")
+        .insert({
+          category: input.category,
+          rule_key,
+          label: input.label,
+          hours: input.hours,
+          subjects: input.subjects,
+          default_hours: input.hours,
+          default_subjects: input.subjects,
+          priority: 0,
+          active: true,
+        } as never);
+      if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["recommendation_rules"] }),
   });

@@ -42,7 +42,7 @@ const FALLBACK: Record<string, Recommendation> = {
 };
 
 function getRule(rules: RecommendationRule[] | undefined, key: string): Recommendation {
-  const r = rules?.find(x => x.rule_key === key);
+  const r = rules?.find(x => x.rule_key === key && x.active !== false);
   if (r) return { hours: r.hours, subjects: r.subjects };
   return FALLBACK[key];
 }
