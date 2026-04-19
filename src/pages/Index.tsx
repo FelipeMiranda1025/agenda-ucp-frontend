@@ -28,7 +28,7 @@ import flagCol from "@/assets/flag-col.png";
 import flagUsa from "@/assets/flag-usa.png";
 
 const Index = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, roleName } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
@@ -38,8 +38,11 @@ const Index = () => {
   const [readTick, setReadTick] = useState(0);
   const [visibleSection, setVisibleSection] = useState<string>("header.production");
 
+  const isVicerrector = roleName === "VicerrectorAcadémico";
   const isPendingRead = (id: string) =>
     typeof window !== "undefined" && localStorage.getItem(`read_pending_${id}`) === "1";
+  const isCareerRead = (careerId: number) =>
+    typeof window !== "undefined" && localStorage.getItem(`read_career_${careerId}`) === "1";
   const mainRef = useRef<HTMLDivElement>(null);
 
   // Global comments & notifications
