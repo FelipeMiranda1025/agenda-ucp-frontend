@@ -105,7 +105,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule, displayName }: { hasSc
 }
 
 export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
-  const { activeSubfunction, records, dropdownOptions, addDropdownOption, addRecord, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord, selectedDocente } = useAgenda();
+  const { activeSubfunction, records, dropdownOptions, addDropdownOption, addRecord, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord, selectedDocente, isAgendaReadOnly } = useAgenda();
   const { user } = useAuth();
   const { t, language } = useLanguage();
 
@@ -326,6 +326,10 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
 
   // Listen for editingRecord from context (click on summary panel record)
   useEffect(() => {
+    if (isAgendaReadOnly) {
+      if (editingRecord) setEditingRecord(null);
+      return;
+    }
     if (editingRecord && editingRecord.subfunctionId === resolvedId) {
       setFormData({ ...editingRecord.data });
       formDataStore[resolvedId] = { ...editingRecord.data };
@@ -333,11 +337,12 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       lastUpsertRef.current = JSON.stringify({ resolvedId, data: editingRecord.data, total: editingRecord.totalHoras });
       setEditingRecord(null);
     }
-  }, [editingRecord, resolvedId, setEditingRecord]);
+  }, [editingRecord, resolvedId, setEditingRecord, isAgendaReadOnly]);
 
   // Auto-upsert when all fields are filled; instant for docencia-directa, debounced for others
   useEffect(() => {
     if (!config || resolvedId === "distribucion-horaria") return;
+    if (isAgendaReadOnly) return;
 
     const allFilled = inputFields.every((f) => {
       if (f.type === "number") return Number(formData[f.name]) > 0;
@@ -434,16 +439,18 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
             </p>
           )}
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleClearForm}
-          className="text-primary-foreground hover:bg-primary-foreground/20"
-          title={t("form.clearFields")}
-        >
-          <Eraser className="h-4 w-4 mr-1" />
-          {t("form.clear")}
-        </Button>
+        {!isAgendaReadOnly && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClearForm}
+            className="text-primary-foreground hover:bg-primary-foreground/20"
+            title={t("form.clearFields")}
+          >
+            <Eraser className="h-4 w-4 mr-1" />
+            {t("form.clear")}
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -494,6 +501,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                                 variant="outline"
                                 role="combobox"
                                 aria-expanded={comboboxOpen}
+                                disabled={isAgendaReadOnly}
                                 className="flex-1 justify-between font-normal h-auto min-h-10 whitespace-normal text-left"
                               >
                                 {formData[field.name]
@@ -535,22 +543,27 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                               </Command>
                             </PopoverContent>
                           </Popover>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="shrink-0"
-                            onClick={() => setSubjectDialogOpen(true)}
-                            title={t("subject.manage")}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <SubjectManagementDialog open={subjectDialogOpen} onOpenChange={setSubjectDialogOpen} />
+                          {!isAgendaReadOnly && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="shrink-0"
+                                onClick={() => setSubjectDialogOpen(true)}
+                                title={t("subject.manage")}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <SubjectManagementDialog open={subjectDialogOpen} onOpenChange={setSubjectDialogOpen} />
+                            </>
+                          )}
                         </>
                       ) : (
                         <>
                           <Select
                             value={String(formData[field.name] || "")}
                             onValueChange={(v) => setFormData((p) => ({ ...p, [field.name]: v }))}
+                            disabled={isAgendaReadOnly}
                           >
                             <SelectTrigger className="flex-1">
                               <SelectValue placeholder={t("form.select")} />
@@ -600,6 +613,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                             </SelectContent>
                           </Select>
                           {(() => {
+                            if (isAgendaReadOnly) return null;
                             const CATEGORY_TO_TABLE: Record<string, ActivityTableType> = {
                               "actividad_indirecta": "indirect_teaching",
                               "tipo_trabajo": "degree_works",
@@ -681,6 +695,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                       value={formData[field.name] || ""}
                       onChange={(e) => setFormData((p) => ({ ...p, [field.name]: Number(e.target.value) }))}
                       placeholder="0"
+                      disabled={isAgendaReadOnly}
                     />
                   )}
                 </div>

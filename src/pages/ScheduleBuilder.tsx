@@ -22,7 +22,7 @@ interface DraggableItem {
 
 export default function ScheduleBuilder() {
   const navigate = useNavigate();
-  const { records, saveSchedule, getSchedule } = useAgenda();
+  const { records, saveSchedule, getSchedule, isAgendaReadOnly } = useAgenda();
   const { user } = useAuth();
   const { data: agendaView, isLoading: loadingView } = useAgendaView(user?.id);
 
@@ -85,6 +85,7 @@ export default function ScheduleBuilder() {
   }, []);
 
   const handleDrop = useCallback((day: number, hour: number) => {
+    if (isAgendaReadOnly) return;
     if (!draggedItem) return;
     if (placedBlocks.some((b) => b.day === day && b.hour === hour)) {
       toast.error("Esta celda ya está ocupada");
@@ -104,11 +105,12 @@ export default function ScheduleBuilder() {
     };
     setPlacedBlocks((prev) => [...prev, block]);
     setDraggedItem(null);
-  }, [draggedItem, allItems, placedBlocks]);
+  }, [draggedItem, allItems, placedBlocks, isAgendaReadOnly]);
 
   const handleRemoveBlock = useCallback((blockId: string) => {
+    if (isAgendaReadOnly) return;
     setPlacedBlocks((prev) => prev.filter((b) => b.id !== blockId));
-  }, []);
+  }, [isAgendaReadOnly]);
 
   const handleSave = () => {
     saveSchedule(placedBlocks);
@@ -150,10 +152,12 @@ export default function ScheduleBuilder() {
           </span>
         )}
         <div className="ml-auto">
-          <Button onClick={handleSave} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Save className="h-4 w-4" />
-            Guardar horario
-          </Button>
+          {!isAgendaReadOnly && (
+            <Button onClick={handleSave} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Save className="h-4 w-4" />
+              Guardar horario
+            </Button>
+          )}
         </div>
       </header>
 
@@ -180,10 +184,10 @@ export default function ScheduleBuilder() {
                       return (
                         <td
                           key={dayIdx}
-                          className="border p-0.5 h-12 align-top transition-colors hover:bg-accent/30"
-                          onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("bg-accent/50"); }}
-                          onDragLeave={(e) => { e.currentTarget.classList.remove("bg-accent/50"); }}
-                          onDrop={(e) => {
+                          className={`border p-0.5 h-12 align-top transition-colors ${isAgendaReadOnly ? '' : 'hover:bg-accent/30'}`}
+                          onDragOver={isAgendaReadOnly ? undefined : (e) => { e.preventDefault(); e.currentTarget.classList.add("bg-accent/50"); }}
+                          onDragLeave={isAgendaReadOnly ? undefined : (e) => { e.currentTarget.classList.remove("bg-accent/50"); }}
+                          onDrop={isAgendaReadOnly ? undefined : (e) => {
                             e.preventDefault();
                             e.currentTarget.classList.remove("bg-accent/50");
                             handleDrop(dayIdx, hour);
@@ -191,9 +195,9 @@ export default function ScheduleBuilder() {
                         >
                           {block && (
                             <div
-                              className={`${SUBFUNCTION_COLORS[block.subfunctionId] || "bg-gray-500"} text-white rounded px-1.5 py-1 text-[10px] leading-tight font-medium cursor-pointer hover:opacity-80 h-full flex items-center`}
-                              onClick={() => handleRemoveBlock(block.id)}
-                              title="Click para quitar"
+                              className={`${SUBFUNCTION_COLORS[block.subfunctionId] || "bg-gray-500"} text-white rounded px-1.5 py-1 text-[10px] leading-tight font-medium h-full flex items-center ${isAgendaReadOnly ? '' : 'cursor-pointer hover:opacity-80'}`}
+                              onClick={isAgendaReadOnly ? undefined : () => handleRemoveBlock(block.id)}
+                              title={isAgendaReadOnly ? undefined : "Click para quitar"}
                             >
                               <span className="truncate">{block.label}</span>
                             </div>
@@ -208,44 +212,46 @@ export default function ScheduleBuilder() {
           </div>
         </div>
 
-        <div className="w-72 shrink-0 border-l bg-card flex flex-col">
-          <div className="px-4 py-3 border-b bg-ucp-red">
-            <h2 className="text-sm font-bold text-primary-foreground">Bloques disponibles</h2>
-            <p className="text-xs text-primary-foreground/80 mt-0.5">Arrastra al horario</p>
-          </div>
-          <ScrollArea className="flex-1 p-3">
-            {groupedAvailable.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                {allItems.length === 0
-                  ? "No hay registros con horas semanales"
-                  : "Todos los bloques asignados ✓"}
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {groupedAvailable.map((group, gi) => (
-                  <div key={gi}>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1.5 truncate">
-                      {group.label} ({group.items.length}h)
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {group.items.map((item) => (
-                        <div
-                          key={item.id}
-                          draggable
-                          onDragStart={() => handleDragStart(item.id)}
-                          onDragEnd={() => setDraggedItem(null)}
-                          className={`${item.color} text-white text-[10px] font-medium px-2 py-1.5 rounded cursor-grab active:cursor-grabbing border-2 ${item.borderColor} hover:opacity-90 transition-opacity select-none`}
-                        >
-                          1h
-                        </div>
-                      ))}
+        {!isAgendaReadOnly && (
+          <div className="w-72 shrink-0 border-l bg-card flex flex-col">
+            <div className="px-4 py-3 border-b bg-ucp-red">
+              <h2 className="text-sm font-bold text-primary-foreground">Bloques disponibles</h2>
+              <p className="text-xs text-primary-foreground/80 mt-0.5">Arrastra al horario</p>
+            </div>
+            <ScrollArea className="flex-1 p-3">
+              {groupedAvailable.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  {allItems.length === 0
+                    ? "No hay registros con horas semanales"
+                    : "Todos los bloques asignados ✓"}
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {groupedAvailable.map((group, gi) => (
+                    <div key={gi}>
+                      <p className="text-xs font-semibold text-muted-foreground mb-1.5 truncate">
+                        {group.label} ({group.items.length}h)
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {group.items.map((item) => (
+                          <div
+                            key={item.id}
+                            draggable
+                            onDragStart={() => handleDragStart(item.id)}
+                            onDragEnd={() => setDraggedItem(null)}
+                            className={`${item.color} text-white text-[10px] font-medium px-2 py-1.5 rounded cursor-grab active:cursor-grabbing border-2 ${item.borderColor} hover:opacity-90 transition-opacity select-none`}
+                          >
+                            1h
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </ScrollArea>
-        </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        )}
       </div>
     </div>
   );
