@@ -820,7 +820,9 @@ export default function SupportPanel() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Facultad</Label>
+              <Label>
+                Facultad{[1, 2, 3].includes(form.id_rol) && <span className="text-destructive"> *</span>}
+              </Label>
               <Select
                 value={form.id_faculty === null ? "none" : String(form.id_faculty)}
                 onValueChange={(v) =>
@@ -851,7 +853,9 @@ export default function SupportPanel() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Carrera profesional</Label>
+              <Label>
+                Carrera profesional{[1, 2].includes(form.id_rol) && <span className="text-destructive"> *</span>}
+              </Label>
               <Select
                 value={
                   form.id_professional_career === null
