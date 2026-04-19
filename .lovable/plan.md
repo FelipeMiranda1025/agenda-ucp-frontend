@@ -1,33 +1,32 @@
 
-
 ## Análisis
 
-En `SubfunctionForm.tsx` (Docencia Directa), al seleccionar una asignatura el `useEffect` de auto-llenado (líneas 215-254) ejecuta `resolveSubjectRecord` que, cuando hay múltiples variantes, devuelve **el primer registro coincidente** y rellena automáticamente programa + facultad + semestre + nivel + horas.
+En `SubfunctionForm.tsx` (Docencia Directa), el campo `programa` actualmente usa un `Select` estándar (Radix) sin búsqueda. El usuario quiere convertirlo en un **Combobox con búsqueda por nombre**, igual que el campo de asignatura (que ya usa `cmdk` Command + Popover con `CommandInput`).
 
-El usuario quiere que, si la asignatura existe en **múltiples carreras profesionales** (`hasMultipleVariants === true`), el campo "programa" se quede vacío mostrando "Seleccionar..." (igual que jornada cuando está vacía), obligando al docente a elegir explícitamente la carrera. Si solo hay 1 variante, el comportamiento actual se mantiene (auto-llenado completo).
+El campo asignatura usa el patrón:
+- `Popover` + `PopoverTrigger` (botón con valor actual + chevron)
+- `Command` + `CommandInput` (input de búsqueda)
+- `CommandList` + `CommandEmpty` + `CommandGroup` + `CommandItem` (opciones filtradas)
 
-Lógicamente, hasta que el usuario elija un `programa`, los campos derivados de la carrera específica (facultad, semestre, nivel, horas, semanas) tampoco deben auto-llenarse, porque esa información depende de cuál variante se elija.
+Hay que replicar ese mismo patrón para el campo `programa`, manteniendo:
+- El placeholder "Seleccionar..." cuando esté vacío.
+- Los handlers `onValueChange` existentes (que disparan el effect de auto-llenado de facultad/semestre/nivel/horas).
+- El estado `isReadOnly` / `isAgendaReadOnly` (sigue mostrando el div de solo lectura).
+- El filtrado de opciones por variantes cuando hay múltiples carreras para la misma asignatura.
 
 ## Cambios
 
 ### `src/components/SubfunctionForm.tsx`
+- Identificar el bloque `Select` del campo `programa` (≈línea 656).
+- Reemplazarlo por un `Popover + Command` con `CommandInput` (búsqueda case-insensitive por `label`).
+- Añadir un `useState` local `programaOpen` para controlar el popover (similar a `subjectOpen` que ya existe).
+- Mantener todos los demás campos `Select` intactos (jornada, semestre, nivel, etc.).
+- Conservar la lógica de filtrado actual de opciones de programa (las variantes).
 
-**Effect de auto-llenado por asignatura (líneas 215-254):**
-- Detectar `hasMultipleVariants` (subjects.length > 1).
-- Si hay múltiples variantes Y el usuario aún no eligió `programa` (o el `programa` actual no pertenece a las variantes filtradas):
-  - **No** auto-rellenar `programa`, `facultad`, `semestre`, `nivel`, `horasSemana`, `cantidadSemanas`.
-  - Limpiar esos campos para forzar selección manual (queda "Seleccionar...").
-- Si hay 1 sola variante: comportamiento actual sin cambios.
-- Si hay múltiples variantes Y el usuario ya eligió un `programa` válido: el effect existente de "programa change" (líneas 257-285) ya resuelve correctamente el resto.
-
-**Combobox de asignatura (líneas ~528-535):** 
-Ya limpia `facultad` y `programa` al cambiar asignatura (línea 532). Confirmado, no necesita cambio.
-
-No se tocan otros archivos. El `Select` de programa ya muestra `t("form.select")` como placeholder cuando `formData["programa"]` está vacío (línea 656).
+No se modifican otros archivos. No hay cambios de i18n (se reutiliza `t("form.select")` y se puede añadir placeholder "Buscar programa..." reutilizando el patrón de asignatura o una clave existente).
 
 ## Archivos
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/SubfunctionForm.tsx` | Modificar effect de auto-llenado por asignatura: cuando hay múltiples variantes y no hay programa elegido, dejar `programa` y campos derivados vacíos para mostrar "Seleccionar..." |
-
+| `src/components/SubfunctionForm.tsx` | Reemplazar el `Select` del campo `programa` por un Combobox `Popover + Command` con búsqueda por nombre, manteniendo handlers y estado read-only |
