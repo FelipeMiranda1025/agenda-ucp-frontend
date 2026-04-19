@@ -1,32 +1,45 @@
 
+
 ## Análisis
 
-El effect actual (línea 215-278) solo limpia `programa` cuando hay múltiples variantes Y el `programa` actual NO pertenece a las variantes. En la captura se ve "Tecnología en desarrollo de software" auto-cargado para "Matemáticas I" porque ese programa SÍ pertenece a las variantes (Matemáticas I existe en Tecnología en desarrollo de software E Ingeniería Industrial), entonces `programaBelongsToVariants === true` y no se limpia.
+En `src/components/SubfunctionForm.tsx` (líneas 365-412) el effect de auto-upsert hoy aplica:
+- Para `docencia-directa` → guardado instantáneo.
+- Para el resto → debounce de 800ms (esperando que el usuario termine de teclear varios dígitos).
 
-El usuario quiere comportamiento más estricto:
-- **Múltiples variantes** → SIEMPRE dejar `programa` vacío ("Seleccionar...") al cambiar la asignatura, sin importar si el valor previo era válido. El usuario debe elegir explícitamente.
-- **Una sola variante** → Auto-llenar todos los campos (sin cambios).
+El usuario quiere que el debounce se omita también cuando, en cualquier formulario, alguno de los campos numéricos clave (`horasSemana`, `cantidadEstudiantes`, `cantidadProyectos`) tenga **2 o más dígitos**. Si solo tienen 1 dígito (o están vacíos), se mantiene el debounce de 800ms.
 
-El reto: no debe limpiarse cada vez que el effect corra (eso rompería la edición de un registro existente). Solo debe limpiarse cuando el usuario **acaba de cambiar** la asignatura. Para eso uso un `ref` que rastrea el último nombre de asignatura procesado: si cambió respecto a la última ejecución y hay múltiples variantes, limpiar y salir.
+Lógica a aplicar antes del `setTimeout`:
+- Recorrer `inputFields`, identificar los que cumplan `f.type === "number"` y `["horasSemana","cantidadEstudiantes","cantidadProyectos"].includes(f.name)`.
+- Para cada uno, leer `String(formData[f.name] ?? "")` y comprobar `length >= 2`.
+- Si **alguno** cumple → ejecutar `doSave()` instantáneo (sin debounce).
+- Si ninguno → mantener debounce 800ms actual.
+
+Esto no toca `docencia-directa` (sigue instantáneo) ni la lógica de validación `allFilled`.
 
 ## Cambios
 
 ### `src/components/SubfunctionForm.tsx`
+Modificar el bloque (líneas 403-411) para añadir un chequeo previo al `setTimeout`:
 
-- Añadir `useRef<string | null>(null)` `lastProcessedSubjectRef` para rastrear el último nombre de asignatura sobre el que se decidió auto-llenar.
-- En el effect de auto-llenado (líneas 215-278):
-  - Si `selectedSubjectName !== lastProcessedSubjectRef.current` Y hay múltiples variantes → limpiar `programa`, `facultad`, `semestre`, `nivel`, `horasSemana`, `cantidadSemanas`, actualizar el ref, y salir.
-  - Si hay una sola variante → auto-llenar normal y actualizar ref.
-  - Si hay múltiples variantes pero la asignatura no cambió (ej. el usuario eligió un programa) → resolver subject y completar campos derivados (sin tocar `programa`), como hoy.
+```ts
+const TRIGGER_FIELDS = ["horasSemana", "cantidadEstudiantes", "cantidadProyectos"];
+const hasMultiDigit = inputFields.some(
+  (f) => f.type === "number"
+    && TRIGGER_FIELDS.includes(f.name)
+    && String(formData[f.name] ?? "").length >= 2
+);
 
-Esto garantiza:
-- Al elegir Matemáticas I (2 variantes) → `programa` queda vacío con "Seleccionar...".
-- Al elegir luego un programa → se rellena facultad/semestre/nivel/horas vía el effect de programa change (líneas 281+).
-- Al elegir Redes de Computadores (1 variante) → todo se autocompleta como antes.
-- Al cargar un registro existente (clic en resumen) la asignatura del registro se procesa una sola vez; si tiene múltiples variantes, `programa` se limpia al primer paso. *(Nota: esto significa que al hacer clic en un registro de Matemáticas I en el panel resumen, su programa se reseteará. Si esto no es deseado, queda como decisión del usuario; aplicar la regla estrictamente como pidió tiene esa consecuencia.)*
+if (resolvedId === "docencia-directa" || hasMultiDigit) {
+  doSave();
+  return;
+}
+const timer = setTimeout(doSave, 800);
+return () => clearTimeout(timer);
+```
 
 ## Archivos
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/SubfunctionForm.tsx` | Añadir `lastProcessedSubjectRef` y modificar el effect de auto-llenado para que SIEMPRE limpie `programa` y derivados cuando la asignatura cambia y tiene múltiples variantes |
+| `src/components/SubfunctionForm.tsx` | Saltar el debounce de 800ms cuando `horasSemana`, `cantidadEstudiantes` o `cantidadProyectos` tengan ≥2 dígitos; mantener debounce solo si todos tienen 1 dígito |
+
