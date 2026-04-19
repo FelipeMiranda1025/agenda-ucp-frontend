@@ -51,6 +51,7 @@ const Index = () => {
   const markRead = useMarkCommentsRead();
   const { data: agendaView } = useAgendaView(user?.id);
   const { data: pendingSubordinateAgendas = [] } = usePendingAgendaViewsForSupervisor(user?.id);
+  const { data: fullyApprovedCareers = [] } = useFullyApprovedCareers(isVicerrector);
 
   // Resolve reviewer name when agenda is returned
   const reviewerCc = agendaView?.status === "returned" ? agendaView.reviewer_cc : null;
