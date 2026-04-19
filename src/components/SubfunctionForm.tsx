@@ -563,6 +563,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                           <Select
                             value={String(formData[field.name] || "")}
                             onValueChange={(v) => setFormData((p) => ({ ...p, [field.name]: v }))}
+                            disabled={isAgendaReadOnly}
                           >
                             <SelectTrigger className="flex-1">
                               <SelectValue placeholder={t("form.select")} />
@@ -612,6 +613,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                             </SelectContent>
                           </Select>
                           {(() => {
+                            if (isAgendaReadOnly) return null;
                             const CATEGORY_TO_TABLE: Record<string, ActivityTableType> = {
                               "actividad_indirecta": "indirect_teaching",
                               "tipo_trabajo": "degree_works",
@@ -693,6 +695,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                       value={formData[field.name] || ""}
                       onChange={(e) => setFormData((p) => ({ ...p, [field.name]: Number(e.target.value) }))}
                       placeholder="0"
+                      disabled={isAgendaReadOnly}
                     />
                   )}
                 </div>
