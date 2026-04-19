@@ -2,56 +2,59 @@
 
 ## Análisis
 
-**Reglas de negocio nuevas:**
-- `vicerrectorAcademico` (rol 4) y `soporte` (rol 5) **no pertenecen** a ninguna facultad/carrera (`id_faculty` / `id_professional_career` = NULL).
-- `vicerrectorAcademico` ve **TODAS** las agendas del sistema (no usa `user_hierarchy`).
-- `soporte` no tiene UI de agenda — solo CRUD usuarios (ya existe `/support`).
-- Para `vicerrectorAcademico`: el sidebar **siempre muestra las 4 facultades completas** (no solo las que tienen subordinados), y **siempre muestra todas las carreras** de la facultad seleccionada. Solo el nivel 2 (docentes) se condiciona: si la carrera no tiene docentes con agenda, el click no avanza.
+**Reglas nuevas para `decanoFacultad`:**
+- Solo ve agendas **aprobadas por `directorPrograma`** (status `approved` en `agenda_views` por un director).
+- Sidebar arranca en **Nivel 1** (carreras de SU facultad), sin nivel 0 de facultades.
+- Si una carrera no tiene agendas aprobadas por el director → botón deshabilitado, no avanza a nivel 2.
+- Cuando el director aprueba TODAS las agendas de su carrera → notificación: *"Hay un programa por revisar — {nombre carrera}"*.
 
-**Estado actual del código:**
-- `useSubordinatesWithNames` filtra por `user_hierarchy` → no sirve para vicerrector.
-- `AppSidebar` solo lista facultades/carreras que tienen subordinados (lógica de "pruning") → para vicerrector hay que mostrar TODO el catálogo.
-- Faltan filtros en BD para los usuarios vicerrector/soporte (deben tener faculty/career = NULL).
+**Mejora notificación vicerrector:**
+- Descripción debe incluir **carrera + facultad**: *"Hay un programa por revisar — {carrera} ({facultad})"*.
+
+**Reto técnico — distinguir quién aprobó:**
+Hoy `agenda_views.status='approved'` no dice quién aprobó. Para que vicerrector vea solo lo que aprobó el decano y decano vea solo lo que aprobó el director, necesitamos saber el **rol del aprobador**. Ya existe `reviewer_cc` → cruzamos con `users.id_rol` para filtrar:
+- Decano ve agendas cuyo `reviewer_cc` corresponde a un usuario con `id_rol = 2` (DirectorPrograma) Y el docente pertenece a su facultad.
+- Vicerrector ve agendas cuyo `reviewer_cc` corresponde a un usuario con `id_rol = 3` (DecanoFacultad).
+
+Esto reemplaza la lógica actual de `useApprovedAgendaCcs` que solo mira `status='approved'` sin filtrar por rol del aprobador.
 
 ## Diseño
 
-### 1. Datos
-- **Migración SQL**: `UPDATE users SET id_faculty = NULL, id_professional_career = NULL WHERE id_rol IN (4, 5);`
-- **Nuevo hook** `useAllDocentes()` en `useDatabase.ts`: trae **todos** los usuarios con rol 1, 2 o 3 (sin filtrar por jerarquía). Devuelve la misma forma que `SubordinateDocente`.
+### 1. `useDatabase.ts` — refactor de hooks de aprobación
 
-### 2. `AgendaContext` / `useAgenda`
-- Detectar si el usuario actual es `vicerrectorAcademico`. Si lo es, `docentesList` = `useAllDocentes()` en lugar de `useSubordinatesWithNames()`.
-- Mantener entrada "Yo" (el propio vicerrector, aunque no tenga agenda propia que diligenciar — sigue siendo el atajo de retorno).
+**`useApprovedAgendaCcs(forRole)`** — parametrizar:
+- `forRole='vicerrector'` → trae CCs de docentes cuyas agendas están `approved` por un usuario con rol 3 (decano).
+- `forRole='decano'` → trae CCs de docentes cuyas agendas están `approved` por un usuario con rol 2 (director). Filtrado además por facultad del decano logueado.
 
-### 3. `AppSidebar` — comportamiento condicional por rol
+**`useFullyApprovedCareers(forRole)`** — parametrizar:
+- `forRole='vicerrector'`: carrera completa = todos sus docentes activos tienen agenda aprobada por su decano (rol 3). Devuelve `{careerId, careerName, facultyName}`.
+- `forRole='decano'`: carrera completa = todos los docentes de esa carrera (dentro de la facultad del decano) tienen agenda aprobada por su director (rol 2). Devuelve `{careerId, careerName}`.
 
-**Para vicerrectorAcademico:**
-- **Nivel 0 (raíz):** mostrar `useFaculties()` completo (las 4 facultades), **siempre**, sin importar si tienen docentes.
-- **Nivel 1 (carreras):** mostrar `useProfessionalCareers().filter(c => c.id_faculty === selectedFacultyId)` completo, **siempre**.
-- **Nivel 2 (docentes):** solo navegar si existen docentes en esa carrera. Si no hay, el botón de carrera queda visible pero **deshabilitado** (estilo `opacity-50 cursor-not-allowed`) y muestra "Sin agendas" como contador en lugar del número.
+### 2. `AgendaContext.tsx` — `docentesList` para decano
+- Decano ya usa `useSubordinatesWithNames` (jerarquía). Mantener.
+- Pero filtrar adicionalmente en sidebar contra el set de aprobados-por-director.
 
-**Para los demás roles (DirectorPrograma, DecanoFacultad):**
-- Comportamiento actual sin cambios (pruning de facultades/carreras vacías vía `user_hierarchy`).
+### 3. `AppSidebar.tsx` — comportamiento decano
+- Detectar `roleName === "DecanoFacultad"`.
+- **Saltar nivel 0**: arrancar `navView = "careers"` y `selectedFacultyId = currentUser.id_faculty` automáticamente al montar (si rol es decano).
+- Botón "Volver" del nivel 1 oculto/deshabilitado para decano (no hay raíz a la cual volver).
+- Filtrar `subordinates` contra `approvedSet` (agendas aprobadas por director).
+- Carreras sin agendas aprobadas → botón deshabilitado (igual que vicerrector).
 
-**Para Soporte:** el sidebar de docente no se muestra (ya redirige a `/support`).
+### 4. `Index.tsx` — notificaciones
+- Para decano: usar `useFullyApprovedCareers('decano')` → notificación *"Hay un programa por revisar — {carrera}"*.
+- Para vicerrector: actualizar mensaje a *"Hay un programa por revisar — {carrera} ({facultad})"*.
+- Mismo sistema `localStorage` `read_career_{id}` ya existe.
 
-### 4. Lógica visual del nivel 1 (vicerrector)
-```text
-┌─────────────────────────────────┐
-│ ← Facultad de Arq. y Diseño     │
-│ ▸ Diseño Industrial         3   │  ← clickable
-│ ▸ Arquitectura              5   │  ← clickable
-│ ▸ Maestría en Arq. y Urb.   —   │  ← disabled (sin agendas)
-│ ▸ Esp. en Construcción Sost — │  ← disabled
-└─────────────────────────────────┘
-```
+### 5. Traducciones
+- Actualizar `notifications.programReady` para soportar interpolación con `{career}` y `{faculty}`.
 
 ## Archivos
 
 | Archivo | Cambio |
 |---|---|
-| Migración SQL | `UPDATE users SET id_faculty=NULL, id_professional_career=NULL WHERE id_rol IN (4,5)` |
-| `src/hooks/useDatabase.ts` | Nuevo hook `useAllDocentes()` que trae todos los usuarios con rol 1/2/3 (sin filtrar jerarquía), misma forma que `SubordinateDocente` |
-| `src/context/AgendaContext.tsx` | Si `roleName === 'VicerrectorAcadémico'`, usar `useAllDocentes()` en vez de `useSubordinatesWithNames()` para poblar `docentesList` |
-| `src/components/AppSidebar.tsx` | Detectar rol vicerrector; en ese caso renderizar **todas** las facultades y **todas** las carreras del catálogo, no solo las que tienen subordinados. Carreras sin docentes con agenda → botón deshabilitado (sin avance al nivel 2) |
+| `src/hooks/useDatabase.ts` | Refactor `useApprovedAgendaCcs` y `useFullyApprovedCareers` aceptando `forRole: 'vicerrector' \| 'decano'`. Cruzar `agenda_views.reviewer_cc` con `users.id_rol` (2 director / 3 decano). Devolver `{id, name, facultyName?}` para enriquecer notificación |
+| `src/components/AppSidebar.tsx` | Detectar rol decano: arrancar en nivel 1 con su facultad fija, ocultar botón volver al nivel 0, filtrar contra aprobadas-por-director. Reutilizar lógica de carreras deshabilitadas |
+| `src/pages/Index.tsx` | Para decano: notificación con nombre de carrera. Para vicerrector: notificación con carrera + facultad |
+| `src/i18n/translations.ts` | Ajustar `notifications.programReady` para incluir interpolación de carrera y facultad |
 
