@@ -404,6 +404,7 @@ export type Database = {
       }
       recommendation_rules: {
         Row: {
+          active: boolean
           category: string
           default_hours: number
           default_subjects: number
@@ -416,6 +417,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active?: boolean
           category: string
           default_hours?: number
           default_subjects?: number
@@ -428,6 +430,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active?: boolean
           category?: string
           default_hours?: number
           default_subjects?: number
