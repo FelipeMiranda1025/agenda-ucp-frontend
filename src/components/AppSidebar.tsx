@@ -33,17 +33,47 @@ type NavView = "root" | "careers" | "docentes";
 
 export function AppSidebar({ onClose }: AppSidebarProps) {
   const { activeSubfunction, setActiveSubfunction, searchTerm, setSearchTerm, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView } = useAgenda();
-  const { roleName } = useAuth();
+  const { roleName, user } = useAuth();
   const isVicerrector = roleName === "VicerrectorAcadémico";
+  const isDecano = roleName === "DecanoFacultad";
   const { t } = useLanguage();
   const { data: faculties = [] } = useFaculties();
   const { data: careers = [] } = useProfessionalCareers();
-  const { data: approvedCcs = [] } = useApprovedAgendaCcs(isVicerrector);
+
+  // Decano's own faculty (used to start sidebar at level 1)
+  const { data: deanFacultyId = null } = useQuery<number | null>({
+    queryKey: ["dean_faculty_id", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from("users")
+        .select("id_faculty")
+        .eq("cc", user.id)
+        .maybeSingle();
+      return ((data as any)?.id_faculty as number | null) ?? null;
+    },
+    enabled: isDecano && !!user?.id,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const { data: approvedCcs = [] } = useApprovedAgendaCcs(
+    isVicerrector ? "vicerrector" : "decano",
+    isDecano ? user?.id : undefined,
+    isVicerrector || isDecano
+  );
   const approvedSet = useMemo(() => new Set(approvedCcs), [approvedCcs]);
 
-  const [navView, setNavView] = useState<NavView>("root");
+  const [navView, setNavView] = useState<NavView>(isDecano ? "careers" : "root");
   const [selectedFacultyId, setSelectedFacultyId] = useState<number | null>(null);
   const [selectedCareerId, setSelectedCareerId] = useState<number | null>(null);
+
+  // For Decano: lock sidebar to their own faculty as soon as we know it
+  useEffect(() => {
+    if (isDecano && deanFacultyId != null && selectedFacultyId !== deanFacultyId) {
+      setSelectedFacultyId(deanFacultyId);
+      setNavView("careers");
+    }
+  }, [isDecano, deanFacultyId, selectedFacultyId]);
 
   const prodSubs = subfunctions.filter((s) => s.sectionId === "produccion");
   const actSubs = subfunctions.filter((s) => s.sectionId === "actividades");
