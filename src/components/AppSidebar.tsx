@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain, Building2, Lightbulb, Heart, Award, Calendar, ChevronLeft, ChevronRight, User } from "lucide-react";
+import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain, Building2, Lightbulb, Heart, Award, Calendar, ChevronLeft, ChevronRight, User, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAgenda } from "@/context/AgendaContext";
 import { useAuth } from "@/context/AuthContext";
@@ -129,9 +129,10 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
   const subordinates = useMemo(() => {
     if (isDocente) return [];
     const base = docentesList.filter((d) => d.firstName !== "Yo");
-    if (isVicerrector || isDecano || isDirector) return base.filter((d) => approvedSet.has(d.id));
+    // Director sees ALL docentes from his career; locked state handled at render.
+    if (isVicerrector || isDecano) return base.filter((d) => approvedSet.has(d.id));
     return base;
-  }, [docentesList, isVicerrector, isDecano, isDirector, isDocente, approvedSet]);
+  }, [docentesList, isVicerrector, isDecano, isDocente, approvedSet]);
   const selfDocente = useMemo(
     () => docentesList.find((d) => d.firstName === "Yo"),
     [docentesList]
@@ -282,19 +283,24 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                   </button>
                 )}
 
-                {/* Director: flat list of docentes (same career, with submitted agenda) */}
-                {isDirector && subordinates.map((d) => (
-                  <button
-                    key={d.id}
-                    onClick={() => handleSelectDocente(d)}
-                    className={`${itemBtnClass} ${
-                      selectedDocente?.id === d.id ? "bg-accent text-accent-foreground font-medium" : ""
-                    }`}
-                  >
-                    <User className="h-4 w-4 shrink-0" />
-                    <span className="whitespace-normal break-words">{getDocenteFullName(d)}</span>
-                  </button>
-                ))}
+                {/* Director: flat list of docentes (same career). Locked if agenda not submitted. */}
+                {isDirector && subordinates.map((d) => {
+                  const locked = !approvedSet.has(d.id);
+                  return (
+                    <button
+                      key={d.id}
+                      onClick={() => !locked && handleSelectDocente(d)}
+                      disabled={locked}
+                      title={locked ? "El docente aún no ha diligenciado su agenda" : undefined}
+                      className={`${itemBtnClass} ${
+                        selectedDocente?.id === d.id ? "bg-accent text-accent-foreground font-medium" : ""
+                      } ${locked ? "opacity-50 cursor-not-allowed hover:bg-transparent" : ""}`}
+                    >
+                      {locked ? <Lock className="h-4 w-4 shrink-0" /> : <User className="h-4 w-4 shrink-0" />}
+                      <span className="whitespace-normal break-words flex-1 text-left">{getDocenteFullName(d)}</span>
+                    </button>
+                  );
+                })}
 
                 {!isDirector && facultiesWithSubs.list.map(({ faculty, count }) => (
                   <button
