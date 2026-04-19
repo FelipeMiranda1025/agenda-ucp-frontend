@@ -2,37 +2,32 @@
 
 ## Análisis
 
-Los roles supervisores (DirectorPrograma=2, DecanoFacultad=3, VicerrectorAcadémico=4) revisan agendas de subordinados con `isAgendaReadOnly=true`. Hoy:
+En `SubfunctionForm.tsx` (Docencia Directa), al seleccionar una asignatura el `useEffect` de auto-llenado (líneas 215-254) ejecuta `resolveSubjectRecord` que, cuando hay múltiples variantes, devuelve **el primer registro coincidente** y rellena automáticamente programa + facultad + semestre + nivel + horas.
 
-1. **`SummaryPanel.handleRecordClick`** (línea 132): retorna temprano si `isAgendaReadOnly`, así que el clic no hace nada.
-2. **`SubfunctionForm`** (línea 329-341): si `isAgendaReadOnly`, ignora `editingRecord` y limpia el estado.
-3. **`SubfunctionForm`** ya tiene un useEffect de auto-upsert (línea 344-390) que retorna temprano cuando `isAgendaReadOnly`, así que cargar datos NO los va a guardar.
-4. Los inputs `Input`/`Select`/`Combobox` no están deshabilitados globalmente cuando `isAgendaReadOnly`.
+El usuario quiere que, si la asignatura existe en **múltiples carreras profesionales** (`hasMultipleVariants === true`), el campo "programa" se quede vacío mostrando "Seleccionar..." (igual que jornada cuando está vacía), obligando al docente a elegir explícitamente la carrera. Si solo hay 1 variante, el comportamiento actual se mantiene (auto-llenado completo).
 
-Necesito permitir el clic en modo solo lectura para **cargar** el registro en el formulario y mostrar todos los campos como **deshabilitados/no editables**, sin permitir guardar, eliminar ni limpiar.
+Lógicamente, hasta que el usuario elija un `programa`, los campos derivados de la carrera específica (facultad, semestre, nivel, horas, semanas) tampoco deben auto-llenarse, porque esa información depende de cuál variante se elija.
 
 ## Cambios
 
-### 1. `src/components/SummaryPanel.tsx`
-- `handleRecordClick`: quitar el early-return cuando `isAgendaReadOnly`. Siempre setear `editingRecord` y hacer scroll al formulario.
-- Cambiar la clase del `div` del registro para que siempre tenga `cursor-pointer hover:bg-accent/50` (no solo cuando es editable).
-- Mantener oculto el botón de borrar (`Trash2`) en read-only.
+### `src/components/SubfunctionForm.tsx`
 
-### 2. `src/components/SubfunctionForm.tsx`
-- **useEffect editingRecord (líneas 329-341)**: en lugar de limpiar `editingRecord` cuando `isAgendaReadOnly`, cargarlo igual en `formData` (sin asignar `editingRecordId` para no disparar updates). Limpiar `editingRecord` del context tras cargar.
-- **Bloque `inputFields.map`**: cuando `isAgendaReadOnly`, forzar todos los campos a render de solo lectura (mismo `<div className="min-h-10 ...bg-muted...">` que ya se usa para `isReadOnly`). Es la forma más simple y consistente.
-- **Botón "Limpiar campos"**: ya está oculto en read-only (línea 443) ✓.
-- **No mostrar `editingRecordId` indicador**: pasar también `isAgendaReadOnly` al título de la card → mostrar `t("form.viewing")` (modo visualización) en vez de `t("form.editing")`.
-- Añadir un banner sutil arriba del Card en read-only: "Modo lectura — Revisión de agenda".
+**Effect de auto-llenado por asignatura (líneas 215-254):**
+- Detectar `hasMultipleVariants` (subjects.length > 1).
+- Si hay múltiples variantes Y el usuario aún no eligió `programa` (o el `programa` actual no pertenece a las variantes filtradas):
+  - **No** auto-rellenar `programa`, `facultad`, `semestre`, `nivel`, `horasSemana`, `cantidadSemanas`.
+  - Limpiar esos campos para forzar selección manual (queda "Seleccionar...").
+- Si hay 1 sola variante: comportamiento actual sin cambios.
+- Si hay múltiples variantes Y el usuario ya eligió un `programa` válido: el effect existente de "programa change" (líneas 257-285) ya resuelve correctamente el resto.
 
-### 3. `src/i18n/translations.ts`
-- Añadir claves: `form.viewing` ("Visualizando registro" / "Viewing record"), `form.readOnlyBanner` ("Modo lectura — Revisión de agenda del docente" / "Read-only mode — Reviewing teacher's agenda").
+**Combobox de asignatura (líneas ~528-535):** 
+Ya limpia `facultad` y `programa` al cambiar asignatura (línea 532). Confirmado, no necesita cambio.
+
+No se tocan otros archivos. El `Select` de programa ya muestra `t("form.select")` como placeholder cuando `formData["programa"]` está vacío (línea 656).
 
 ## Archivos
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/SummaryPanel.tsx` | Permitir clic en registro aun en read-only; mantener botón borrar oculto |
-| `src/components/SubfunctionForm.tsx` | Cargar `editingRecord` también en read-only (sin id de edición); renderizar todos los campos como solo lectura cuando `isAgendaReadOnly`; banner y título "Visualizando" |
-| `src/i18n/translations.ts` | Claves ES/EN para `form.viewing` y `form.readOnlyBanner` |
+| `src/components/SubfunctionForm.tsx` | Modificar effect de auto-llenado por asignatura: cuando hay múltiples variantes y no hay programa elegido, dejar `programa` y campos derivados vacíos para mostrar "Seleccionar..." |
 
