@@ -74,8 +74,11 @@ const Index = () => {
       count += 1;
     }
     count += pendingSubordinateAgendas.filter((pa) => !isPendingRead(pa.agendaView.id)).length;
+    if (isVicerrector) {
+      count += fullyApprovedCareers.filter((c) => !isCareerRead(c.careerId)).length;
+    }
     return count;
-  }, [allComments, user, isReturnedAgenda, isDismissedReturn, pendingSubordinateAgendas, readTick]);
+  }, [allComments, user, isReturnedAgenda, isDismissedReturn, pendingSubordinateAgendas, readTick, isVicerrector, fullyApprovedCareers]);
 
   const handleOpenNotifications = () => {
     if (!user) return;
