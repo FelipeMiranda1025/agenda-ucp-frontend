@@ -239,6 +239,34 @@ const Index = () => {
                   );
                 })}
 
+                {/* Vicerrector: fully approved careers (program ready to review) */}
+                {isVicerrector && (showNotifHistory
+                  ? fullyApprovedCareers
+                  : fullyApprovedCareers.filter((c) => !isCareerRead(c.careerId))
+                ).map((c) => {
+                  const read = isCareerRead(c.careerId);
+                  return (
+                    <button
+                      key={`career-${c.careerId}`}
+                      className={`w-full text-left px-3 py-2 text-xs border-b last:border-0 bg-primary/10 hover:bg-primary/20 cursor-pointer transition-colors ${read ? "opacity-60" : ""}`}
+                      onClick={() => {
+                        localStorage.setItem(`read_career_${c.careerId}`, "1");
+                        setReadTick((n) => n + 1);
+                        setNotifOpen(false);
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-foreground font-medium">{c.careerName}</p>
+                        {read && <span className="text-[10px] text-muted-foreground italic ml-2 shrink-0">{t("notifications.read")}</span>}
+                      </div>
+                      <p className="text-muted-foreground">{t("notifications.programReady")}</p>
+                      <span className="text-muted-foreground text-[10px]">
+                        {c.totalDocentes} {c.totalDocentes === 1 ? "docente" : "docentes"}
+                      </span>
+                    </button>
+                  );
+                })}
+
                 {/* Comment notifications — filtered by read status */}
                 {(() => {
                   const userComments = allComments.filter((c) => c.reviewer_cc !== user?.id);
