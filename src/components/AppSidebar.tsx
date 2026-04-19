@@ -218,7 +218,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
       : "Sin carrera";
 
   const itemBtnClass =
-    "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-foreground/80 hover:bg-accent/50";
+    "w-full flex items-start gap-2 px-3 py-2 rounded-md text-sm transition-colors text-foreground/80 hover:bg-accent/50 text-left";
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
