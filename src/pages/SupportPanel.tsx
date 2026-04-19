@@ -458,16 +458,28 @@ export default function SupportPanel() {
       toast.error("La contraseña es obligatoria al crear");
       return;
     }
-    // Validar supervisor obligatorio para roles 1, 2 y 3
-    if ([1, 2, 3].includes(form.id_rol) && form.supervisor_id === null) {
-      const msg =
-        form.id_rol === 3
-          ? "No hay Vicerrector Académico disponible como supervisor."
-          : form.id_rol === 2
-            ? "Debes seleccionar un Decano de Facultad como supervisor."
-            : "Debes seleccionar un Director de Programa como supervisor.";
-      toast.error(msg);
-      return;
+    // Para roles académicos (Docente Planta, Director de Programa, Decano de Facultad)
+    // exigir Facultad, Carrera (cuando aplique) y Supervisor.
+    if ([1, 2, 3].includes(form.id_rol)) {
+      if (!form.id_faculty) {
+        toast.error("La Facultad es obligatoria para este rol");
+        return;
+      }
+      // Decano (3) no requiere carrera; Director (2) y Docente Planta (1) sí
+      if ([1, 2].includes(form.id_rol) && !form.id_professional_career) {
+        toast.error("La Carrera profesional es obligatoria para este rol");
+        return;
+      }
+      if (form.supervisor_id === null) {
+        const msg =
+          form.id_rol === 3
+            ? "No hay Vicerrector Académico disponible como supervisor."
+            : form.id_rol === 2
+              ? "Debes seleccionar un Decano de Facultad como supervisor."
+              : "Debes seleccionar un Director de Programa como supervisor.";
+        toast.error(msg);
+        return;
+      }
     }
     if (editing) {
       updateUser.mutate({ ...form, id: editing.id });
