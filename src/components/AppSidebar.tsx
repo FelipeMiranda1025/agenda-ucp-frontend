@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain, Building2, Lightbulb, Heart, Award, Calendar, ChevronLeft, ChevronRight, User } from "lucide-react";
+import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain, Building2, Lightbulb, Heart, Award, Calendar, ChevronLeft, ChevronRight, User, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAgenda } from "@/context/AgendaContext";
 import { useAuth } from "@/context/AuthContext";
