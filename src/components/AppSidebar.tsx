@@ -129,9 +129,10 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
   const subordinates = useMemo(() => {
     if (isDocente) return [];
     const base = docentesList.filter((d) => d.firstName !== "Yo");
-    if (isVicerrector || isDecano || isDirector) return base.filter((d) => approvedSet.has(d.id));
+    // Director sees ALL docentes from his career; locked state handled at render.
+    if (isVicerrector || isDecano) return base.filter((d) => approvedSet.has(d.id));
     return base;
-  }, [docentesList, isVicerrector, isDecano, isDirector, isDocente, approvedSet]);
+  }, [docentesList, isVicerrector, isDecano, isDocente, approvedSet]);
   const selfDocente = useMemo(
     () => docentesList.find((d) => d.firstName === "Yo"),
     [docentesList]
