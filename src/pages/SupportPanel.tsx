@@ -118,6 +118,7 @@ const emptyForm = {
   password: "",
   id_faculty: null as number | null,
   id_professional_career: null as number | null,
+  supervisor_id: null as number | null,
 };
 
 export default function SupportPanel() {
