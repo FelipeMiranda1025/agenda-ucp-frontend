@@ -36,6 +36,8 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
   const { t } = useLanguage();
   const { data: faculties = [] } = useFaculties();
   const { data: careers = [] } = useProfessionalCareers();
+  const { data: approvedCcs = [] } = useApprovedAgendaCcs(isVicerrector);
+  const approvedSet = useMemo(() => new Set(approvedCcs), [approvedCcs]);
 
   const [navView, setNavView] = useState<NavView>("root");
   const [selectedFacultyId, setSelectedFacultyId] = useState<number | null>(null);
