@@ -226,8 +226,8 @@ const translations: Record<string, Record<Language, string>> = {
   "settings.administrativas": { es: "Administrativas", en: "Administrative" },
   "settings.formacion": { es: "Formación", en: "Training" },
   "settings.rule": { es: "Regla", en: "Rule" },
-  "settings.hours": { es: "Horas", en: "Hours" },
-  "settings.subjects": { es: "Asignaturas", en: "Subjects" },
+  "settings.hours": { es: "Horas semanales", en: "Weekly hours" },
+  "settings.subjects": { es: "# asignaturas recomendadas", en: "# recommended subjects" },
   "settings.save": { es: "Guardar", en: "Save" },
   "settings.saveAll": { es: "Guardar cambios", en: "Save changes" },
   "settings.reset": { es: "Restablecer por defecto", en: "Reset to defaults" },
@@ -236,6 +236,17 @@ const translations: Record<string, Record<Language, string>> = {
   "settings.resetConfirm": { es: "¿Restaurar todos los lineamientos a sus valores por defecto?", en: "Reset all guidelines to default values?" },
   "settings.resetDone": { es: "Lineamientos restaurados", en: "Guidelines restored" },
   "settings.noChanges": { es: "No hay cambios para guardar", en: "No changes to save" },
+  "settings.addRule": { es: "Añadir lineamiento", en: "Add guideline" },
+  "settings.active": { es: "Activo", en: "Active" },
+  "settings.inactive": { es: "Inactivo", en: "Inactive" },
+  "settings.showInactive": { es: "Mostrar inactivos", en: "Show inactive" },
+  "settings.hideInactive": { es: "Ocultar inactivos", en: "Hide inactive" },
+  "settings.newRuleLabel": { es: "Nombre del lineamiento", en: "Guideline name" },
+  "settings.create": { es: "Crear", en: "Create" },
+  "settings.cancel": { es: "Cancelar", en: "Cancel" },
+  "settings.created": { es: "Lineamiento creado", en: "Guideline created" },
+  "settings.statusUpdated": { es: "Estado actualizado", en: "Status updated" },
+  "settings.newRulePlaceholder": { es: "Ej. Coordinador editorial", en: "E.g. Editorial coordinator" },
 };
 
 export function getTranslation(key: string, lang: Language): string {
