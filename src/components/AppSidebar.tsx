@@ -108,7 +108,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
           }`}
         >
           <Icon className="h-4 w-4 shrink-0" />
-          <span className="truncate">{t(item.shortTitleKey || item.shortTitle)}</span>
+          <span className="whitespace-normal break-words">{t(item.shortTitleKey || item.shortTitle)}</span>
         </button>
       );
     });
@@ -267,7 +267,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                     }`}
                   >
                     <User className="h-4 w-4 shrink-0" />
-                    <span className="truncate">Yo</span>
+                    <span className="whitespace-normal break-words">Yo</span>
                   </button>
                 )}
 
@@ -278,7 +278,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                     className={itemBtnClass}
                   >
                     <Building2 className="h-4 w-4 shrink-0" />
-                    <span className="truncate flex-1 text-left">{faculty.name}</span>
+                    <span className="whitespace-normal break-words flex-1 text-left">{faculty.name}</span>
                     <span className="text-xs text-muted-foreground">{count}</span>
                     <ChevronRight className="h-4 w-4 shrink-0" />
                   </button>
@@ -294,7 +294,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                     className={itemBtnClass}
                   >
                     <Users className="h-4 w-4 shrink-0" />
-                    <span className="truncate flex-1 text-left">Sin facultad asignada</span>
+                    <span className="whitespace-normal break-words flex-1 text-left">Sin facultad asignada</span>
                     <span className="text-xs text-muted-foreground">{facultiesWithSubs.unassigned.length}</span>
                     <ChevronRight className="h-4 w-4 shrink-0" />
                   </button>
@@ -308,12 +308,12 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                 {isDecano ? (
                   <div className={`${itemBtnClass} font-medium cursor-default hover:bg-transparent`}>
                     <Building2 className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{selectedFacultyName}</span>
+                    <span className="whitespace-normal break-words">{selectedFacultyName}</span>
                   </div>
                 ) : (
                   <button onClick={goRoot} className={`${itemBtnClass} font-medium`}>
                     <ChevronLeft className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{selectedFacultyName}</span>
+                    <span className="whitespace-normal break-words">{selectedFacultyName}</span>
                   </button>
                 )}
 
@@ -328,7 +328,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                       title={disabled ? "Sin agendas disponibles" : undefined}
                     >
                       <GraduationCap className="h-4 w-4 shrink-0" />
-                      <span className="truncate flex-1 text-left">{career.name}</span>
+                      <span className="whitespace-normal break-words flex-1 text-left">{career.name}</span>
                       <span className="text-xs text-muted-foreground">{disabled ? "—" : count}</span>
                       {!disabled && <ChevronRight className="h-4 w-4 shrink-0" />}
                     </button>
@@ -338,7 +338,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                 {careersWithSubs.unassigned.length > 0 && (
                   <button onClick={() => goDocentes(null)} className={itemBtnClass}>
                     <Users className="h-4 w-4 shrink-0" />
-                    <span className="truncate flex-1 text-left">Sin carrera asignada</span>
+                    <span className="whitespace-normal break-words flex-1 text-left">Sin carrera asignada</span>
                     <span className="text-xs text-muted-foreground">{careersWithSubs.unassigned.length}</span>
                     <ChevronRight className="h-4 w-4 shrink-0" />
                   </button>
@@ -361,7 +361,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                   className={`${itemBtnClass} font-medium`}
                 >
                   <ChevronLeft className="h-4 w-4 shrink-0" />
-                  <span className="truncate">
+                  <span className="whitespace-normal break-words">
                     {selectedFacultyId != null ? selectedCareerName : "Sin facultad asignada"}
                   </span>
                 </button>
@@ -374,7 +374,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                     }`}
                   >
                     <User className="h-4 w-4 shrink-0" />
-                    <span className="truncate">Yo</span>
+                    <span className="whitespace-normal break-words">Yo</span>
                   </button>
                 )}
 
@@ -390,7 +390,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                     }`}
                   >
                     <User className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{getDocenteFullName(d)}</span>
+                    <span className="whitespace-normal break-words">{getDocenteFullName(d)}</span>
                   </button>
                 ))}
               </div>
