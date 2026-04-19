@@ -122,6 +122,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   const lastUpsertRef = useRef<string>("");
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [comboboxOpen, setComboboxOpen] = useState(false);
+  const [activityComboboxOpen, setActivityComboboxOpen] = useState<string | null>(null);
   const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
   const [activityDialogOpen, setActivityDialogOpen] = useState<ActivityTableType | null>(null);
   // DB hooks for auto-fill (only used for docencia-directa)
@@ -560,58 +561,124 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                         </>
                       ) : (
                         <>
-                          <Select
-                            value={String(formData[field.name] || "")}
-                            onValueChange={(v) => setFormData((p) => ({ ...p, [field.name]: v }))}
-                            disabled={isAgendaReadOnly}
-                          >
-                            <SelectTrigger className="flex-1">
-                              <SelectValue placeholder={t("form.select")} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {(() => {
-                                // When multiple subject variants exist, filter faculty/program options
-                                if (hasMultipleVariants && resolvedId === "docencia-directa") {
-                                  if (field.category === "programa") {
-                                    return dbProfessionalCareers?.filter((c) => filteredCareerIds.has(c.id)).map((c) => (
-                                      <SelectItem key={c.id} value={c.name}>{translateOption(c.name, language)}</SelectItem>
-                                    ));
-                                  }
-                                }
-                                const DB_CATEGORY_MAP: { [cat: string]: any[] | undefined } = {
-                                  "asignatura": resolvedId === "docencia-directa" ? dbSubjects : undefined,
-                                  "tipo_trabajo": dbDegreeWorks,
-                                  "actividad_practicas": dbAcademicPractices,
-                                  "actividad_indirecta": dbIndirectTeaching,
-                                  "actividad_investigacion": dbInvestigations,
-                                  "actividad_proyeccion": dbSocialProjects,
-                                  "actividad_complementaria": dbComplementaryActivities,
-                                  "actividad_formacion": dbTeacherTraining,
-                                  "actividad_administrativa": dbAdministrativeActivities,
-                                };
-                                const dbData = DB_CATEGORY_MAP[field.category!];
-                                if (dbData) {
-                                  // Filter out blocked activities for investigacion/administrativas/formacion-docentes
-                                  const shouldFilter = ["actividad_investigacion", "actividad_administrativa", "actividad_formacion"].includes(field.category!);
-                                  const filtered = shouldFilter
-                                    ? dbData.filter((item: any) => !blockedActivities.has(item.name))
-                                    : dbData;
-                                  return filtered.map((item: any) => (
-                                    <SelectItem key={item.id} value={item.name}>
-                                      {translateOption(item.name, language)}
-                                    </SelectItem>
-                                  ));
-                                }
-                                return dropdownOptions
-                                  .filter((o) => o.category === field.category)
-                                  .map((o) => (
-                                    <SelectItem key={o.id} value={o.value}>
-                                      {translateOption(o.value, language)}
-                                    </SelectItem>
-                                  ));
-                              })()}
-                            </SelectContent>
-                          </Select>
+                          {(() => {
+                            const SEARCHABLE_CATEGORIES = new Set([
+                              "tipo_trabajo",
+                              "actividad_practicas",
+                              "actividad_indirecta",
+                              "actividad_investigacion",
+                              "actividad_proyeccion",
+                              "actividad_complementaria",
+                              "actividad_formacion",
+                              "actividad_administrativa",
+                            ]);
+                            const DB_CATEGORY_MAP: { [cat: string]: any[] | undefined } = {
+                              "asignatura": resolvedId === "docencia-directa" ? dbSubjects : undefined,
+                              "tipo_trabajo": dbDegreeWorks,
+                              "actividad_practicas": dbAcademicPractices,
+                              "actividad_indirecta": dbIndirectTeaching,
+                              "actividad_investigacion": dbInvestigations,
+                              "actividad_proyeccion": dbSocialProjects,
+                              "actividad_complementaria": dbComplementaryActivities,
+                              "actividad_formacion": dbTeacherTraining,
+                              "actividad_administrativa": dbAdministrativeActivities,
+                            };
+
+                            // Searchable activity/work-type combobox
+                            if (SEARCHABLE_CATEGORIES.has(field.category!)) {
+                              const dbData = DB_CATEGORY_MAP[field.category!] || [];
+                              const shouldFilter = ["actividad_investigacion", "actividad_administrativa", "actividad_formacion"].includes(field.category!);
+                              const filtered = shouldFilter
+                                ? dbData.filter((item: any) => !blockedActivities.has(item.name))
+                                : dbData;
+                              const isOpen = activityComboboxOpen === field.name;
+                              return (
+                                <Popover open={isOpen} onOpenChange={(o) => setActivityComboboxOpen(o ? field.name : null)}>
+                                  <PopoverTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      role="combobox"
+                                      aria-expanded={isOpen}
+                                      disabled={isAgendaReadOnly}
+                                      className="flex-1 justify-between font-normal h-auto min-h-10 whitespace-normal text-left"
+                                    >
+                                      {formData[field.name]
+                                        ? translateOption(String(formData[field.name]), language)
+                                        : t("form.select")}
+                                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                  </PopoverTrigger>
+                                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                    <Command>
+                                      <CommandInput placeholder={t("form.filterType")} />
+                                      <CommandList>
+                                        <CommandEmpty>{t("form.noSubjects")}</CommandEmpty>
+                                        <CommandGroup>
+                                          {filtered.map((item: any) => (
+                                            <CommandItem
+                                              key={item.id}
+                                              value={item.name}
+                                              onSelect={(value) => {
+                                                setFormData((p) => ({ ...p, [field.name]: value }));
+                                                setActivityComboboxOpen(null);
+                                              }}
+                                            >
+                                              <Check
+                                                className={cn(
+                                                  "mr-2 h-4 w-4",
+                                                  String(formData[field.name]).toLowerCase() === item.name.toLowerCase() ? "opacity-100" : "opacity-0"
+                                                )}
+                                              />
+                                              {translateOption(item.name, language)}
+                                            </CommandItem>
+                                          ))}
+                                        </CommandGroup>
+                                      </CommandList>
+                                    </Command>
+                                  </PopoverContent>
+                                </Popover>
+                              );
+                            }
+
+                            // Default: plain Select for facultad/programa/semestre/jornada/nivel and custom dropdowns
+                            return (
+                              <Select
+                                value={String(formData[field.name] || "")}
+                                onValueChange={(v) => setFormData((p) => ({ ...p, [field.name]: v }))}
+                                disabled={isAgendaReadOnly}
+                              >
+                                <SelectTrigger className="flex-1">
+                                  <SelectValue placeholder={t("form.select")} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {(() => {
+                                    if (hasMultipleVariants && resolvedId === "docencia-directa") {
+                                      if (field.category === "programa") {
+                                        return dbProfessionalCareers?.filter((c) => filteredCareerIds.has(c.id)).map((c) => (
+                                          <SelectItem key={c.id} value={c.name}>{translateOption(c.name, language)}</SelectItem>
+                                        ));
+                                      }
+                                    }
+                                    const dbData = DB_CATEGORY_MAP[field.category!];
+                                    if (dbData) {
+                                      return dbData.map((item: any) => (
+                                        <SelectItem key={item.id} value={item.name}>
+                                          {translateOption(item.name, language)}
+                                        </SelectItem>
+                                      ));
+                                    }
+                                    return dropdownOptions
+                                      .filter((o) => o.category === field.category)
+                                      .map((o) => (
+                                        <SelectItem key={o.id} value={o.value}>
+                                          {translateOption(o.value, language)}
+                                        </SelectItem>
+                                      ));
+                                  })()}
+                                </SelectContent>
+                              </Select>
+                            );
+                          })()}
                           {(() => {
                             if (isAgendaReadOnly) return null;
                             const CATEGORY_TO_TABLE: Record<string, ActivityTableType> = {
