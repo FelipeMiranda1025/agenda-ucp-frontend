@@ -280,7 +280,21 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                   </button>
                 )}
 
-                {facultiesWithSubs.list.map(({ faculty, count }) => (
+                {/* Director: flat list of docentes (same career, with submitted agenda) */}
+                {isDirector && subordinates.map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() => handleSelectDocente(d)}
+                    className={`${itemBtnClass} ${
+                      selectedDocente?.id === d.id ? "bg-accent text-accent-foreground font-medium" : ""
+                    }`}
+                  >
+                    <User className="h-4 w-4 shrink-0" />
+                    <span className="whitespace-normal break-words">{getDocenteFullName(d)}</span>
+                  </button>
+                ))}
+
+                {!isDirector && facultiesWithSubs.list.map(({ faculty, count }) => (
                   <button
                     key={faculty.id}
                     onClick={() => goCareers(faculty.id)}
@@ -293,7 +307,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                   </button>
                 ))}
 
-                {facultiesWithSubs.unassigned.length > 0 && (
+                {!isDirector && facultiesWithSubs.unassigned.length > 0 && (
                   <button
                     onClick={() => {
                       setSelectedFacultyId(null);
