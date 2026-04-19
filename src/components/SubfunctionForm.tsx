@@ -481,7 +481,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                   default: return [];
                 }
               })();
-              const isReadOnly = readOnlyFields.includes(field.name);
+              const isReadOnly = readOnlyFields.includes(field.name) || isAgendaReadOnly;
 
               return (
                 <div key={field.name} className="space-y-1.5">
