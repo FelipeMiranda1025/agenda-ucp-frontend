@@ -59,6 +59,8 @@ const translations: Record<string, Record<Language, string>> = {
 
   // SubfunctionForm
   "form.editing": { es: "Editando registro", en: "Editing record" },
+  "form.viewing": { es: "Visualizando registro", en: "Viewing record" },
+  "form.readOnlyBanner": { es: "Modo lectura — Revisión de agenda del docente", en: "Read-only mode — Reviewing teacher's agenda" },
   "form.record": { es: "Registro", en: "Record" },
   "form.clear": { es: "Limpiar", en: "Clear" },
   "form.clearFields": { es: "Limpiar campos", en: "Clear fields" },

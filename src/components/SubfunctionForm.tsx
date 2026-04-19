@@ -327,15 +327,13 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
 
   // Listen for editingRecord from context (click on summary panel record)
   useEffect(() => {
-    if (isAgendaReadOnly) {
-      if (editingRecord) setEditingRecord(null);
-      return;
-    }
     if (editingRecord && editingRecord.subfunctionId === resolvedId) {
       setFormData({ ...editingRecord.data });
       formDataStore[resolvedId] = { ...editingRecord.data };
-      setEditingRecordId(editingRecord.id);
-      lastUpsertRef.current = JSON.stringify({ resolvedId, data: editingRecord.data, total: editingRecord.totalHoras });
+      if (!isAgendaReadOnly) {
+        setEditingRecordId(editingRecord.id);
+        lastUpsertRef.current = JSON.stringify({ resolvedId, data: editingRecord.data, total: editingRecord.totalHoras });
+      }
       setEditingRecord(null);
     }
   }, [editingRecord, resolvedId, setEditingRecord, isAgendaReadOnly]);
@@ -454,10 +452,17 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
         )}
       </div>
 
+      {isAgendaReadOnly && (
+        <div className="px-4 py-2 rounded-md bg-muted border border-border text-xs text-muted-foreground flex items-center gap-2">
+          <Lock className="h-3.5 w-3.5" />
+          {t("form.readOnlyBanner")}
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            {editingRecordId ? t("form.editing") : t("form.record")}
+            {isAgendaReadOnly ? t("form.viewing") : (editingRecordId ? t("form.editing") : t("form.record"))}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -483,7 +488,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                   default: return [];
                 }
               })();
-              const isReadOnly = readOnlyFields.includes(field.name);
+              const isReadOnly = readOnlyFields.includes(field.name) || isAgendaReadOnly;
 
               return (
                 <div key={field.name} className="space-y-1.5">
