@@ -101,7 +101,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
         <button
           key={item.id}
           onClick={() => handleItemClick(item.id)}
-          className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors ${
+          className={`w-full flex items-start gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left ${
             isActive
               ? "bg-accent text-accent-foreground font-medium"
               : "text-foreground/80 hover:bg-accent/50"
