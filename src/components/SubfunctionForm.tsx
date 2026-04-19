@@ -105,7 +105,7 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule, displayName }: { hasSc
 }
 
 export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
-  const { activeSubfunction, records, dropdownOptions, addDropdownOption, addRecord, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord, selectedDocente } = useAgenda();
+  const { activeSubfunction, records, dropdownOptions, addDropdownOption, addRecord, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord, selectedDocente, isAgendaReadOnly } = useAgenda();
   const { user } = useAuth();
   const { t, language } = useLanguage();
 
@@ -326,6 +326,10 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
 
   // Listen for editingRecord from context (click on summary panel record)
   useEffect(() => {
+    if (isAgendaReadOnly) {
+      if (editingRecord) setEditingRecord(null);
+      return;
+    }
     if (editingRecord && editingRecord.subfunctionId === resolvedId) {
       setFormData({ ...editingRecord.data });
       formDataStore[resolvedId] = { ...editingRecord.data };
@@ -333,11 +337,12 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       lastUpsertRef.current = JSON.stringify({ resolvedId, data: editingRecord.data, total: editingRecord.totalHoras });
       setEditingRecord(null);
     }
-  }, [editingRecord, resolvedId, setEditingRecord]);
+  }, [editingRecord, resolvedId, setEditingRecord, isAgendaReadOnly]);
 
   // Auto-upsert when all fields are filled; instant for docencia-directa, debounced for others
   useEffect(() => {
     if (!config || resolvedId === "distribucion-horaria") return;
+    if (isAgendaReadOnly) return;
 
     const allFilled = inputFields.every((f) => {
       if (f.type === "number") return Number(formData[f.name]) > 0;
