@@ -295,11 +295,18 @@ export function SummaryPanel() {
               value={returnObservation}
               onChange={(e) => setReturnObservation(e.target.value)}
               className="min-h-[60px] text-sm"
+              aria-required="true"
             />
+            {!returnObservation.trim() && (
+              <p className="text-xs text-destructive">
+                {t("summary.observationRequired")}
+              </p>
+            )}
             <div className="flex gap-2">
               <Button
                 onClick={handleReturn}
-                className="flex-1 gap-2 text-white hover:opacity-90"
+                disabled={!returnObservation.trim() || updateAgendaViewStatus.isPending}
+                className="flex-1 gap-2 text-white hover:opacity-90 disabled:opacity-50"
                 style={{ backgroundColor: "#a8822c" }}
               >
                 <RotateCcw className="h-4 w-4" />
