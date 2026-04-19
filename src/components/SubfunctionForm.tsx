@@ -439,16 +439,18 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
             </p>
           )}
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleClearForm}
-          className="text-primary-foreground hover:bg-primary-foreground/20"
-          title={t("form.clearFields")}
-        >
-          <Eraser className="h-4 w-4 mr-1" />
-          {t("form.clear")}
-        </Button>
+        {!isAgendaReadOnly && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClearForm}
+            className="text-primary-foreground hover:bg-primary-foreground/20"
+            title={t("form.clearFields")}
+          >
+            <Eraser className="h-4 w-4 mr-1" />
+            {t("form.clear")}
+          </Button>
+        )}
       </div>
 
       <Card>
