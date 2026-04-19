@@ -359,6 +359,43 @@ export default function SupportPanel() {
     return careers.filter((c) => c.id_faculty === form.id_faculty);
   }, [careers, form.id_faculty]);
 
+  // Candidatos a supervisor según el rol elegido en el formulario:
+  // - Rol 1 (DocentePlanta) -> Director de Programa (rol 2) de la misma carrera
+  // - Rol 2 (DirectorPrograma) -> Decano de Facultad (rol 3) de la misma facultad
+  // - Rol 3 (DecanoFacultad) -> Vicerrector Académico (rol 4), único en el sistema
+  // - Roles 4 y 5 -> sin supervisor
+  const supervisorCandidates = useMemo(() => {
+    if (form.id_rol === 1) {
+      if (!form.id_professional_career) return [];
+      return users.filter(
+        (u) => u.id_rol === 2 && u.id_professional_career === form.id_professional_career
+      );
+    }
+    if (form.id_rol === 2) {
+      if (!form.id_faculty) return [];
+      return users.filter((u) => u.id_rol === 3 && u.id_faculty === form.id_faculty);
+    }
+    if (form.id_rol === 3) {
+      return users.filter((u) => u.id_rol === 4);
+    }
+    return [];
+  }, [users, form.id_rol, form.id_faculty, form.id_professional_career]);
+
+  // Auto-seleccionar el supervisor cuando solo hay un candidato y aún no se ha elegido uno válido
+  React.useEffect(() => {
+    if (![1, 2, 3].includes(form.id_rol)) {
+      if (form.supervisor_id !== null) setForm((f) => ({ ...f, supervisor_id: null }));
+      return;
+    }
+    const validIds = supervisorCandidates.map((s) => s.id);
+    if (form.supervisor_id !== null && !validIds.includes(form.supervisor_id)) {
+      setForm((f) => ({ ...f, supervisor_id: null }));
+    }
+    if (form.supervisor_id === null && supervisorCandidates.length === 1) {
+      setForm((f) => ({ ...f, supervisor_id: supervisorCandidates[0].id }));
+    }
+  }, [supervisorCandidates, form.id_rol, form.supervisor_id]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return users.filter((u) => {
