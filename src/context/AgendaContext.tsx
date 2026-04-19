@@ -168,6 +168,10 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const addRecord = useCallback((record: Omit<AgendaRecord, "id" | "createdAt">) => {
     if (!docenteId) return;
+    if (user && docenteId !== user.id) {
+      console.warn("[AgendaContext] addRecord blocked: cannot modify another user's agenda");
+      return;
+    }
     setRecordsByDocente((prev) => ({
       ...prev,
       [docenteId]: [
@@ -175,18 +179,26 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         { ...record, id: String(Date.now()), createdAt: new Date().toISOString() },
       ],
     }));
-  }, [docenteId]);
+  }, [docenteId, user]);
 
   const updateRecord = useCallback((id: string, data: AgendaRecord["data"], totalHoras: number) => {
     if (!docenteId) return;
+    if (user && docenteId !== user.id) {
+      console.warn("[AgendaContext] updateRecord blocked: cannot modify another user's agenda");
+      return;
+    }
     setRecordsByDocente((prev) => ({
       ...prev,
       [docenteId]: (prev[docenteId] || []).map((r) => (r.id === id ? { ...r, data, totalHoras } : r)),
     }));
-  }, [docenteId]);
+  }, [docenteId, user]);
 
   const deleteRecord = useCallback((id: string) => {
     if (!docenteId) return;
+    if (user && docenteId !== user.id) {
+      console.warn("[AgendaContext] deleteRecord blocked: cannot modify another user's agenda");
+      return;
+    }
     setRecordsByDocente((prev) => {
       const existing = prev[docenteId] || [];
       const deletedRecord = existing.find((r) => r.id === id);
@@ -197,11 +209,15 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
       return { ...prev, [docenteId]: filtered };
     });
-  }, [docenteId, generateIndirectRecords]);
+  }, [docenteId, generateIndirectRecords, user]);
 
   // Upsert: match by subfunctionId + ALL string values in data (composite key)
   const upsertRecord = useCallback((subfunctionId: string, data: AgendaRecord["data"], totalHoras: number) => {
     if (!docenteId) return;
+    if (user && docenteId !== user.id) {
+      console.warn("[AgendaContext] upsertRecord blocked: cannot modify another user's agenda");
+      return;
+    }
     setRecordsByDocente((prev) => {
       const existing = prev[docenteId] || [];
       // Composite key: all string values from data
@@ -236,7 +252,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       return { ...prev, [docenteId]: newRecords };
     });
-  }, [docenteId]);
+  }, [docenteId, user, generateIndirectRecords]);
 
   const getRecordsBySubfunction = useCallback(
     (subfunctionId: string) => records.filter((r) => r.subfunctionId === subfunctionId),
@@ -245,6 +261,10 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const saveSchedule = useCallback((blocks: ScheduleBlock[]) => {
     if (!docenteId) return;
+    if (user && docenteId !== user.id) {
+      console.warn("[AgendaContext] saveSchedule blocked: cannot modify another user's agenda");
+      return;
+    }
     setScheduleByDocente((prev) => ({
       ...prev,
       [docenteId]: {
@@ -253,7 +273,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         lastModified: new Date().toISOString(),
       },
     }));
-  }, [docenteId]);
+  }, [docenteId, user]);
 
   const getSchedule = useCallback(() => {
     return scheduleByDocente[docenteId] || null;
@@ -347,6 +367,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setEditingRecord,
         hasPendingAgendaView,
         loadFromAgendaView,
+        isAgendaReadOnly,
       }}
     >
       {children}
