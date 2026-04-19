@@ -458,6 +458,17 @@ export default function SupportPanel() {
       toast.error("La contraseña es obligatoria al crear");
       return;
     }
+    // Validar supervisor obligatorio para roles 1, 2 y 3
+    if ([1, 2, 3].includes(form.id_rol) && form.supervisor_id === null) {
+      const msg =
+        form.id_rol === 3
+          ? "No hay Vicerrector Académico disponible como supervisor."
+          : form.id_rol === 2
+            ? "Debes seleccionar un Decano de Facultad como supervisor."
+            : "Debes seleccionar un Director de Programa como supervisor.";
+      toast.error(msg);
+      return;
+    }
     if (editing) {
       updateUser.mutate({ ...form, id: editing.id });
     } else {
