@@ -278,7 +278,10 @@ const Index = () => {
                     ? pendingSubordinateAgendas
                     : pendingSubordinateAgendas.filter((pa) => !isPendingRead(pa.agendaView.id))
                   ).length;
-                  if (visibleComments.length === 0 && visiblePendingCount === 0 && !(isReturnedAgenda && (showNotifHistory || !isDismissedReturn))) {
+                  const visibleCareerCount = isVicerrector
+                    ? (showNotifHistory ? fullyApprovedCareers : fullyApprovedCareers.filter((c) => !isCareerRead(c.careerId))).length
+                    : 0;
+                  if (visibleComments.length === 0 && visiblePendingCount === 0 && visibleCareerCount === 0 && !(isReturnedAgenda && (showNotifHistory || !isDismissedReturn))) {
                     return (
                       <div className="px-3 py-4 text-sm text-muted-foreground text-center">
                         {t("notifications.empty")}
