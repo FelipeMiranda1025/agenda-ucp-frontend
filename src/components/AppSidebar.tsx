@@ -273,18 +273,23 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                   <span className="truncate">{selectedFacultyName}</span>
                 </button>
 
-                {careersWithSubs.list.map(({ career, count }) => (
-                  <button
-                    key={career.id}
-                    onClick={() => goDocentes(career.id)}
-                    className={itemBtnClass}
-                  >
-                    <GraduationCap className="h-4 w-4 shrink-0" />
-                    <span className="truncate flex-1 text-left">{career.name}</span>
-                    <span className="text-xs text-muted-foreground">{count}</span>
-                    <ChevronRight className="h-4 w-4 shrink-0" />
-                  </button>
-                ))}
+                {careersWithSubs.list.map(({ career, count }) => {
+                  const disabled = count === 0;
+                  return (
+                    <button
+                      key={career.id}
+                      onClick={() => !disabled && goDocentes(career.id)}
+                      disabled={disabled}
+                      className={`${itemBtnClass} ${disabled ? "opacity-50 cursor-not-allowed hover:bg-transparent" : ""}`}
+                      title={disabled ? "Sin agendas disponibles" : undefined}
+                    >
+                      <GraduationCap className="h-4 w-4 shrink-0" />
+                      <span className="truncate flex-1 text-left">{career.name}</span>
+                      <span className="text-xs text-muted-foreground">{disabled ? "—" : count}</span>
+                      {!disabled && <ChevronRight className="h-4 w-4 shrink-0" />}
+                    </button>
+                  );
+                })}
 
                 {careersWithSubs.unassigned.length > 0 && (
                   <button onClick={() => goDocentes(null)} className={itemBtnClass}>
