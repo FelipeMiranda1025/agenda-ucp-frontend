@@ -327,15 +327,13 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
 
   // Listen for editingRecord from context (click on summary panel record)
   useEffect(() => {
-    if (isAgendaReadOnly) {
-      if (editingRecord) setEditingRecord(null);
-      return;
-    }
     if (editingRecord && editingRecord.subfunctionId === resolvedId) {
       setFormData({ ...editingRecord.data });
       formDataStore[resolvedId] = { ...editingRecord.data };
-      setEditingRecordId(editingRecord.id);
-      lastUpsertRef.current = JSON.stringify({ resolvedId, data: editingRecord.data, total: editingRecord.totalHoras });
+      if (!isAgendaReadOnly) {
+        setEditingRecordId(editingRecord.id);
+        lastUpsertRef.current = JSON.stringify({ resolvedId, data: editingRecord.data, total: editingRecord.totalHoras });
+      }
       setEditingRecord(null);
     }
   }, [editingRecord, resolvedId, setEditingRecord, isAgendaReadOnly]);
