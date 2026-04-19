@@ -125,11 +125,13 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
   // Subordinates only (exclude "Yo" entry which has firstName === "Yo")
   // - Vicerrector: only docentes whose agenda was approved by their dean.
   // - Decano: only docentes whose agenda was approved by their director.
+  const isDocente = roleName === "DocentePlanta";
   const subordinates = useMemo(() => {
+    if (isDocente) return [];
     const base = docentesList.filter((d) => d.firstName !== "Yo");
     if (isVicerrector || isDecano || isDirector) return base.filter((d) => approvedSet.has(d.id));
     return base;
-  }, [docentesList, isVicerrector, isDecano, isDirector, approvedSet]);
+  }, [docentesList, isVicerrector, isDecano, isDirector, isDocente, approvedSet]);
   const selfDocente = useMemo(
     () => docentesList.find((d) => d.firstName === "Yo"),
     [docentesList]
