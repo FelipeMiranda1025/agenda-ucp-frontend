@@ -114,12 +114,13 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
     });
 
   // Subordinates only (exclude "Yo" entry which has firstName === "Yo")
-  // For Vicerrector: only show docentes whose agenda has been APPROVED by their dean.
+  // - Vicerrector: only docentes whose agenda was approved by their dean.
+  // - Decano: only docentes whose agenda was approved by their director.
   const subordinates = useMemo(() => {
     const base = docentesList.filter((d) => d.firstName !== "Yo");
-    if (!isVicerrector) return base;
-    return base.filter((d) => approvedSet.has(d.id));
-  }, [docentesList, isVicerrector, approvedSet]);
+    if (isVicerrector || isDecano) return base.filter((d) => approvedSet.has(d.id));
+    return base;
+  }, [docentesList, isVicerrector, isDecano, approvedSet]);
   const selfDocente = useMemo(
     () => docentesList.find((d) => d.firstName === "Yo"),
     [docentesList]
