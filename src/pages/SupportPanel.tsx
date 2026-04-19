@@ -389,6 +389,7 @@ export default function SupportPanel() {
   };
   const openEdit = (u: UserRow) => {
     setEditing(u);
+    const currentSup = supervisorOf(u.id);
     setForm({
       cc: u.cc,
       email: u.email,
@@ -401,6 +402,7 @@ export default function SupportPanel() {
       password: "",
       id_faculty: u.id_faculty,
       id_professional_career: u.id_professional_career,
+      supervisor_id: currentSup ? currentSup.id : null,
     });
     setDialogOpen(true);
   };
