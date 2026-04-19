@@ -211,7 +211,7 @@ export function SummaryPanel() {
                     return (
                       <div
                         key={record.id}
-                        className={`flex items-center py-1 text-sm border-b border-border/50 last:border-0 rounded px-1 transition-colors group ${isAgendaReadOnly ? '' : 'cursor-pointer hover:bg-accent/50'}`}
+                        className="flex items-center py-1 text-sm border-b border-border/50 last:border-0 rounded px-1 transition-colors group cursor-pointer hover:bg-accent/50"
                         onClick={() => handleRecordClick(record)}
                       >
                         <span className="flex-1 text-foreground break-words line-clamp-2" title={String(label)}>{String(label)}</span>
