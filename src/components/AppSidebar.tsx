@@ -89,7 +89,9 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
     [docentesList]
   );
 
-  // Group subordinates by faculty (only faculties with at least 1 subordinate)
+  // Group subordinates by faculty
+  // - Roles normales: solo facultades con al menos 1 subordinado (pruning)
+  // - Vicerrector: TODAS las facultades del catálogo, con conteo (puede ser 0)
   const facultiesWithSubs = useMemo(() => {
     const facultyMap = new Map<number, typeof subordinates>();
     const unassigned: typeof subordinates = [];
@@ -102,13 +104,17 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
         facultyMap.get(fid)!.push(s);
       }
     });
-    const list = faculties
-      .filter((f) => facultyMap.has(f.id))
-      .map((f) => ({ faculty: f, count: facultyMap.get(f.id)!.length }));
+    const list = isVicerrector
+      ? faculties.map((f) => ({ faculty: f, count: facultyMap.get(f.id)?.length ?? 0 }))
+      : faculties
+          .filter((f) => facultyMap.has(f.id))
+          .map((f) => ({ faculty: f, count: facultyMap.get(f.id)!.length }));
     return { list, unassigned };
-  }, [subordinates, faculties]);
+  }, [subordinates, faculties, isVicerrector]);
 
-  // Careers within selected faculty (only those with at least 1 subordinate)
+  // Careers within selected faculty
+  // - Roles normales: solo carreras con al menos 1 subordinado
+  // - Vicerrector: TODAS las carreras del catálogo de esa facultad (count puede ser 0 → deshabilitada)
   const careersWithSubs = useMemo(() => {
     if (selectedFacultyId == null) return { list: [] as { career: typeof careers[number]; count: number }[], unassigned: [] as typeof subordinates };
     const careerMap = new Map<number, number>();
@@ -120,11 +126,14 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
         if (cid == null) unassigned.push(s);
         else careerMap.set(cid, (careerMap.get(cid) ?? 0) + 1);
       });
-    const list = careers
-      .filter((c) => c.id_faculty === selectedFacultyId && careerMap.has(c.id))
-      .map((c) => ({ career: c, count: careerMap.get(c.id)! }));
+    const facultyCareers = careers.filter((c) => c.id_faculty === selectedFacultyId);
+    const list = isVicerrector
+      ? facultyCareers.map((c) => ({ career: c, count: careerMap.get(c.id) ?? 0 }))
+      : facultyCareers
+          .filter((c) => careerMap.has(c.id))
+          .map((c) => ({ career: c, count: careerMap.get(c.id)! }));
     return { list, unassigned };
-  }, [subordinates, careers, selectedFacultyId]);
+  }, [subordinates, careers, selectedFacultyId, isVicerrector]);
 
   // Docentes within selected career (or unassigned bucket)
   const docentesInCareer = useMemo(() => {
