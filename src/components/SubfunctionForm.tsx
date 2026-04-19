@@ -122,6 +122,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   const lastUpsertRef = useRef<string>("");
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [comboboxOpen, setComboboxOpen] = useState(false);
+  const [activityComboboxOpen, setActivityComboboxOpen] = useState<string | null>(null);
   const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
   const [activityDialogOpen, setActivityDialogOpen] = useState<ActivityTableType | null>(null);
   // DB hooks for auto-fill (only used for docencia-directa)
