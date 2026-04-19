@@ -39,6 +39,7 @@ const Index = () => {
   const [visibleSection, setVisibleSection] = useState<string>("header.production");
 
   const isVicerrector = roleName === "VicerrectorAcadémico";
+  const isDecano = roleName === "DecanoFacultad";
   const isPendingRead = (id: string) =>
     typeof window !== "undefined" && localStorage.getItem(`read_pending_${id}`) === "1";
   const isCareerRead = (careerId: number) =>
@@ -51,7 +52,11 @@ const Index = () => {
   const markRead = useMarkCommentsRead();
   const { data: agendaView } = useAgendaView(user?.id);
   const { data: pendingSubordinateAgendas = [] } = usePendingAgendaViewsForSupervisor(user?.id);
-  const { data: fullyApprovedCareers = [] } = useFullyApprovedCareers(isVicerrector);
+  const { data: fullyApprovedCareers = [] } = useFullyApprovedCareers(
+    isVicerrector ? "vicerrector" : "decano",
+    isDecano ? user?.id : undefined,
+    isVicerrector || isDecano
+  );
 
   // Resolve reviewer name when agenda is returned
   const reviewerCc = agendaView?.status === "returned" ? agendaView.reviewer_cc : null;
