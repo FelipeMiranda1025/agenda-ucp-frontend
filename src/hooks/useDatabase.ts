@@ -507,6 +507,32 @@ export function useSubordinatesWithNames(supervisorCc?: string) {
   });
 }
 
+// All docentes (rol 1, 2, 3) — used for VicerrectorAcadémico to see everyone
+export function useAllDocentes(enabled: boolean = true) {
+  return useQuery<SubordinateDocente[]>({
+    queryKey: ["all_docentes"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("users")
+        .select("cc, first_name, second_name, first_last_name, second_last_name, id_faculty, id_professional_career, id_rol")
+        .in("id_rol", [1, 2, 3])
+        .eq("id_state", 1);
+      if (error || !data) return [];
+      return data.map((u: any) => ({
+        id: u.cc,
+        firstName: u.first_name || "",
+        secondName: u.second_name || "",
+        firstLastName: u.first_last_name || "",
+        secondLastName: u.second_last_name || "",
+        idFaculty: u.id_faculty ?? null,
+        idProfessionalCareer: u.id_professional_career ?? null,
+      }));
+    },
+    enabled,
+    staleTime: 1000 * 60 * 10,
+  });
+}
+
 // Resolve a user's full name from their cc
 export function useUserNameByCc(cc?: string | null) {
   return useQuery<string | null>({
