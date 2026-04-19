@@ -575,19 +575,65 @@ export function useUpdateAgendaViewStatus() {
 }
 
 // =============================================
-// Vicerrector: ccs of users with an APPROVED agenda_view
+// Approved agenda ccs filtered by approver role
+// - forRole='vicerrector' → agendas approved by a DecanoFacultad (rol 3)
+// - forRole='decano' → agendas approved by a DirectorPrograma (rol 2),
+//   restricted to docentes within the dean's faculty (currentUserCc)
 // =============================================
-export function useApprovedAgendaCcs(enabled: boolean = true) {
+export function useApprovedAgendaCcs(
+  forRole: "vicerrector" | "decano",
+  currentUserCc?: string,
+  enabled: boolean = true
+) {
   return useQuery<string[]>({
-    queryKey: ["approved_agenda_ccs"],
+    queryKey: ["approved_agenda_ccs", forRole, currentUserCc],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("agenda_views" as any) as any)
-        .select("user_cc")
-        .eq("status", "approved");
-      if (error || !data) return [];
-      return Array.from(new Set((data as any[]).map((r) => r.user_cc as string)));
+      const approverRolId = forRole === "vicerrector" ? 3 : 2;
+
+      // 1. Approved agenda_views (with reviewer_cc)
+      const { data: views, error: vErr } = await (supabase.from("agenda_views" as any) as any)
+        .select("user_cc, reviewer_cc")
+        .eq("status", "approved")
+        .not("reviewer_cc", "is", null);
+      if (vErr || !views || views.length === 0) return [];
+
+      const reviewerCcs = Array.from(new Set((views as any[]).map((r) => r.reviewer_cc as string)));
+
+      // 2. Look up reviewer roles
+      const { data: reviewers, error: rErr } = await supabase
+        .from("users")
+        .select("cc, id_rol")
+        .in("cc", reviewerCcs)
+        .eq("id_rol", approverRolId);
+      if (rErr || !reviewers) return [];
+      const validReviewerSet = new Set<string>((reviewers as any[]).map((u) => u.cc as string));
+
+      const candidateCcs = (views as any[])
+        .filter((v) => validReviewerSet.has(v.reviewer_cc as string))
+        .map((v) => v.user_cc as string);
+      if (candidateCcs.length === 0) return [];
+
+      // 3. Decano: restrict to docentes in same faculty
+      if (forRole === "decano" && currentUserCc) {
+        const { data: dean } = await supabase
+          .from("users")
+          .select("id_faculty")
+          .eq("cc", currentUserCc)
+          .maybeSingle();
+        const deanFacultyId = (dean as any)?.id_faculty ?? null;
+        if (deanFacultyId == null) return [];
+
+        const { data: docentes } = await supabase
+          .from("users")
+          .select("cc")
+          .in("cc", Array.from(new Set(candidateCcs)))
+          .eq("id_faculty", deanFacultyId);
+        return Array.from(new Set((docentes ?? []).map((u: any) => u.cc as string)));
+      }
+
+      return Array.from(new Set(candidateCcs));
     },
-    enabled,
+    enabled: enabled && (forRole === "vicerrector" || !!currentUserCc),
     refetchInterval: 15000,
   });
 }
