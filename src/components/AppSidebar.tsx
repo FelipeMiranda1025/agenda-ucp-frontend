@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain, Building2, Lightbulb, Heart, Award, Calendar, ChevronLeft, ChevronRight, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAgenda } from "@/context/AgendaContext";
+import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { subfunctions } from "@/data/subfunctions";
 import { getDocenteFullName } from "@/types/docentePlanta";
@@ -30,6 +31,8 @@ type NavView = "root" | "careers" | "docentes";
 
 export function AppSidebar({ onClose }: AppSidebarProps) {
   const { activeSubfunction, setActiveSubfunction, searchTerm, setSearchTerm, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView } = useAgenda();
+  const { roleName } = useAuth();
+  const isVicerrector = roleName === "VicerrectorAcadémico";
   const { t } = useLanguage();
   const { data: faculties = [] } = useFaculties();
   const { data: careers = [] } = useProfessionalCareers();
@@ -86,7 +89,9 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
     [docentesList]
   );
 
-  // Group subordinates by faculty (only faculties with at least 1 subordinate)
+  // Group subordinates by faculty
+  // - Roles normales: solo facultades con al menos 1 subordinado (pruning)
+  // - Vicerrector: TODAS las facultades del catálogo, con conteo (puede ser 0)
   const facultiesWithSubs = useMemo(() => {
     const facultyMap = new Map<number, typeof subordinates>();
     const unassigned: typeof subordinates = [];
@@ -99,13 +104,17 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
         facultyMap.get(fid)!.push(s);
       }
     });
-    const list = faculties
-      .filter((f) => facultyMap.has(f.id))
-      .map((f) => ({ faculty: f, count: facultyMap.get(f.id)!.length }));
+    const list = isVicerrector
+      ? faculties.map((f) => ({ faculty: f, count: facultyMap.get(f.id)?.length ?? 0 }))
+      : faculties
+          .filter((f) => facultyMap.has(f.id))
+          .map((f) => ({ faculty: f, count: facultyMap.get(f.id)!.length }));
     return { list, unassigned };
-  }, [subordinates, faculties]);
+  }, [subordinates, faculties, isVicerrector]);
 
-  // Careers within selected faculty (only those with at least 1 subordinate)
+  // Careers within selected faculty
+  // - Roles normales: solo carreras con al menos 1 subordinado
+  // - Vicerrector: TODAS las carreras del catálogo de esa facultad (count puede ser 0 → deshabilitada)
   const careersWithSubs = useMemo(() => {
     if (selectedFacultyId == null) return { list: [] as { career: typeof careers[number]; count: number }[], unassigned: [] as typeof subordinates };
     const careerMap = new Map<number, number>();
@@ -117,11 +126,14 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
         if (cid == null) unassigned.push(s);
         else careerMap.set(cid, (careerMap.get(cid) ?? 0) + 1);
       });
-    const list = careers
-      .filter((c) => c.id_faculty === selectedFacultyId && careerMap.has(c.id))
-      .map((c) => ({ career: c, count: careerMap.get(c.id)! }));
+    const facultyCareers = careers.filter((c) => c.id_faculty === selectedFacultyId);
+    const list = isVicerrector
+      ? facultyCareers.map((c) => ({ career: c, count: careerMap.get(c.id) ?? 0 }))
+      : facultyCareers
+          .filter((c) => careerMap.has(c.id))
+          .map((c) => ({ career: c, count: careerMap.get(c.id)! }));
     return { list, unassigned };
-  }, [subordinates, careers, selectedFacultyId]);
+  }, [subordinates, careers, selectedFacultyId, isVicerrector]);
 
   // Docentes within selected career (or unassigned bucket)
   const docentesInCareer = useMemo(() => {
@@ -261,18 +273,23 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                   <span className="truncate">{selectedFacultyName}</span>
                 </button>
 
-                {careersWithSubs.list.map(({ career, count }) => (
-                  <button
-                    key={career.id}
-                    onClick={() => goDocentes(career.id)}
-                    className={itemBtnClass}
-                  >
-                    <GraduationCap className="h-4 w-4 shrink-0" />
-                    <span className="truncate flex-1 text-left">{career.name}</span>
-                    <span className="text-xs text-muted-foreground">{count}</span>
-                    <ChevronRight className="h-4 w-4 shrink-0" />
-                  </button>
-                ))}
+                {careersWithSubs.list.map(({ career, count }) => {
+                  const disabled = count === 0;
+                  return (
+                    <button
+                      key={career.id}
+                      onClick={() => !disabled && goDocentes(career.id)}
+                      disabled={disabled}
+                      className={`${itemBtnClass} ${disabled ? "opacity-50 cursor-not-allowed hover:bg-transparent" : ""}`}
+                      title={disabled ? "Sin agendas disponibles" : undefined}
+                    >
+                      <GraduationCap className="h-4 w-4 shrink-0" />
+                      <span className="truncate flex-1 text-left">{career.name}</span>
+                      <span className="text-xs text-muted-foreground">{disabled ? "—" : count}</span>
+                      {!disabled && <ChevronRight className="h-4 w-4 shrink-0" />}
+                    </button>
+                  );
+                })}
 
                 {careersWithSubs.unassigned.length > 0 && (
                   <button onClick={() => goDocentes(null)} className={itemBtnClass}>
