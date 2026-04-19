@@ -21,7 +21,6 @@ export function SummaryPanel() {
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
-  const { data: savedAgendas = [] } = useAgendas(user?.id);
   const insertComment = useInsertAgendaComment();
   const { data: agendaView } = useAgendaView(user?.id);
   const upsertAgendaView = useUpsertAgendaView();
@@ -284,7 +283,7 @@ export function SummaryPanel() {
         </div>
       </div>
 
-      <AgendaComments agendaIds={savedAgendas.map(a => a.id)} />
+      
 
       <div className="p-4 border-t">
         {isReviewingSubordinate ? (
