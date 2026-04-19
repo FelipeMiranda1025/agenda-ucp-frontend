@@ -402,6 +402,45 @@ export type Database = {
           },
         ]
       }
+      recommendation_rules: {
+        Row: {
+          category: string
+          default_hours: number
+          default_subjects: number
+          hours: number
+          id: string
+          label: string
+          priority: number
+          rule_key: string
+          subjects: number
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          default_hours?: number
+          default_subjects?: number
+          hours?: number
+          id?: string
+          label: string
+          priority?: number
+          rule_key: string
+          subjects?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          default_hours?: number
+          default_subjects?: number
+          hours?: number
+          id?: string
+          label?: string
+          priority?: number
+          rule_key?: string
+          subjects?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       roles: {
         Row: {
           description: string | null
