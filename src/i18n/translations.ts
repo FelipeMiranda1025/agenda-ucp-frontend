@@ -11,6 +11,7 @@ const translations: Record<string, Record<Language, string>> = {
   "notifications.title": { es: "Notificaciones", en: "Notifications" },
   "notifications.empty": { es: "No hay notificaciones nuevas", en: "No new notifications" },
   "notifications.pendingReview": { es: "Agenda pendiente por revisar", en: "Agenda pending review" },
+  "notifications.programReady": { es: "Hay un programa por revisar", en: "There's a program to review" },
   "notifications.returned": { es: "Retorno", en: "Returned" },
   "messages.title": { es: "Mensajes", en: "Messages" },
   "messages.empty": { es: "No hay mensajes", en: "No messages" },

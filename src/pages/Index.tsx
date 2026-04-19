@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
-import { useAllAgendaComments, useMarkCommentsRead, useAgendaView, usePendingAgendaViewsForSupervisor, useUserNameByCc } from "@/hooks/useDatabase";
+import { useAllAgendaComments, useMarkCommentsRead, useAgendaView, usePendingAgendaViewsForSupervisor, useUserNameByCc, useFullyApprovedCareers } from "@/hooks/useDatabase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +28,7 @@ import flagCol from "@/assets/flag-col.png";
 import flagUsa from "@/assets/flag-usa.png";
 
 const Index = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, roleName } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
@@ -38,8 +38,11 @@ const Index = () => {
   const [readTick, setReadTick] = useState(0);
   const [visibleSection, setVisibleSection] = useState<string>("header.production");
 
+  const isVicerrector = roleName === "VicerrectorAcadémico";
   const isPendingRead = (id: string) =>
     typeof window !== "undefined" && localStorage.getItem(`read_pending_${id}`) === "1";
+  const isCareerRead = (careerId: number) =>
+    typeof window !== "undefined" && localStorage.getItem(`read_career_${careerId}`) === "1";
   const mainRef = useRef<HTMLDivElement>(null);
 
   // Global comments & notifications
@@ -48,6 +51,7 @@ const Index = () => {
   const markRead = useMarkCommentsRead();
   const { data: agendaView } = useAgendaView(user?.id);
   const { data: pendingSubordinateAgendas = [] } = usePendingAgendaViewsForSupervisor(user?.id);
+  const { data: fullyApprovedCareers = [] } = useFullyApprovedCareers(isVicerrector);
 
   // Resolve reviewer name when agenda is returned
   const reviewerCc = agendaView?.status === "returned" ? agendaView.reviewer_cc : null;
@@ -70,8 +74,11 @@ const Index = () => {
       count += 1;
     }
     count += pendingSubordinateAgendas.filter((pa) => !isPendingRead(pa.agendaView.id)).length;
+    if (isVicerrector) {
+      count += fullyApprovedCareers.filter((c) => !isCareerRead(c.careerId)).length;
+    }
     return count;
-  }, [allComments, user, isReturnedAgenda, isDismissedReturn, pendingSubordinateAgendas, readTick]);
+  }, [allComments, user, isReturnedAgenda, isDismissedReturn, pendingSubordinateAgendas, readTick, isVicerrector, fullyApprovedCareers]);
 
   const handleOpenNotifications = () => {
     if (!user) return;
@@ -232,6 +239,34 @@ const Index = () => {
                   );
                 })}
 
+                {/* Vicerrector: fully approved careers (program ready to review) */}
+                {isVicerrector && (showNotifHistory
+                  ? fullyApprovedCareers
+                  : fullyApprovedCareers.filter((c) => !isCareerRead(c.careerId))
+                ).map((c) => {
+                  const read = isCareerRead(c.careerId);
+                  return (
+                    <button
+                      key={`career-${c.careerId}`}
+                      className={`w-full text-left px-3 py-2 text-xs border-b last:border-0 bg-primary/10 hover:bg-primary/20 cursor-pointer transition-colors ${read ? "opacity-60" : ""}`}
+                      onClick={() => {
+                        localStorage.setItem(`read_career_${c.careerId}`, "1");
+                        setReadTick((n) => n + 1);
+                        setNotifOpen(false);
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-foreground font-medium">{c.careerName}</p>
+                        {read && <span className="text-[10px] text-muted-foreground italic ml-2 shrink-0">{t("notifications.read")}</span>}
+                      </div>
+                      <p className="text-muted-foreground">{t("notifications.programReady")}</p>
+                      <span className="text-muted-foreground text-[10px]">
+                        {c.totalDocentes} {c.totalDocentes === 1 ? "docente" : "docentes"}
+                      </span>
+                    </button>
+                  );
+                })}
+
                 {/* Comment notifications — filtered by read status */}
                 {(() => {
                   const userComments = allComments.filter((c) => c.reviewer_cc !== user?.id);
@@ -243,7 +278,10 @@ const Index = () => {
                     ? pendingSubordinateAgendas
                     : pendingSubordinateAgendas.filter((pa) => !isPendingRead(pa.agendaView.id))
                   ).length;
-                  if (visibleComments.length === 0 && visiblePendingCount === 0 && !(isReturnedAgenda && (showNotifHistory || !isDismissedReturn))) {
+                  const visibleCareerCount = isVicerrector
+                    ? (showNotifHistory ? fullyApprovedCareers : fullyApprovedCareers.filter((c) => !isCareerRead(c.careerId))).length
+                    : 0;
+                  if (visibleComments.length === 0 && visiblePendingCount === 0 && visibleCareerCount === 0 && !(isReturnedAgenda && (showNotifHistory || !isDismissedReturn))) {
                     return (
                       <div className="px-3 py-4 text-sm text-muted-foreground text-center">
                         {t("notifications.empty")}

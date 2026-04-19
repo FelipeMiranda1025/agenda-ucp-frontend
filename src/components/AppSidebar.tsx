@@ -7,7 +7,7 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { subfunctions } from "@/data/subfunctions";
 import { getDocenteFullName } from "@/types/docentePlanta";
 import { toast } from "sonner";
-import { useFaculties, useProfessionalCareers } from "@/hooks/useDatabase";
+import { useFaculties, useProfessionalCareers, useApprovedAgendaCcs } from "@/hooks/useDatabase";
 import ucpLogo from "@/assets/ucp-logo.png";
 
 const iconMap: { [key: string]: React.ElementType } = {
@@ -36,6 +36,8 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
   const { t } = useLanguage();
   const { data: faculties = [] } = useFaculties();
   const { data: careers = [] } = useProfessionalCareers();
+  const { data: approvedCcs = [] } = useApprovedAgendaCcs(isVicerrector);
+  const approvedSet = useMemo(() => new Set(approvedCcs), [approvedCcs]);
 
   const [navView, setNavView] = useState<NavView>("root");
   const [selectedFacultyId, setSelectedFacultyId] = useState<number | null>(null);
@@ -80,10 +82,12 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
     });
 
   // Subordinates only (exclude "Yo" entry which has firstName === "Yo")
-  const subordinates = useMemo(
-    () => docentesList.filter((d) => d.firstName !== "Yo"),
-    [docentesList]
-  );
+  // For Vicerrector: only show docentes whose agenda has been APPROVED by their dean.
+  const subordinates = useMemo(() => {
+    const base = docentesList.filter((d) => d.firstName !== "Yo");
+    if (!isVicerrector) return base;
+    return base.filter((d) => approvedSet.has(d.id));
+  }, [docentesList, isVicerrector, approvedSet]);
   const selfDocente = useMemo(
     () => docentesList.find((d) => d.firstName === "Yo"),
     [docentesList]

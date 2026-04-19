@@ -568,6 +568,89 @@ export function useUpdateAgendaViewStatus() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agenda_views"] });
+      qc.invalidateQueries({ queryKey: ["approved_agenda_ccs"] });
+      qc.invalidateQueries({ queryKey: ["fully_approved_careers"] });
     },
+  });
+}
+
+// =============================================
+// Vicerrector: ccs of users with an APPROVED agenda_view
+// =============================================
+export function useApprovedAgendaCcs(enabled: boolean = true) {
+  return useQuery<string[]>({
+    queryKey: ["approved_agenda_ccs"],
+    queryFn: async () => {
+      const { data, error } = await (supabase.from("agenda_views" as any) as any)
+        .select("user_cc")
+        .eq("status", "approved");
+      if (error || !data) return [];
+      return Array.from(new Set((data as any[]).map((r) => r.user_cc as string)));
+    },
+    enabled,
+    refetchInterval: 15000,
+  });
+}
+
+// =============================================
+// Vicerrector: careers where ALL active docentes (rol 1,2,3) have an approved
+// agenda_view. Returns career id + name + faculty id + total docentes.
+// =============================================
+export interface FullyApprovedCareer {
+  careerId: number;
+  careerName: string;
+  facultyId: number | null;
+  totalDocentes: number;
+}
+
+export function useFullyApprovedCareers(enabled: boolean = true) {
+  return useQuery<FullyApprovedCareer[]>({
+    queryKey: ["fully_approved_careers"],
+    queryFn: async () => {
+      const { data: users, error: uErr } = await supabase
+        .from("users")
+        .select("cc, id_professional_career, id_faculty")
+        .in("id_rol", [1, 2, 3])
+        .eq("id_state", 1)
+        .not("id_professional_career", "is", null);
+      if (uErr || !users) return [];
+
+      const { data: approved, error: aErr } = await (supabase.from("agenda_views" as any) as any)
+        .select("user_cc")
+        .eq("status", "approved");
+      if (aErr || !approved) return [];
+      const approvedSet = new Set<string>((approved as any[]).map((r) => r.user_cc as string));
+
+      const byCareer = new Map<number, { facultyId: number | null; ccs: string[] }>();
+      for (const u of users as any[]) {
+        const cid = u.id_professional_career as number;
+        if (!byCareer.has(cid)) byCareer.set(cid, { facultyId: u.id_faculty ?? null, ccs: [] });
+        byCareer.get(cid)!.ccs.push(u.cc);
+      }
+
+      const fullyIds: { id: number; facultyId: number | null; total: number }[] = [];
+      byCareer.forEach((v, careerId) => {
+        if (v.ccs.length > 0 && v.ccs.every((cc) => approvedSet.has(cc))) {
+          fullyIds.push({ id: careerId, facultyId: v.facultyId, total: v.ccs.length });
+        }
+      });
+      if (fullyIds.length === 0) return [];
+
+      const { data: careersData, error: cErr } = await supabase
+        .from("professional_careers")
+        .select("id, name")
+        .in("id", fullyIds.map((x) => x.id));
+      if (cErr || !careersData) return [];
+      const nameMap = new Map<number, string>((careersData as any[]).map((c) => [c.id, c.name]));
+
+      return fullyIds.map((x) => ({
+        careerId: x.id,
+        careerName: nameMap.get(x.id) ?? `Carrera #${x.id}`,
+        facultyId: x.facultyId,
+        totalDocentes: x.total,
+      }));
+    },
+    enabled,
+    refetchInterval: 15000,
   });
 }
