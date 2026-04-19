@@ -130,7 +130,6 @@ export function SummaryPanel() {
   };
 
   const handleRecordClick = (record: typeof records[0]) => {
-    if (isAgendaReadOnly) return;
     setEditingRecord(record);
     scrollToSection(record.subfunctionId);
   };
