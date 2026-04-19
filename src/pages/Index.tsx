@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
-import { useAllAgendaComments, useMarkCommentsRead, useAgendaView, usePendingAgendaViewsForSupervisor, useUserNameByCc } from "@/hooks/useDatabase";
+import { useAllAgendaComments, useMarkCommentsRead, useAgendaView, usePendingAgendaViewsForSupervisor, useUserNameByCc, useFullyApprovedCareers } from "@/hooks/useDatabase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
