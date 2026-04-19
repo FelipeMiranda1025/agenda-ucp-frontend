@@ -120,6 +120,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   const [newOptionValue, setNewOptionValue] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const lastUpsertRef = useRef<string>("");
+  const lastProcessedSubjectRef = useRef<string | null>(null);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [activityComboboxOpen, setActivityComboboxOpen] = useState<string | null>(null);
