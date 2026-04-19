@@ -196,6 +196,18 @@ export default function SupportPanel() {
   });
 
   // ----- Mutations
+  // Helper interno: aplica la jerarquía (borrar previa + insertar nueva si corresponde)
+  const applyHierarchy = async (userId: number, supervisorId: number | null) => {
+    await (supabase.from("user_hierarchy" as any) as any).delete().eq("user_id", userId);
+    if (supervisorId !== null) {
+      const { error } = await (supabase.from("user_hierarchy" as any) as any).insert({
+        user_id: userId,
+        supervisor_id: supervisorId,
+      });
+      if (error) throw error;
+    }
+  };
+
   const createUser = useMutation({
     mutationFn: async (payload: typeof emptyForm) => {
       const hashed = await hashPassword(payload.password);
@@ -217,11 +229,16 @@ export default function SupportPanel() {
         .select()
         .single();
       if (error) throw error;
+      // Asignar supervisor si el rol lo requiere (1, 2, 3)
+      if ([1, 2, 3].includes(payload.id_rol) && payload.supervisor_id !== null) {
+        await applyHierarchy((data as any).id, payload.supervisor_id);
+      }
       return data;
     },
     onSuccess: () => {
       toast.success("Usuario creado correctamente");
       qc.invalidateQueries({ queryKey: ["sp_users"] });
+      qc.invalidateQueries({ queryKey: ["sp_hierarchy"] });
       setDialogOpen(false);
     },
     onError: (e: any) => toast.error(e.message || "Error al crear usuario"),
@@ -251,11 +268,19 @@ export default function SupportPanel() {
         .select()
         .single();
       if (error) throw error;
+      // Reaplicar jerarquía según rol
+      if ([1, 2, 3].includes(payload.id_rol)) {
+        await applyHierarchy(payload.id, payload.supervisor_id);
+      } else {
+        // Roles sin jerarquía (4, 5): limpiar
+        await applyHierarchy(payload.id, null);
+      }
       return data;
     },
     onSuccess: () => {
       toast.success("Usuario actualizado");
       qc.invalidateQueries({ queryKey: ["sp_users"] });
+      qc.invalidateQueries({ queryKey: ["sp_hierarchy"] });
       setDialogOpen(false);
     },
     onError: (e: any) => toast.error(e.message || "Error al actualizar"),
