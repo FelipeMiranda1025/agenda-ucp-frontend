@@ -2,68 +2,59 @@
 
 ## Análisis
 
-El menú perfil (`src/pages/Index.tsx` líneas 378-391) tiene dos opciones: "Ver perfil" y "Registro de auditoría", seguidas de "Cerrar sesión". Necesito insertar **"Ajustes"** después de "Registro de auditoría", visible solo para **VicerrectorAcadémico** (`rolId === 4`).
+El usuario pide 5 cambios al `SettingsDialog`:
+1. Renombrar columna "Horas" → "Horas semanales"
+2. Renombrar "Asignaturas" → "# asignaturas recomendadas"
+3. Botón "Añadir nuevo lineamiento"
+4. Reemplazar "borrar" por toggle **Activo/Inactivo** (la tabla actualmente no tiene `delete` UI, pero sí debe haber un switch de estado)
+5. Botón con icono de **ojo** para mostrar/ocultar lineamientos inactivos
 
-La lógica de recomendaciones está hardcoded en `src/hooks/useRecommendations.ts` con ~14 reglas distribuidas en 3 categorías:
-- **Investigación**: combinaciones IP/Co-inv (10h, 4h, 3h, etc.)
-- **Administrativas**: por cargo (Decano=2h, Dir.Depto=6h, Coord.área=13h, etc.)
-- **Formación**: por nivel (Doctorado=8h, Maestría=12h, Pedagógicos=13h)
-
-Cada regla devuelve `{ hours, subjects }`.
+Adicionalmente, las reglas inactivas deben **excluirse** del cálculo en `useRecommendations` (si está inactiva, no aplica).
 
 ## Diseño
 
-### 1. Tabla `recommendation_rules` (migración)
-```
-- id (uuid PK)
-- category (text: 'investigacion' | 'administrativas' | 'formacion')
-- rule_key (text: identificador único, ej. 'inv_1p_2c', 'admin_decano', 'form_doctorado')
-- label (text: nombre legible, ej. "1 Investigador Principal + 2 Co-investigadores")
-- hours (integer)
-- subjects (integer)
-- priority (integer: orden de evaluación)
-- updated_at (timestamptz)
-```
-Seed: las 14 reglas actuales con sus valores por defecto. RLS: lectura pública (anon/auth), escritura permitida (la UI se restringe por rol).
+### 1. Migración SQL
+- `ALTER TABLE recommendation_rules ADD COLUMN active boolean NOT NULL DEFAULT true`
+- Las 14 reglas existentes quedan en `active=true`.
 
-### 2. `src/hooks/useRecommendationRules.ts` (nuevo)
-- `useRecommendationRules()` — react-query, cachea reglas activas
-- `useUpdateRecommendationRule()` — mutación para actualizar `hours`/`subjects` por `id`
-- `useResetRecommendationRules()` — restaura a defaults
+### 2. `src/hooks/useRecommendationRules.ts`
+- Añadir campo `active` a la interface `RecommendationRule`.
+- Nuevo hook `useCreateRecommendationRule()` — inserta `{category, rule_key, label, hours, subjects, default_hours, default_subjects, priority, active}`.
+- Nuevo hook `useToggleRecommendationRuleActive()` — actualiza `active` por id.
+- `useRecommendationRules()` se mantiene (trae todas las reglas activas e inactivas; el filtrado por activo se hace en consumidores).
 
-### 3. `src/hooks/useRecommendations.ts` (refactor)
-Mismas ramas if/else, pero leyendo `hours` y `subjects` desde el mapa `rulesByKey` (con fallback a los valores actuales si la tabla está vacía). Ningún cambio en la lógica de prioridad ni bloqueos.
+### 3. `src/hooks/useRecommendations.ts`
+- En `getRule()`: si la regla existe pero `active === false`, devolver `FALLBACK[key]` (la regla está desactivada → no se aplica el override; se mantiene comportamiento por defecto).
+- Mejor aún: filtrar `rules` por `active===true` antes de pasar a `getRule`. Mantengo lógica idéntica.
 
-### 4. `src/components/SettingsDialog.tsx` (nuevo)
-Dialog (Sheet/Modal) con tres `Tabs`: Investigación, Administrativas, Formación. Por cada regla:
-- Muestra `label` (read-only)
-- 2 inputs numéricos: "Horas" y "Asignaturas"
-- Botón "Guardar" por fila o "Guardar todo" abajo
-- Botón secundario "Restablecer valores por defecto"
-Toast de confirmación al guardar.
+### 4. `src/components/SettingsDialog.tsx`
+- **Cabecera de tab**: añadir toolbar con:
+  - Botón icono **Eye/EyeOff** (toggle local `showInactive`) para mostrar/ocultar reglas con `active=false`.
+  - Botón **"+ Añadir lineamiento"** que abre un sub-formulario inline (o un dialog anidado) para capturar: `label`, `hours`, `subjects` (la `category` se infiere del tab activo, `rule_key` se autogenera tipo `custom_<timestamp>`, `priority=0`, `default_hours=hours`, `default_subjects=subjects`, `active=true`).
+- **En cada fila**: 
+  - Sustituir labels: `"Horas semanales"` y `"# asignaturas recomendadas"`.
+  - Añadir un `Switch` etiquetado **Activo/Inactivo** a la derecha. Cambio inmediato vía `useToggleRecommendationRuleActive`.
+  - Filas inactivas se ocultan por defecto; visibles solo si `showInactive=true`, con estilo atenuado (`opacity-60`).
+- Eliminar/desactivar cualquier botón de borrado físico (no existía, así que solo me aseguro).
 
-### 5. `src/pages/Index.tsx`
-Insertar entre "Registro de auditoría" y el separador:
-```tsx
-{user?.rolId === 4 && (
-  <DropdownMenuItem onClick={() => setSettingsOpen(true)} className="gap-2 cursor-pointer">
-    <Settings className="h-4 w-4" /> {t("profile.settings")}
-  </DropdownMenuItem>
-)}
-```
-Estado `settingsOpen` y render de `<SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />` al final del componente.
-
-### 6. `src/i18n/translations.ts`
-Añadir claves: `profile.settings`, `settings.title`, `settings.investigacion`, `settings.administrativas`, `settings.formacion`, `settings.hours`, `settings.subjects`, `settings.save`, `settings.reset`, `settings.saved`, `settings.resetConfirm`.
+### 5. `src/i18n/translations.ts`
+Añadir/actualizar claves:
+- `settings.hours` → "Horas semanales" / "Weekly hours"
+- `settings.subjects` → "# asignaturas recomendadas" / "# recommended subjects"
+- `settings.addRule` → "Añadir lineamiento" / "Add guideline"
+- `settings.active` / `settings.inactive`
+- `settings.showInactive` / `settings.hideInactive`
+- `settings.newRuleLabel` → "Nombre del lineamiento" / "Guideline name"
+- `settings.create` / `settings.cancel`
+- `settings.created` / `settings.statusUpdated`
 
 ## Archivos
 
 | Archivo | Cambio |
 |---|---|
-| Migración SQL | Crear tabla `recommendation_rules` + seed de 14 reglas + RLS abiertas |
-| `src/hooks/useRecommendationRules.ts` | **Nuevo**: hooks read/update/reset |
-| `src/hooks/useRecommendations.ts` | Refactor: leer hours/subjects desde DB con fallback hardcoded |
-| `src/components/SettingsDialog.tsx` | **Nuevo**: Modal con tabs editables (3 categorías) |
-| `src/pages/Index.tsx` | Añadir item "Ajustes" en dropdown perfil (solo `rolId === 4`); montar `SettingsDialog` |
-| `src/i18n/translations.ts` | Claves ES/EN para Ajustes |
+| Migración SQL | `ALTER TABLE recommendation_rules ADD COLUMN active boolean NOT NULL DEFAULT true` |
+| `src/hooks/useRecommendationRules.ts` | Añadir campo `active`; nuevos hooks `useCreateRecommendationRule`, `useToggleRecommendationRuleActive` |
+| `src/hooks/useRecommendations.ts` | Ignorar reglas con `active=false` (usar fallback en su lugar) |
+| `src/components/SettingsDialog.tsx` | Renombrar labels; toggle Activo/Inactivo por fila; botón ojo para mostrar/ocultar inactivos; formulario "Añadir lineamiento" por categoría |
+| `src/i18n/translations.ts` | Nuevas claves ES/EN |
 
