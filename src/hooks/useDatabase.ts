@@ -459,6 +459,8 @@ export interface SubordinateDocente {
   secondName: string;
   firstLastName: string;
   secondLastName: string;
+  idFaculty: number | null;
+  idProfessionalCareer: number | null;
 }
 
 export function useSubordinatesWithNames(supervisorCc?: string) {
@@ -486,7 +488,7 @@ export function useSubordinatesWithNames(supervisorCc?: string) {
       // 3. Get user details for those subordinates
       const { data: users, error: uErr } = await supabase
         .from("users")
-        .select("cc, first_name, second_name, first_last_name, second_last_name")
+        .select("cc, first_name, second_name, first_last_name, second_last_name, id_faculty, id_professional_career")
         .in("id", subordinateIds);
       if (uErr || !users) return [];
 
@@ -496,6 +498,8 @@ export function useSubordinatesWithNames(supervisorCc?: string) {
         secondName: u.second_name || "",
         firstLastName: u.first_last_name || "",
         secondLastName: u.second_last_name || "",
+        idFaculty: u.id_faculty ?? null,
+        idProfessionalCareer: u.id_professional_career ?? null,
       }));
     },
     enabled: !!supervisorCc,
