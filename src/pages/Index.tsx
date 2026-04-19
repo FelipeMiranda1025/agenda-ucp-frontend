@@ -39,6 +39,7 @@ const Index = () => {
   const [visibleSection, setVisibleSection] = useState<string>("header.production");
 
   const isVicerrector = roleName === "VicerrectorAcadémico";
+  const isDecano = roleName === "DecanoFacultad";
   const isPendingRead = (id: string) =>
     typeof window !== "undefined" && localStorage.getItem(`read_pending_${id}`) === "1";
   const isCareerRead = (careerId: number) =>
@@ -51,7 +52,11 @@ const Index = () => {
   const markRead = useMarkCommentsRead();
   const { data: agendaView } = useAgendaView(user?.id);
   const { data: pendingSubordinateAgendas = [] } = usePendingAgendaViewsForSupervisor(user?.id);
-  const { data: fullyApprovedCareers = [] } = useFullyApprovedCareers(isVicerrector);
+  const { data: fullyApprovedCareers = [] } = useFullyApprovedCareers(
+    isVicerrector ? "vicerrector" : "decano",
+    isDecano ? user?.id : undefined,
+    isVicerrector || isDecano
+  );
 
   // Resolve reviewer name when agenda is returned
   const reviewerCc = agendaView?.status === "returned" ? agendaView.reviewer_cc : null;
@@ -74,11 +79,11 @@ const Index = () => {
       count += 1;
     }
     count += pendingSubordinateAgendas.filter((pa) => !isPendingRead(pa.agendaView.id)).length;
-    if (isVicerrector) {
+    if (isVicerrector || isDecano) {
       count += fullyApprovedCareers.filter((c) => !isCareerRead(c.careerId)).length;
     }
     return count;
-  }, [allComments, user, isReturnedAgenda, isDismissedReturn, pendingSubordinateAgendas, readTick, isVicerrector, fullyApprovedCareers]);
+  }, [allComments, user, isReturnedAgenda, isDismissedReturn, pendingSubordinateAgendas, readTick, isVicerrector, isDecano, fullyApprovedCareers]);
 
   const handleOpenNotifications = () => {
     if (!user) return;
@@ -239,12 +244,18 @@ const Index = () => {
                   );
                 })}
 
-                {/* Vicerrector: fully approved careers (program ready to review) */}
-                {isVicerrector && (showNotifHistory
+                {/* Vicerrector / Decano: fully approved careers (program ready to review) */}
+                {(isVicerrector || isDecano) && (showNotifHistory
                   ? fullyApprovedCareers
                   : fullyApprovedCareers.filter((c) => !isCareerRead(c.careerId))
                 ).map((c) => {
                   const read = isCareerRead(c.careerId);
+                  const description = isVicerrector
+                    ? t("notifications.programReadyWithCareerAndFaculty", {
+                        career: c.careerName,
+                        faculty: c.facultyName ?? "—",
+                      })
+                    : t("notifications.programReadyWithCareer", { career: c.careerName });
                   return (
                     <button
                       key={`career-${c.careerId}`}
@@ -259,7 +270,7 @@ const Index = () => {
                         <p className="text-foreground font-medium">{c.careerName}</p>
                         {read && <span className="text-[10px] text-muted-foreground italic ml-2 shrink-0">{t("notifications.read")}</span>}
                       </div>
-                      <p className="text-muted-foreground">{t("notifications.programReady")}</p>
+                      <p className="text-muted-foreground">{description}</p>
                       <span className="text-muted-foreground text-[10px]">
                         {c.totalDocentes} {c.totalDocentes === 1 ? "docente" : "docentes"}
                       </span>
@@ -278,7 +289,7 @@ const Index = () => {
                     ? pendingSubordinateAgendas
                     : pendingSubordinateAgendas.filter((pa) => !isPendingRead(pa.agendaView.id))
                   ).length;
-                  const visibleCareerCount = isVicerrector
+                  const visibleCareerCount = (isVicerrector || isDecano)
                     ? (showNotifHistory ? fullyApprovedCareers : fullyApprovedCareers.filter((c) => !isCareerRead(c.careerId))).length
                     : 0;
                   if (visibleComments.length === 0 && visiblePendingCount === 0 && visibleCareerCount === 0 && !(isReturnedAgenda && (showNotifHistory || !isDismissedReturn))) {

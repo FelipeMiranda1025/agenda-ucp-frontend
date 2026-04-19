@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain, Building2, Lightbulb, Heart, Award, Calendar, ChevronLeft, ChevronRight, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAgenda } from "@/context/AgendaContext";
@@ -7,6 +8,7 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { subfunctions } from "@/data/subfunctions";
 import { getDocenteFullName } from "@/types/docentePlanta";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { useFaculties, useProfessionalCareers, useApprovedAgendaCcs } from "@/hooks/useDatabase";
 import ucpLogo from "@/assets/ucp-logo.png";
 
@@ -31,17 +33,47 @@ type NavView = "root" | "careers" | "docentes";
 
 export function AppSidebar({ onClose }: AppSidebarProps) {
   const { activeSubfunction, setActiveSubfunction, searchTerm, setSearchTerm, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView } = useAgenda();
-  const { roleName } = useAuth();
+  const { roleName, user } = useAuth();
   const isVicerrector = roleName === "VicerrectorAcadémico";
+  const isDecano = roleName === "DecanoFacultad";
   const { t } = useLanguage();
   const { data: faculties = [] } = useFaculties();
   const { data: careers = [] } = useProfessionalCareers();
-  const { data: approvedCcs = [] } = useApprovedAgendaCcs(isVicerrector);
+
+  // Decano's own faculty (used to start sidebar at level 1)
+  const { data: deanFacultyId = null } = useQuery<number | null>({
+    queryKey: ["dean_faculty_id", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from("users")
+        .select("id_faculty")
+        .eq("cc", user.id)
+        .maybeSingle();
+      return ((data as any)?.id_faculty as number | null) ?? null;
+    },
+    enabled: isDecano && !!user?.id,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const { data: approvedCcs = [] } = useApprovedAgendaCcs(
+    isVicerrector ? "vicerrector" : "decano",
+    isDecano ? user?.id : undefined,
+    isVicerrector || isDecano
+  );
   const approvedSet = useMemo(() => new Set(approvedCcs), [approvedCcs]);
 
-  const [navView, setNavView] = useState<NavView>("root");
+  const [navView, setNavView] = useState<NavView>(isDecano ? "careers" : "root");
   const [selectedFacultyId, setSelectedFacultyId] = useState<number | null>(null);
   const [selectedCareerId, setSelectedCareerId] = useState<number | null>(null);
+
+  // For Decano: lock sidebar to their own faculty as soon as we know it
+  useEffect(() => {
+    if (isDecano && deanFacultyId != null && selectedFacultyId !== deanFacultyId) {
+      setSelectedFacultyId(deanFacultyId);
+      setNavView("careers");
+    }
+  }, [isDecano, deanFacultyId, selectedFacultyId]);
 
   const prodSubs = subfunctions.filter((s) => s.sectionId === "produccion");
   const actSubs = subfunctions.filter((s) => s.sectionId === "actividades");
@@ -82,12 +114,13 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
     });
 
   // Subordinates only (exclude "Yo" entry which has firstName === "Yo")
-  // For Vicerrector: only show docentes whose agenda has been APPROVED by their dean.
+  // - Vicerrector: only docentes whose agenda was approved by their dean.
+  // - Decano: only docentes whose agenda was approved by their director.
   const subordinates = useMemo(() => {
     const base = docentesList.filter((d) => d.firstName !== "Yo");
-    if (!isVicerrector) return base;
-    return base.filter((d) => approvedSet.has(d.id));
-  }, [docentesList, isVicerrector, approvedSet]);
+    if (isVicerrector || isDecano) return base.filter((d) => approvedSet.has(d.id));
+    return base;
+  }, [docentesList, isVicerrector, isDecano, approvedSet]);
   const selfDocente = useMemo(
     () => docentesList.find((d) => d.firstName === "Yo"),
     [docentesList]
@@ -131,13 +164,13 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
         else careerMap.set(cid, (careerMap.get(cid) ?? 0) + 1);
       });
     const facultyCareers = careers.filter((c) => c.id_faculty === selectedFacultyId);
-    const list = isVicerrector
+    const list = (isVicerrector || isDecano)
       ? facultyCareers.map((c) => ({ career: c, count: careerMap.get(c.id) ?? 0 }))
       : facultyCareers
           .filter((c) => careerMap.has(c.id))
           .map((c) => ({ career: c, count: careerMap.get(c.id)! }));
     return { list, unassigned };
-  }, [subordinates, careers, selectedFacultyId, isVicerrector]);
+  }, [subordinates, careers, selectedFacultyId, isVicerrector, isDecano]);
 
   // Docentes within selected career (or unassigned bucket)
   const docentesInCareer = useMemo(() => {
@@ -272,10 +305,17 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
             {/* NIVEL 1 — CARRERAS DE LA FACULTAD */}
             {navView === "careers" && selectedFacultyId != null && (
               <div className="space-y-0.5">
-                <button onClick={goRoot} className={`${itemBtnClass} font-medium`}>
-                  <ChevronLeft className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{selectedFacultyName}</span>
-                </button>
+                {isDecano ? (
+                  <div className={`${itemBtnClass} font-medium cursor-default hover:bg-transparent`}>
+                    <Building2 className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{selectedFacultyName}</span>
+                  </div>
+                ) : (
+                  <button onClick={goRoot} className={`${itemBtnClass} font-medium`}>
+                    <ChevronLeft className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{selectedFacultyName}</span>
+                  </button>
+                )}
 
                 {careersWithSubs.list.map(({ career, count }) => {
                   const disabled = count === 0;

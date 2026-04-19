@@ -575,52 +575,144 @@ export function useUpdateAgendaViewStatus() {
 }
 
 // =============================================
-// Vicerrector: ccs of users with an APPROVED agenda_view
+// Approved agenda ccs filtered by approver role
+// - forRole='vicerrector' → agendas approved by a DecanoFacultad (rol 3)
+// - forRole='decano' → agendas approved by a DirectorPrograma (rol 2),
+//   restricted to docentes within the dean's faculty (currentUserCc)
 // =============================================
-export function useApprovedAgendaCcs(enabled: boolean = true) {
+export function useApprovedAgendaCcs(
+  forRole: "vicerrector" | "decano",
+  currentUserCc?: string,
+  enabled: boolean = true
+) {
   return useQuery<string[]>({
-    queryKey: ["approved_agenda_ccs"],
+    queryKey: ["approved_agenda_ccs", forRole, currentUserCc],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("agenda_views" as any) as any)
-        .select("user_cc")
-        .eq("status", "approved");
-      if (error || !data) return [];
-      return Array.from(new Set((data as any[]).map((r) => r.user_cc as string)));
+      const approverRolId = forRole === "vicerrector" ? 3 : 2;
+
+      // 1. Approved agenda_views (with reviewer_cc)
+      const { data: views, error: vErr } = await (supabase.from("agenda_views" as any) as any)
+        .select("user_cc, reviewer_cc")
+        .eq("status", "approved")
+        .not("reviewer_cc", "is", null);
+      if (vErr || !views || views.length === 0) return [];
+
+      const reviewerCcs = Array.from(new Set((views as any[]).map((r) => r.reviewer_cc as string)));
+
+      // 2. Look up reviewer roles
+      const { data: reviewers, error: rErr } = await supabase
+        .from("users")
+        .select("cc, id_rol")
+        .in("cc", reviewerCcs)
+        .eq("id_rol", approverRolId);
+      if (rErr || !reviewers) return [];
+      const validReviewerSet = new Set<string>((reviewers as any[]).map((u) => u.cc as string));
+
+      const candidateCcs = (views as any[])
+        .filter((v) => validReviewerSet.has(v.reviewer_cc as string))
+        .map((v) => v.user_cc as string);
+      if (candidateCcs.length === 0) return [];
+
+      // 3. Decano: restrict to docentes in same faculty
+      if (forRole === "decano" && currentUserCc) {
+        const { data: dean } = await supabase
+          .from("users")
+          .select("id_faculty")
+          .eq("cc", currentUserCc)
+          .maybeSingle();
+        const deanFacultyId = (dean as any)?.id_faculty ?? null;
+        if (deanFacultyId == null) return [];
+
+        const { data: docentes } = await supabase
+          .from("users")
+          .select("cc")
+          .in("cc", Array.from(new Set(candidateCcs)))
+          .eq("id_faculty", deanFacultyId);
+        return Array.from(new Set((docentes ?? []).map((u: any) => u.cc as string)));
+      }
+
+      return Array.from(new Set(candidateCcs));
     },
-    enabled,
+    enabled: enabled && (forRole === "vicerrector" || !!currentUserCc),
     refetchInterval: 15000,
   });
 }
 
 // =============================================
-// Vicerrector: careers where ALL active docentes (rol 1,2,3) have an approved
-// agenda_view. Returns career id + name + faculty id + total docentes.
+// Careers where ALL active docentes have an agenda approved by the
+// appropriate role:
+// - forRole='vicerrector' → approved by Decano (rol 3); returns careerName + facultyName
+// - forRole='decano' → approved by Director (rol 2); restricted to dean's faculty
 // =============================================
 export interface FullyApprovedCareer {
   careerId: number;
   careerName: string;
   facultyId: number | null;
+  facultyName: string | null;
   totalDocentes: number;
 }
 
-export function useFullyApprovedCareers(enabled: boolean = true) {
+export function useFullyApprovedCareers(
+  forRole: "vicerrector" | "decano",
+  currentUserCc?: string,
+  enabled: boolean = true
+) {
   return useQuery<FullyApprovedCareer[]>({
-    queryKey: ["fully_approved_careers"],
+    queryKey: ["fully_approved_careers", forRole, currentUserCc],
     queryFn: async () => {
-      const { data: users, error: uErr } = await supabase
+      const approverRolId = forRole === "vicerrector" ? 3 : 2;
+
+      // Resolve dean's faculty if needed
+      let deanFacultyId: number | null = null;
+      if (forRole === "decano") {
+        if (!currentUserCc) return [];
+        const { data: dean } = await supabase
+          .from("users")
+          .select("id_faculty")
+          .eq("cc", currentUserCc)
+          .maybeSingle();
+        deanFacultyId = (dean as any)?.id_faculty ?? null;
+        if (deanFacultyId == null) return [];
+      }
+
+      // 1. Active docentes (rol 1,2,3) with assigned career, scoped by faculty for decano
+      let usersQuery = supabase
         .from("users")
         .select("cc, id_professional_career, id_faculty")
         .in("id_rol", [1, 2, 3])
         .eq("id_state", 1)
         .not("id_professional_career", "is", null);
-      if (uErr || !users) return [];
+      if (forRole === "decano" && deanFacultyId != null) {
+        usersQuery = usersQuery.eq("id_faculty", deanFacultyId);
+      }
+      const { data: users, error: uErr } = await usersQuery;
+      if (uErr || !users || users.length === 0) return [];
 
-      const { data: approved, error: aErr } = await (supabase.from("agenda_views" as any) as any)
-        .select("user_cc")
-        .eq("status", "approved");
-      if (aErr || !approved) return [];
-      const approvedSet = new Set<string>((approved as any[]).map((r) => r.user_cc as string));
+      // 2. Approved agenda_views with reviewer
+      const { data: views, error: vErr } = await (supabase.from("agenda_views" as any) as any)
+        .select("user_cc, reviewer_cc")
+        .eq("status", "approved")
+        .not("reviewer_cc", "is", null);
+      if (vErr || !views) return [];
 
+      const reviewerCcs = Array.from(new Set((views as any[]).map((r) => r.reviewer_cc as string)));
+      if (reviewerCcs.length === 0) return [];
+
+      // 3. Filter reviewers by required role
+      const { data: reviewers } = await supabase
+        .from("users")
+        .select("cc")
+        .in("cc", reviewerCcs)
+        .eq("id_rol", approverRolId);
+      const validReviewerSet = new Set<string>(((reviewers ?? []) as any[]).map((u) => u.cc as string));
+
+      const approvedSet = new Set<string>(
+        (views as any[])
+          .filter((v) => validReviewerSet.has(v.reviewer_cc as string))
+          .map((v) => v.user_cc as string)
+      );
+
+      // 4. Group docentes by career and check completeness
       const byCareer = new Map<number, { facultyId: number | null; ccs: string[] }>();
       for (const u of users as any[]) {
         const cid = u.id_professional_career as number;
@@ -636,21 +728,35 @@ export function useFullyApprovedCareers(enabled: boolean = true) {
       });
       if (fullyIds.length === 0) return [];
 
-      const { data: careersData, error: cErr } = await supabase
+      // 5. Resolve career names
+      const { data: careersData } = await supabase
         .from("professional_careers")
         .select("id, name")
         .in("id", fullyIds.map((x) => x.id));
-      if (cErr || !careersData) return [];
-      const nameMap = new Map<number, string>((careersData as any[]).map((c) => [c.id, c.name]));
+      const nameMap = new Map<number, string>(((careersData ?? []) as any[]).map((c) => [c.id, c.name]));
+
+      // 6. Resolve faculty names (only meaningful for vicerrector view)
+      const facultyIds = Array.from(
+        new Set(fullyIds.map((x) => x.facultyId).filter((f): f is number => f != null))
+      );
+      let facultyNameMap = new Map<number, string>();
+      if (facultyIds.length > 0) {
+        const { data: facData } = await supabase
+          .from("faculties")
+          .select("id, name")
+          .in("id", facultyIds);
+        facultyNameMap = new Map<number, string>(((facData ?? []) as any[]).map((f) => [f.id, f.name]));
+      }
 
       return fullyIds.map((x) => ({
         careerId: x.id,
         careerName: nameMap.get(x.id) ?? `Carrera #${x.id}`,
         facultyId: x.facultyId,
+        facultyName: x.facultyId != null ? facultyNameMap.get(x.facultyId) ?? null : null,
         totalDocentes: x.total,
       }));
     },
-    enabled,
+    enabled: enabled && (forRole === "vicerrector" || !!currentUserCc),
     refetchInterval: 15000,
   });
 }
