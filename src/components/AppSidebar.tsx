@@ -7,7 +7,7 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { subfunctions } from "@/data/subfunctions";
 import { getDocenteFullName } from "@/types/docentePlanta";
 import { toast } from "sonner";
-import { useFaculties, useProfessionalCareers } from "@/hooks/useDatabase";
+import { useFaculties, useProfessionalCareers, useApprovedAgendaCcs } from "@/hooks/useDatabase";
 import ucpLogo from "@/assets/ucp-logo.png";
 
 const iconMap: { [key: string]: React.ElementType } = {
