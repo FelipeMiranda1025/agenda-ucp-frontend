@@ -244,12 +244,18 @@ const Index = () => {
                   );
                 })}
 
-                {/* Vicerrector: fully approved careers (program ready to review) */}
-                {isVicerrector && (showNotifHistory
+                {/* Vicerrector / Decano: fully approved careers (program ready to review) */}
+                {(isVicerrector || isDecano) && (showNotifHistory
                   ? fullyApprovedCareers
                   : fullyApprovedCareers.filter((c) => !isCareerRead(c.careerId))
                 ).map((c) => {
                   const read = isCareerRead(c.careerId);
+                  const description = isVicerrector
+                    ? t("notifications.programReadyWithCareerAndFaculty", {
+                        career: c.careerName,
+                        faculty: c.facultyName ?? "—",
+                      })
+                    : t("notifications.programReadyWithCareer", { career: c.careerName });
                   return (
                     <button
                       key={`career-${c.careerId}`}
@@ -264,7 +270,7 @@ const Index = () => {
                         <p className="text-foreground font-medium">{c.careerName}</p>
                         {read && <span className="text-[10px] text-muted-foreground italic ml-2 shrink-0">{t("notifications.read")}</span>}
                       </div>
-                      <p className="text-muted-foreground">{t("notifications.programReady")}</p>
+                      <p className="text-muted-foreground">{description}</p>
                       <span className="text-muted-foreground text-[10px]">
                         {c.totalDocentes} {c.totalDocentes === 1 ? "docente" : "docentes"}
                       </span>
