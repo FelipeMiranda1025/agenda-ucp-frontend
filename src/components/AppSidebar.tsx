@@ -1,11 +1,12 @@
-import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain, Building2, Lightbulb, Heart, Award, Calendar } from "lucide-react";
+import { useState, useMemo } from "react";
+import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain, Building2, Lightbulb, Heart, Award, Calendar, ChevronLeft, ChevronRight, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAgenda } from "@/context/AgendaContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { subfunctions } from "@/data/subfunctions";
 import { getDocenteFullName } from "@/types/docentePlanta";
 import { toast } from "sonner";
+import { useFaculties, useProfessionalCareers } from "@/hooks/useDatabase";
 import ucpLogo from "@/assets/ucp-logo.png";
 
 const iconMap: { [key: string]: React.ElementType } = {
@@ -25,9 +26,17 @@ interface AppSidebarProps {
   onClose: () => void;
 }
 
+type NavView = "root" | "careers" | "docentes";
+
 export function AppSidebar({ onClose }: AppSidebarProps) {
   const { activeSubfunction, setActiveSubfunction, searchTerm, setSearchTerm, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView } = useAgenda();
   const { t } = useLanguage();
+  const { data: faculties = [] } = useFaculties();
+  const { data: careers = [] } = useProfessionalCareers();
+
+  const [navView, setNavView] = useState<NavView>("root");
+  const [selectedFacultyId, setSelectedFacultyId] = useState<number | null>(null);
+  const [selectedCareerId, setSelectedCareerId] = useState<number | null>(null);
 
   const prodSubs = subfunctions.filter((s) => s.sectionId === "produccion");
   const actSubs = subfunctions.filter((s) => s.sectionId === "actividades");
@@ -67,6 +76,101 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
       );
     });
 
+  // Subordinates only (exclude "Yo" entry which has firstName === "Yo")
+  const subordinates = useMemo(
+    () => docentesList.filter((d) => d.firstName !== "Yo"),
+    [docentesList]
+  );
+  const selfDocente = useMemo(
+    () => docentesList.find((d) => d.firstName === "Yo"),
+    [docentesList]
+  );
+
+  // Group subordinates by faculty (only faculties with at least 1 subordinate)
+  const facultiesWithSubs = useMemo(() => {
+    const facultyMap = new Map<number, typeof subordinates>();
+    const unassigned: typeof subordinates = [];
+    subordinates.forEach((s) => {
+      const fid = (s as any).idFaculty as number | null;
+      if (fid == null) {
+        unassigned.push(s);
+      } else {
+        if (!facultyMap.has(fid)) facultyMap.set(fid, []);
+        facultyMap.get(fid)!.push(s);
+      }
+    });
+    const list = faculties
+      .filter((f) => facultyMap.has(f.id))
+      .map((f) => ({ faculty: f, count: facultyMap.get(f.id)!.length }));
+    return { list, unassigned };
+  }, [subordinates, faculties]);
+
+  // Careers within selected faculty (only those with at least 1 subordinate)
+  const careersWithSubs = useMemo(() => {
+    if (selectedFacultyId == null) return [];
+    const careerMap = new Map<number, number>();
+    const unassigned: typeof subordinates = [];
+    subordinates
+      .filter((s) => (s as any).idFaculty === selectedFacultyId)
+      .forEach((s) => {
+        const cid = (s as any).idProfessionalCareer as number | null;
+        if (cid == null) unassigned.push(s);
+        else careerMap.set(cid, (careerMap.get(cid) ?? 0) + 1);
+      });
+    const list = careers
+      .filter((c) => c.id_faculty === selectedFacultyId && careerMap.has(c.id))
+      .map((c) => ({ career: c, count: careerMap.get(c.id)! }));
+    return { list, unassigned };
+  }, [subordinates, careers, selectedFacultyId]);
+
+  // Docentes within selected career (or unassigned bucket)
+  const docentesInCareer = useMemo(() => {
+    if (selectedCareerId == null) {
+      // "Sin carrera" bucket inside selected faculty
+      if (selectedFacultyId == null) return [];
+      return subordinates.filter(
+        (s) => (s as any).idFaculty === selectedFacultyId && (s as any).idProfessionalCareer == null
+      );
+    }
+    return subordinates.filter((s) => (s as any).idProfessionalCareer === selectedCareerId);
+  }, [subordinates, selectedCareerId, selectedFacultyId]);
+
+  const handleSelectDocente = async (d: typeof docentesList[number]) => {
+    setSelectedDocente(d);
+    if (d.firstName !== "Yo") {
+      setTimeout(async () => {
+        const found = await loadFromAgendaView();
+        if (!found) {
+          toast.info(`Docente ${getDocenteFullName(d)} no ha diligenciado su agenda`);
+        }
+      }, 100);
+    }
+  };
+
+  const goRoot = () => {
+    setNavView("root");
+    setSelectedFacultyId(null);
+    setSelectedCareerId(null);
+  };
+  const goCareers = (facultyId: number) => {
+    setSelectedFacultyId(facultyId);
+    setSelectedCareerId(null);
+    setNavView("careers");
+  };
+  const goDocentes = (careerId: number | null) => {
+    setSelectedCareerId(careerId);
+    setNavView("docentes");
+  };
+
+  const selectedFacultyName = faculties.find((f) => f.id === selectedFacultyId)?.name ?? "";
+  const selectedCareerName =
+    selectedCareerId != null
+      ? careers.find((c) => c.id === selectedCareerId)?.name ?? ""
+      : "Sin carrera";
+
+  const itemBtnClass =
+    "w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors text-foreground/80 hover:bg-accent/50";
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-4 pb-3">
@@ -96,36 +200,140 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
           <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">{t("sidebar.schedule")}</p>
           <div className="space-y-0.5">{renderItems(horSubs)}</div>
         </div>
+
         {docentesList.length >= 1 && (
           <div>
-            <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">{t("sidebar.docenteSection")} ({docentesList.length})</p>
-            <Select
-              value={selectedDocente?.id || ""}
-            onValueChange={async (val) => {
-                const d = docentesList.find((doc) => doc.id === val);
-                if (!d) return;
-                setSelectedDocente(d);
-                if (d.firstName !== "Yo") {
-                  setTimeout(async () => {
-                    const found = await loadFromAgendaView();
-                    if (!found) {
-                      toast.info(`Docente ${getDocenteFullName(d)} no ha diligenciado su agenda`);
-                    }
-                  }, 100);
-                }
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={t("sidebar.docenteSection")} />
-              </SelectTrigger>
-              <SelectContent className="z-[70]">
-                {docentesList.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>
-                    {d.firstName === "Yo" ? "Yo" : getDocenteFullName(d)}
-                  </SelectItem>
+            <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">
+              {t("sidebar.docenteSection")} ({docentesList.length})
+            </p>
+
+            {/* NIVEL 0 — RAÍZ */}
+            {navView === "root" && (
+              <div className="space-y-0.5">
+                {selfDocente && (
+                  <button
+                    onClick={() => handleSelectDocente(selfDocente)}
+                    className={`${itemBtnClass} ${
+                      selectedDocente?.id === selfDocente.id ? "bg-accent text-accent-foreground font-medium" : ""
+                    }`}
+                  >
+                    <User className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Yo</span>
+                  </button>
+                )}
+
+                {facultiesWithSubs.list.map(({ faculty, count }) => (
+                  <button
+                    key={faculty.id}
+                    onClick={() => goCareers(faculty.id)}
+                    className={itemBtnClass}
+                  >
+                    <Building2 className="h-4 w-4 shrink-0" />
+                    <span className="truncate flex-1 text-left">{faculty.name}</span>
+                    <span className="text-xs text-muted-foreground">{count}</span>
+                    <ChevronRight className="h-4 w-4 shrink-0" />
+                  </button>
                 ))}
-              </SelectContent>
-            </Select>
+
+                {facultiesWithSubs.unassigned.length > 0 && (
+                  <button
+                    onClick={() => {
+                      setSelectedFacultyId(null);
+                      setSelectedCareerId(null);
+                      setNavView("docentes");
+                    }}
+                    className={itemBtnClass}
+                  >
+                    <Users className="h-4 w-4 shrink-0" />
+                    <span className="truncate flex-1 text-left">Sin facultad asignada</span>
+                    <span className="text-xs text-muted-foreground">{facultiesWithSubs.unassigned.length}</span>
+                    <ChevronRight className="h-4 w-4 shrink-0" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* NIVEL 1 — CARRERAS DE LA FACULTAD */}
+            {navView === "careers" && selectedFacultyId != null && (
+              <div className="space-y-0.5">
+                <button onClick={goRoot} className={`${itemBtnClass} font-medium`}>
+                  <ChevronLeft className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{selectedFacultyName}</span>
+                </button>
+
+                {careersWithSubs.list.map(({ career, count }) => (
+                  <button
+                    key={career.id}
+                    onClick={() => goDocentes(career.id)}
+                    className={itemBtnClass}
+                  >
+                    <GraduationCap className="h-4 w-4 shrink-0" />
+                    <span className="truncate flex-1 text-left">{career.name}</span>
+                    <span className="text-xs text-muted-foreground">{count}</span>
+                    <ChevronRight className="h-4 w-4 shrink-0" />
+                  </button>
+                ))}
+
+                {careersWithSubs.unassigned.length > 0 && (
+                  <button onClick={() => goDocentes(null)} className={itemBtnClass}>
+                    <Users className="h-4 w-4 shrink-0" />
+                    <span className="truncate flex-1 text-left">Sin carrera asignada</span>
+                    <span className="text-xs text-muted-foreground">{careersWithSubs.unassigned.length}</span>
+                    <ChevronRight className="h-4 w-4 shrink-0" />
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* NIVEL 2 — DOCENTES DE LA CARRERA */}
+            {navView === "docentes" && (
+              <div className="space-y-0.5">
+                <button
+                  onClick={() => {
+                    if (selectedFacultyId != null) {
+                      setNavView("careers");
+                      setSelectedCareerId(null);
+                    } else {
+                      goRoot();
+                    }
+                  }}
+                  className={`${itemBtnClass} font-medium`}
+                >
+                  <ChevronLeft className="h-4 w-4 shrink-0" />
+                  <span className="truncate">
+                    {selectedFacultyId != null ? selectedCareerName : "Sin facultad asignada"}
+                  </span>
+                </button>
+
+                {selfDocente && (
+                  <button
+                    onClick={() => handleSelectDocente(selfDocente)}
+                    className={`${itemBtnClass} ${
+                      selectedDocente?.id === selfDocente.id ? "bg-accent text-accent-foreground font-medium" : ""
+                    }`}
+                  >
+                    <User className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Yo</span>
+                  </button>
+                )}
+
+                {(selectedFacultyId == null
+                  ? facultiesWithSubs.unassigned
+                  : docentesInCareer
+                ).map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() => handleSelectDocente(d)}
+                    className={`${itemBtnClass} ${
+                      selectedDocente?.id === d.id ? "bg-accent text-accent-foreground font-medium" : ""
+                    }`}
+                  >
+                    <User className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{getDocenteFullName(d)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
