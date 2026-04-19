@@ -906,7 +906,7 @@ export default function SupportPanel() {
               <div className="sm:col-span-2 space-y-2 rounded-md border bg-muted/30 p-3">
                 <Label className="flex items-center gap-2">
                   <Network className="h-4 w-4 text-primary" />
-                  Supervisor asignado
+                  Supervisor asignado<span className="text-destructive"> *</span>
                 </Label>
                 {form.id_rol === 3 ? (
                   // Decano -> Vicerrector único
