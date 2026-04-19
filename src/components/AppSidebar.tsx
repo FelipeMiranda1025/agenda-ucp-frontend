@@ -36,6 +36,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
   const { roleName, user } = useAuth();
   const isVicerrector = roleName === "VicerrectorAcadémico";
   const isDecano = roleName === "DecanoFacultad";
+  const isDirector = roleName === "DirectorPrograma";
   const { t } = useLanguage();
   const { data: faculties = [] } = useFaculties();
   const { data: careers = [] } = useProfessionalCareers();
@@ -56,10 +57,18 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
     staleTime: 1000 * 60 * 30,
   });
 
+  const reviewerRole: "vicerrector" | "decano" | "director" | null = isVicerrector
+    ? "vicerrector"
+    : isDecano
+    ? "decano"
+    : isDirector
+    ? "director"
+    : null;
+
   const { data: approvedCcs = [] } = useApprovedAgendaCcs(
-    isVicerrector ? "vicerrector" : "decano",
-    isDecano ? user?.id : undefined,
-    isVicerrector || isDecano
+    (reviewerRole ?? "vicerrector"),
+    isVicerrector ? undefined : user?.id,
+    !!reviewerRole
   );
   const approvedSet = useMemo(() => new Set(approvedCcs), [approvedCcs]);
 
