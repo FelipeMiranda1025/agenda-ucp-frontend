@@ -283,19 +283,24 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                   </button>
                 )}
 
-                {/* Director: flat list of docentes (same career, with submitted agenda) */}
-                {isDirector && subordinates.map((d) => (
-                  <button
-                    key={d.id}
-                    onClick={() => handleSelectDocente(d)}
-                    className={`${itemBtnClass} ${
-                      selectedDocente?.id === d.id ? "bg-accent text-accent-foreground font-medium" : ""
-                    }`}
-                  >
-                    <User className="h-4 w-4 shrink-0" />
-                    <span className="whitespace-normal break-words">{getDocenteFullName(d)}</span>
-                  </button>
-                ))}
+                {/* Director: flat list of docentes (same career). Locked if agenda not submitted. */}
+                {isDirector && subordinates.map((d) => {
+                  const locked = !approvedSet.has(d.id);
+                  return (
+                    <button
+                      key={d.id}
+                      onClick={() => !locked && handleSelectDocente(d)}
+                      disabled={locked}
+                      title={locked ? "El docente aún no ha diligenciado su agenda" : undefined}
+                      className={`${itemBtnClass} ${
+                        selectedDocente?.id === d.id ? "bg-accent text-accent-foreground font-medium" : ""
+                      } ${locked ? "opacity-50 cursor-not-allowed hover:bg-transparent" : ""}`}
+                    >
+                      {locked ? <Lock className="h-4 w-4 shrink-0" /> : <User className="h-4 w-4 shrink-0" />}
+                      <span className="whitespace-normal break-words flex-1 text-left">{getDocenteFullName(d)}</span>
+                    </button>
+                  );
+                })}
 
                 {!isDirector && facultiesWithSubs.list.map(({ faculty, count }) => (
                   <button
