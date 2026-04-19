@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Record as AgendaRecord } from "@/types/agenda";
+import { useRecommendationRules, RecommendationRule } from "@/hooks/useRecommendationRules";
 
 // Activity name constants (must match DB exactly)
 const INV_PRINCIPAL = "Investigador principal";
@@ -22,13 +23,39 @@ interface Recommendation {
   subjects: number;
 }
 
+// Hardcoded fallbacks (used when DB is empty / loading)
+const FALLBACK: Record<string, Recommendation> = {
+  form_doctorado: { hours: 8, subjects: 2 },
+  form_maestria: { hours: 12, subjects: 4 },
+  form_pedagogicos: { hours: 13, subjects: 4 },
+  admin_decano_vicerrector_doctorado: { hours: 2, subjects: 1 },
+  admin_dir_depto_pregrado: { hours: 6, subjects: 2 },
+  admin_dir_posgrado_2: { hours: 6, subjects: 3 },
+  admin_dir_posgrado_1: { hours: 11, subjects: 4 },
+  admin_coord_area: { hours: 13, subjects: 4 },
+  inv_1p_2c: { hours: 3, subjects: 1 },
+  inv_2p: { hours: 4, subjects: 1 },
+  inv_1p: { hours: 10, subjects: 3 },
+  inv_3c: { hours: 6, subjects: 2 },
+  inv_2c: { hours: 9, subjects: 3 },
+  inv_1c: { hours: 13, subjects: 4 },
+};
+
+function getRule(rules: RecommendationRule[] | undefined, key: string): Recommendation {
+  const r = rules?.find(x => x.rule_key === key);
+  if (r) return { hours: r.hours, subjects: r.subjects };
+  return FALLBACK[key];
+}
+
 /**
  * Calculates dynamic recommendations for docencia directa
  * based on records in investigacion, administrativas, and formacion-docentes.
- * 
+ *
  * Priority: Admin/Formacion override Investigation values (don't accumulate).
  */
 export function useRecommendations(records: AgendaRecord[], userRolId?: number): Recommendation {
+  const { data: rules } = useRecommendationRules();
+
   return useMemo(() => {
     const defaults: Recommendation = { hours: 16, subjects: 5 };
 
@@ -50,9 +77,9 @@ export function useRecommendations(records: AgendaRecord[], userRolId?: number):
     const hasPedagogicos = formActivities.includes(FORM_PEDAGOGICOS);
     const hasDoctorado = formActivities.includes(FORM_DOCTORADO);
 
-    if (hasDoctorado) return { hours: 8, subjects: 2 };
-    if (hasMaestria) return { hours: 12, subjects: 4 };
-    if (hasPedagogicos) return { hours: 13, subjects: 4 };
+    if (hasDoctorado) return getRule(rules, "form_doctorado");
+    if (hasMaestria) return getRule(rules, "form_maestria");
+    if (hasPedagogicos) return getRule(rules, "form_pedagogicos");
 
     // --- Administrativas (role-specific, overrides investigation) ---
     const hasAdminActivity = adminRecords.length > 0;
@@ -65,38 +92,25 @@ export function useRecommendations(records: AgendaRecord[], userRolId?: number):
       const hasDecano = adminActivities.includes(ADMIN_DECANO);
       const hasVicerrector = adminActivities.includes(ADMIN_VICERRECTOR);
 
-      // Decano / Vicerrector / Dir doctorado → 2h, 1 asignatura
-      if (hasDecano || hasVicerrector || hasDirDoctorado) return { hours: 2, subjects: 1 };
-
-      // Director depto or pregrado → 6h, 2
-      if (hasDirDepto || hasDirPregrado) return { hours: 6, subjects: 2 };
-
-      // Director posgrado
-      if (dirPosgradoCount >= 2) return { hours: 6, subjects: 3 };
-      if (dirPosgradoCount === 1) return { hours: 11, subjects: 4 };
-
-      // Coordinador área
-      if (hasCoordArea) return { hours: 13, subjects: 4 };
+      if (hasDecano || hasVicerrector || hasDirDoctorado) return getRule(rules, "admin_decano_vicerrector_doctorado");
+      if (hasDirDepto || hasDirPregrado) return getRule(rules, "admin_dir_depto_pregrado");
+      if (dirPosgradoCount >= 2) return getRule(rules, "admin_dir_posgrado_2");
+      if (dirPosgradoCount === 1) return getRule(rules, "admin_dir_posgrado_1");
+      if (hasCoordArea) return getRule(rules, "admin_coord_area");
     }
 
     // --- Investigación (any role) ---
     if (principalCount > 0 || coInvCount > 0) {
-      // 1 principal + 2 co-inv
-      if (principalCount >= 1 && coInvCount >= 2) return { hours: 3, subjects: 1 };
-      // 2 principal
-      if (principalCount >= 2) return { hours: 4, subjects: 1 };
-      // 1 principal
-      if (principalCount === 1 && coInvCount === 0) return { hours: 10, subjects: 3 };
-      // 3 co-inv
-      if (coInvCount >= 3) return { hours: 6, subjects: 2 };
-      // 2 co-inv
-      if (coInvCount === 2 && principalCount === 0) return { hours: 9, subjects: 3 };
-      // 1 co-inv
-      if (coInvCount === 1 && principalCount === 0) return { hours: 13, subjects: 4 };
+      if (principalCount >= 1 && coInvCount >= 2) return getRule(rules, "inv_1p_2c");
+      if (principalCount >= 2) return getRule(rules, "inv_2p");
+      if (principalCount === 1 && coInvCount === 0) return getRule(rules, "inv_1p");
+      if (coInvCount >= 3) return getRule(rules, "inv_3c");
+      if (coInvCount === 2 && principalCount === 0) return getRule(rules, "inv_2c");
+      if (coInvCount === 1 && principalCount === 0) return getRule(rules, "inv_1c");
     }
 
     return defaults;
-  }, [records, userRolId]);
+  }, [records, userRolId, rules]);
 }
 
 /**
@@ -109,15 +123,12 @@ export function getBlockedInvestigationActivities(records: AgendaRecord[]): Set<
 
   const blocked = new Set<string>();
 
-  // Max 2 principal, max 3 co-inv
   if (principalCount >= 2) blocked.add(INV_PRINCIPAL);
   if (coInvCount >= 3) blocked.add(CO_INVESTIGADOR);
 
-  // Mutual exclusion at limits
   if (principalCount >= 2) blocked.add(CO_INVESTIGADOR);
   if (coInvCount >= 3) blocked.add(INV_PRINCIPAL);
 
-  // 1 principal + 2 co-inv → block both
   if (principalCount >= 1 && coInvCount >= 2) {
     blocked.add(INV_PRINCIPAL);
     blocked.add(CO_INVESTIGADOR);
@@ -142,12 +153,10 @@ export function getBlockedAdminActivities(records: AgendaRecord[]): Set<string> 
   const ALL_ADMIN = [ADMIN_DIR_DEPTO, ADMIN_DIR_PREGRADO, ADMIN_DIR_POSGRADO, ADMIN_COORD_AREA, ADMIN_DIR_DOCTORADO, ADMIN_DECANO, ADMIN_VICERRECTOR];
 
   if (hasNonPosgrado) {
-    // Block everything except dir posgrado
     ALL_ADMIN.forEach(a => { if (a !== ADMIN_DIR_POSGRADO) blocked.add(a); });
   }
 
   if (dirPosgradoCount >= 2) {
-    // Block all
     ALL_ADMIN.forEach(a => blocked.add(a));
   }
 
@@ -161,8 +170,6 @@ export function getBlockedFormacionActivities(records: AgendaRecord[]): Set<stri
   const formRecords = records.filter(r => r.subfunctionId === "formacion-docentes");
   if (formRecords.length === 0) return new Set();
 
-  // If any activity exists, block all others (max 1)
-  // We block everything — the existing one won't appear as "blocked" because it's already selected
   const ALL_FORMACION = [FORM_MAESTRIA, FORM_PEDAGOGICOS, FORM_DOCTORADO];
   return new Set(ALL_FORMACION);
 }

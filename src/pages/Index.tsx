@@ -19,7 +19,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, ClipboardList, History } from "lucide-react";
+import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, ClipboardList, History, Settings } from "lucide-react";
+import { SettingsDialog } from "@/components/SettingsDialog";
 
 // Roles that can see the audit log — currently all roles; restrict later as needed
 const AUDIT_VISIBLE_ROLES = [1, 2, 3, 4];
@@ -37,6 +38,7 @@ const Index = () => {
   const [notifOpen, setNotifOpen] = useState(false);
   const [readTick, setReadTick] = useState(0);
   const [visibleSection, setVisibleSection] = useState<string>("header.production");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const isVicerrector = roleName === "VicerrectorAcadémico";
   const isDecano = roleName === "DecanoFacultad";
@@ -384,6 +386,11 @@ const Index = () => {
                     <ClipboardList className="h-4 w-4" /> {t("audit.viewAudit")}
                   </DropdownMenuItem>
                 )}
+                {user?.rolId === 4 && (
+                  <DropdownMenuItem onClick={() => setSettingsOpen(true)} className="gap-2 cursor-pointer">
+                    <Settings className="h-4 w-4" /> {t("profile.settings")}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout} className="gap-2 cursor-pointer text-destructive">
                   <LogOut className="h-4 w-4" /> {t("profile.logout")}
@@ -473,6 +480,8 @@ const Index = () => {
           </div>
         </div>
       )}
+
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   );
 };

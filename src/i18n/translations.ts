@@ -217,6 +217,25 @@ const translations: Record<string, Record<Language, string>> = {
   "summary.returnSuccess": { es: "Agenda retornada al docente para corrección", en: "Agenda returned to teacher for correction" },
   "summary.approveSuccess": { es: "Agenda aprobada y enviada al decano", en: "Agenda approved and sent to dean" },
   "summary.observationPlaceholder": { es: "Escribe la observación para el docente...", en: "Write observation for the teacher..." },
+
+  // Settings (Vicerrector only)
+  "profile.settings": { es: "Ajustes", en: "Settings" },
+  "settings.title": { es: "Lineamientos de recomendación", en: "Recommendation guidelines" },
+  "settings.description": { es: "Modifica las horas y asignaturas recomendadas que rigen la lógica de Docencia Directa.", en: "Modify the recommended hours and subjects that govern Direct Teaching logic." },
+  "settings.investigacion": { es: "Investigación", en: "Research" },
+  "settings.administrativas": { es: "Administrativas", en: "Administrative" },
+  "settings.formacion": { es: "Formación", en: "Training" },
+  "settings.rule": { es: "Regla", en: "Rule" },
+  "settings.hours": { es: "Horas", en: "Hours" },
+  "settings.subjects": { es: "Asignaturas", en: "Subjects" },
+  "settings.save": { es: "Guardar", en: "Save" },
+  "settings.saveAll": { es: "Guardar cambios", en: "Save changes" },
+  "settings.reset": { es: "Restablecer por defecto", en: "Reset to defaults" },
+  "settings.saved": { es: "Lineamientos actualizados", en: "Guidelines updated" },
+  "settings.saveError": { es: "Error al guardar", en: "Error saving" },
+  "settings.resetConfirm": { es: "¿Restaurar todos los lineamientos a sus valores por defecto?", en: "Reset all guidelines to default values?" },
+  "settings.resetDone": { es: "Lineamientos restaurados", en: "Guidelines restored" },
+  "settings.noChanges": { es: "No hay cambios para guardar", en: "No changes to save" },
 };
 
 export function getTranslation(key: string, lang: Language): string {
