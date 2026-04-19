@@ -22,7 +22,7 @@ interface DraggableItem {
 
 export default function ScheduleBuilder() {
   const navigate = useNavigate();
-  const { records, saveSchedule, getSchedule } = useAgenda();
+  const { records, saveSchedule, getSchedule, isAgendaReadOnly } = useAgenda();
   const { user } = useAuth();
   const { data: agendaView, isLoading: loadingView } = useAgendaView(user?.id);
 
@@ -85,6 +85,7 @@ export default function ScheduleBuilder() {
   }, []);
 
   const handleDrop = useCallback((day: number, hour: number) => {
+    if (isAgendaReadOnly) return;
     if (!draggedItem) return;
     if (placedBlocks.some((b) => b.day === day && b.hour === hour)) {
       toast.error("Esta celda ya está ocupada");
@@ -104,11 +105,12 @@ export default function ScheduleBuilder() {
     };
     setPlacedBlocks((prev) => [...prev, block]);
     setDraggedItem(null);
-  }, [draggedItem, allItems, placedBlocks]);
+  }, [draggedItem, allItems, placedBlocks, isAgendaReadOnly]);
 
   const handleRemoveBlock = useCallback((blockId: string) => {
+    if (isAgendaReadOnly) return;
     setPlacedBlocks((prev) => prev.filter((b) => b.id !== blockId));
-  }, []);
+  }, [isAgendaReadOnly]);
 
   const handleSave = () => {
     saveSchedule(placedBlocks);
@@ -150,10 +152,12 @@ export default function ScheduleBuilder() {
           </span>
         )}
         <div className="ml-auto">
-          <Button onClick={handleSave} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
-            <Save className="h-4 w-4" />
-            Guardar horario
-          </Button>
+          {!isAgendaReadOnly && (
+            <Button onClick={handleSave} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Save className="h-4 w-4" />
+              Guardar horario
+            </Button>
+          )}
         </div>
       </header>
 
