@@ -2,61 +2,45 @@
 
 ## Análisis
 
-**Estado actual** — cuando un supervisor selecciona a un subordinado en `selectedDocente`, el sistema:
-- Carga los registros del subordinado en `recordsByDocente[docenteId]`.
-- `SubfunctionForm` sigue **completamente editable**: inputs, selects, botón "Limpiar", auto-upsert al llenar campos, eliminación desde el panel resumen, edición al hacer click en un registro.
-- Solo el `SummaryPanel` cambia (muestra botones Aprobar/Retornar en vez de Confirmar).
-- Resultado: un decano/director/vicerrector **puede modificar** la agenda del subordinado mientras la revisa. Esto rompe la regla.
+**Estado actual del DirectorPrograma:**
+- `AgendaContext` usa `useSubordinatesWithNames(user.id)` → trae todos los subordinados según `user_hierarchy` (docentes asignados al director).
+- En el sidebar, el director ve la lista de docentes en el "Nivel 0/raíz" (sin filtro por carrera ni por estado de agenda).
+- No hay filtrado por agendas confirmadas/aprobadas — un director ve a todos sus subordinados aparezca o no su agenda.
 
-**Regla nueva**: Ningún rol puede diligenciar agendas ajenas. Si `selectedDocente.firstName !== "Yo"` → toda la UI de la agenda pasa a **modo lectura**. Solo permanece habilitada la acción de **Aprobar / Retornar con observación** (ya existente en `SummaryPanel`).
+**Reglas nuevas para `DirectorPrograma`:**
+1. Solo ver docentes (`DocentePlanta`, rol 1) que pertenezcan a **su misma carrera profesional** (`id_professional_career`). Esto refuerza la jerarquía: aunque `user_hierarchy` ya debería garantizarlo, agregamos el filtro defensivo en el sidebar.
+2. Solo ver agendas que el `DocentePlanta` ya **diligenció y confirmó** (existe registro en `agenda_views` con `status` ∈ {`pending`, `approved`, `returned`} — basta con que el docente la haya enviado para revisión: status `pending`). Misma idea que vicerrector/decano pero un nivel abajo.
+3. Mantener su estructura simple: no necesita niveles de Facultad/Carrera (todos los docentes visibles ya son de su misma carrera) → sigue mostrándolos como lista plana bajo "Yo".
 
-**Alcance del bloqueo (modo lectura cuando se revisa subordinado):**
+**Reto técnico — quién diligenció:**
+Para vicerrector/decano filtramos por `agenda_views.status='approved'` + rol del aprobador. Para el director NO necesitamos un aprobador previo (él es el primer revisor en la cadena). Basta con que exista una `agenda_views` para ese `user_cc` con status diferente de `null` (es decir, la agenda fue confirmada al menos una vez por el docente). 
 
-| Componente | Elemento | Acción |
-|---|---|---|
-| `SubfunctionForm` | Inputs de número, Selects, Combobox de asignaturas | `disabled` |
-| `SubfunctionForm` | Botones "+" para agregar opción, "Pencil" para gestionar asignaturas/actividades | ocultos |
-| `SubfunctionForm` | Botón "Limpiar" (Eraser) en header rojo | oculto |
-| `SubfunctionForm` | `useEffect` de auto-upsert (línea ~338) | early-return si revisando subordinado |
-| `SubfunctionForm` | Click sobre registro → `setEditingRecord` | sigue permitido (solo lleva al formulario, pero el form ya estará disabled) — preferimos **no** cargar `editingRecord` en modo lectura para evitar confusión |
-| `SummaryPanel` | Botón papelera (Trash2) por registro | oculto |
-| `SummaryPanel` | Click en registro → editar | desactivado (sin handler en modo lectura) |
-| `SummaryPanel` | Input "horasSemestreDefecto" | `disabled` |
-| `SummaryPanel` | Botón "Confirmar" | ya está oculto (se muestran Aprobar/Retornar) ✓ |
-| `ScheduleBuilder` (`/schedule`) | Drag & drop de bloques, botón "Guardar horario" | bloqueado/oculto si revisando subordinado |
-| `AgendaContext` | `addRecord`, `updateRecord`, `deleteRecord`, `upsertRecord`, `saveSchedule` | hard-guard: si `docenteId !== user.id` → no-op + warning en consola (defensa en profundidad) |
-
-**Comentarios/observaciones**: la sección `AgendaComments` y el textarea de "Retornar" siguen activos — son los canales de comunicación permitidos por la regla.
+Reutilizaremos `useApprovedAgendaCcs` parametrizándolo con un nuevo valor `forRole='director'` que devuelva todos los `user_cc` que tengan al menos una `agenda_view` (sin importar status ni reviewer), restringido a docentes con rol 1 dentro de la misma carrera del director.
 
 ## Diseño
 
-### 1. Helper centralizado en `AgendaContext`
-Exponer un booleano `isReadOnly` derivado: `selectedDocente && selectedDocente.id !== user?.id`. Así todos los componentes leen una sola fuente de verdad.
+### 1. `useDatabase.ts` — extender `useApprovedAgendaCcs`
+- Aceptar `forRole: 'vicerrector' | 'decano' | 'director'`.
+- Caso `'director'`:
+  - Obtener `id_professional_career` del director (por `currentUserCc`).
+  - Traer `agenda_views.user_cc` (cualquier status — basta que exista el registro porque solo se crea al confirmar).
+  - Cruzar contra `users` filtrando `id_rol=1` y `id_professional_career=<carrera del director>`.
+  - Devolver el set de `cc`.
 
-### 2. Hard-guard en mutaciones del context
-En `addRecord`, `updateRecord`, `deleteRecord`, `upsertRecord`, `saveSchedule`: comparar `docenteId` con `user.id`; si no coincide, retornar sin mutar. Defensa contra bugs futuros.
+### 2. `AppSidebar.tsx` — comportamiento director
+- Detectar `roleName === "DirectorPrograma"`.
+- Llamar `useApprovedAgendaCcs('director', user.id, isDirector)`.
+- Filtrar `subordinates` contra `approvedSet` (mismo patrón que vicerrector/decano).
+- Como el director no necesita navegación por facultad/carrera, mantener el render plano actual (lista directa bajo "Yo") pero solo sobre el set filtrado.
+- No tocar la jerarquía de niveles existente para vicerrector/decano.
 
-### 3. `SubfunctionForm`
-- Leer `isReadOnly` del context.
-- Pasar `disabled={isReadOnly}` a Inputs/Selects/Combobox triggers.
-- Ocultar botones "Limpiar", "+", "Pencil" cuando `isReadOnly`.
-- En el `useEffect` de auto-upsert: `if (isReadOnly) return;`.
-- En el `useEffect` que carga `editingRecord`: `if (isReadOnly) { setEditingRecord(null); return; }`.
-
-### 4. `SummaryPanel`
-- Leer `isReadOnly`.
-- Ocultar botón papelera y handler de click-para-editar cuando `isReadOnly`.
-- `disabled` en el input `horasSemestreDefecto`.
-
-### 5. `ScheduleBuilder`
-- Si `isReadOnly`: renderizar la grilla en modo solo-visualización (reutilizando lógica existente similar a `ScheduleReadOnlyView`) y ocultar botón "Guardar horario".
+### 3. Sin cambios en notificaciones
+El director no recibe alerta de "programa por revisar" — esa lógica es exclusiva de decano/vicerrector. No se modifica `Index.tsx` ni traducciones.
 
 ## Archivos
 
 | Archivo | Cambio |
 |---|---|
-| `src/context/AgendaContext.tsx` | Exponer `isReadOnly` en el value del provider; añadir guards en `addRecord`/`updateRecord`/`deleteRecord`/`upsertRecord`/`saveSchedule` que abortan si `docenteId !== user.id` |
-| `src/components/SubfunctionForm.tsx` | Consumir `isReadOnly`; aplicar `disabled` a Inputs/Selects/Combobox; ocultar botones Limpiar/"+"/Pencil; bloquear auto-upsert y la carga de `editingRecord` |
-| `src/components/SummaryPanel.tsx` | Consumir `isReadOnly`; ocultar botón papelera y desactivar click-para-editar; `disabled` en input "horasSemestreDefecto" |
-| `src/pages/ScheduleBuilder.tsx` | Si `isReadOnly`: renderizar versión solo lectura del horario y ocultar botón "Guardar horario" |
+| `src/hooks/useDatabase.ts` | Extender `useApprovedAgendaCcs` para soportar `forRole='director'`: devuelve CCs de docentes (rol 1) en la misma carrera del director que tengan al menos una `agenda_view` registrada |
+| `src/components/AppSidebar.tsx` | Detectar rol director; consumir `useApprovedAgendaCcs('director', user.id)`; filtrar subordinados visibles contra ese set en la sección plana de docentes |
 
