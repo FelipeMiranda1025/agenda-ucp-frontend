@@ -289,7 +289,7 @@ const Index = () => {
                     ? pendingSubordinateAgendas
                     : pendingSubordinateAgendas.filter((pa) => !isPendingRead(pa.agendaView.id))
                   ).length;
-                  const visibleCareerCount = isVicerrector
+                  const visibleCareerCount = (isVicerrector || isDecano)
                     ? (showNotifHistory ? fullyApprovedCareers : fullyApprovedCareers.filter((c) => !isCareerRead(c.careerId))).length
                     : 0;
                   if (visibleComments.length === 0 && visiblePendingCount === 0 && visibleCareerCount === 0 && !(isReturnedAgenda && (showNotifHistory || !isDismissedReturn))) {
