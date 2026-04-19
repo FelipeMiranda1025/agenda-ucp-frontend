@@ -18,7 +18,7 @@ import { ConfirmSuccessDialog } from "@/components/ConfirmSuccessDialog";
 import { getDocenteFullName } from "@/types/docentePlanta";
 
 export function SummaryPanel() {
-  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView } = useAgenda();
+  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView, isAgendaReadOnly } = useAgenda();
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
@@ -132,6 +132,7 @@ export function SummaryPanel() {
   };
 
   const handleRecordClick = (record: typeof records[0]) => {
+    if (isAgendaReadOnly) return;
     setEditingRecord(record);
     scrollToSection(record.subfunctionId);
   };
@@ -213,22 +214,24 @@ export function SummaryPanel() {
                     return (
                       <div
                         key={record.id}
-                        className="flex items-center py-1 text-sm border-b border-border/50 last:border-0 cursor-pointer hover:bg-accent/50 rounded px-1 transition-colors group"
+                        className={`flex items-center py-1 text-sm border-b border-border/50 last:border-0 rounded px-1 transition-colors group ${isAgendaReadOnly ? '' : 'cursor-pointer hover:bg-accent/50'}`}
                         onClick={() => handleRecordClick(record)}
                       >
                         <span className="flex-1 text-foreground break-words line-clamp-2" title={String(label)}>{String(label)}</span>
                         <span className="w-14 text-right text-muted-foreground">{weeklyHours % 1 === 0 ? weeklyHours : weeklyHours.toFixed(1)}h</span>
                         <span className="w-14 text-right font-semibold text-primary">{record.totalHoras}h</span>
-                        <button
-                          className="w-6 flex justify-center p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteRecord(record.id);
-                          }}
-                          title={t("summary.deleteRecord")}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        {!isAgendaReadOnly && (
+                          <button
+                            className="w-6 flex justify-center p-0.5 rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteRecord(record.id);
+                            }}
+                            title={t("summary.deleteRecord")}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -277,6 +280,7 @@ export function SummaryPanel() {
             className="w-20 h-7 text-sm"
             value={horasSemestreDefecto}
             onChange={(e) => setHorasSemestreDefecto(Number(e.target.value) || 920)}
+            disabled={isAgendaReadOnly}
           />
         </div>
       </div>
