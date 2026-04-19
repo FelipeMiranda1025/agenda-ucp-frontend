@@ -4,7 +4,7 @@ import { initialDropdownOptions } from "@/data/initialDropdownOptions";
 import { subfunctions } from "@/data/subfunctions";
 import { DocentePlanta } from "@/types/docentePlanta";
 import { supabase } from "@/integrations/supabase/client";
-import { useSubordinatesWithNames, SubordinateDocente } from "@/hooks/useDatabase";
+import { useSubordinatesWithNames, useAllDocentes, SubordinateDocente } from "@/hooks/useDatabase";
 import { useAuth } from "@/context/AuthContext";
 
 interface AgendaContextType {
@@ -40,16 +40,30 @@ export const AgendaContext = createContext<AgendaContextType | null>(null);
 export { useAgenda } from "@/hooks/useAgenda";
 
 export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
-  const { data: subordinates = [], isLoading: loadingSubs, error: subsError } = useSubordinatesWithNames(user?.id);
+  const { user, roleName } = useAuth();
+  const isVicerrector = roleName === "VicerrectorAcadémico";
 
-  // Debug: trace subordinate loading to diagnose why dropdown shows only "Yo"
+  // For Vicerrector: load ALL docentes. For others: only direct subordinates via hierarchy.
+  const { data: subordinates = [], isLoading: loadingSubs, error: subsError } = useSubordinatesWithNames(
+    isVicerrector ? undefined : user?.id
+  );
+  const { data: allDocentes = [], isLoading: loadingAll, error: allError } = useAllDocentes(isVicerrector);
+
+  const effectiveDocentes: SubordinateDocente[] = isVicerrector
+    ? allDocentes.filter((d) => d.id !== user?.id)
+    : subordinates;
+
   useEffect(() => {
     if (user) {
-      console.log("[AgendaContext] user.id (cc):", user.id, "rolId:", user.rolId);
-      console.log("[AgendaContext] subordinates →", { loading: loadingSubs, error: subsError, count: subordinates.length, data: subordinates });
+      console.log("[AgendaContext] user.id (cc):", user.id, "rolId:", user.rolId, "role:", roleName);
+      console.log("[AgendaContext] effectiveDocentes →", {
+        isVicerrector,
+        loading: isVicerrector ? loadingAll : loadingSubs,
+        error: isVicerrector ? allError : subsError,
+        count: effectiveDocentes.length,
+      });
     }
-  }, [user, subordinates, loadingSubs, subsError]);
+  }, [user, roleName, isVicerrector, effectiveDocentes, loadingSubs, subsError, loadingAll, allError]);
 
   // Build dynamic docentes list: "Yo" (current user) + subordinates
   const docentesList = useMemo<DocentePlanta[]>(() => {
@@ -63,7 +77,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         secondLastName: "",
       });
     }
-    for (const sub of subordinates) {
+    for (const sub of effectiveDocentes) {
       list.push({
         id: sub.id,
         firstName: sub.firstName,
@@ -73,7 +87,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       });
     }
     return list;
-  }, [user, subordinates]);
+  }, [user, effectiveDocentes]);
 
   const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>(initialDropdownOptions);
   const [recordsByDocente, setRecordsByDocente] = useState<{ [docenteId: string]: AgendaRecord[] }>({});
