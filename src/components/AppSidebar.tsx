@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain, Building2, Lightbulb, Heart, Award, Calendar, ChevronLeft, ChevronRight, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useAgenda } from "@/context/AgendaContext";
@@ -7,6 +8,7 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { subfunctions } from "@/data/subfunctions";
 import { getDocenteFullName } from "@/types/docentePlanta";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import { useFaculties, useProfessionalCareers, useApprovedAgendaCcs } from "@/hooks/useDatabase";
 import ucpLogo from "@/assets/ucp-logo.png";
 
