@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -118,6 +118,7 @@ const emptyForm = {
   password: "",
   id_faculty: null as number | null,
   id_professional_career: null as number | null,
+  supervisor_id: null as number | null,
 };
 
 export default function SupportPanel() {
@@ -195,6 +196,18 @@ export default function SupportPanel() {
   });
 
   // ----- Mutations
+  // Helper interno: aplica la jerarquía (borrar previa + insertar nueva si corresponde)
+  const applyHierarchy = async (userId: number, supervisorId: number | null) => {
+    await (supabase.from("user_hierarchy" as any) as any).delete().eq("user_id", userId);
+    if (supervisorId !== null) {
+      const { error } = await (supabase.from("user_hierarchy" as any) as any).insert({
+        user_id: userId,
+        supervisor_id: supervisorId,
+      });
+      if (error) throw error;
+    }
+  };
+
   const createUser = useMutation({
     mutationFn: async (payload: typeof emptyForm) => {
       const hashed = await hashPassword(payload.password);
@@ -216,11 +229,16 @@ export default function SupportPanel() {
         .select()
         .single();
       if (error) throw error;
+      // Asignar supervisor si el rol lo requiere (1, 2, 3)
+      if ([1, 2, 3].includes(payload.id_rol) && payload.supervisor_id !== null) {
+        await applyHierarchy((data as any).id, payload.supervisor_id);
+      }
       return data;
     },
     onSuccess: () => {
       toast.success("Usuario creado correctamente");
       qc.invalidateQueries({ queryKey: ["sp_users"] });
+      qc.invalidateQueries({ queryKey: ["sp_hierarchy"] });
       setDialogOpen(false);
     },
     onError: (e: any) => toast.error(e.message || "Error al crear usuario"),
@@ -250,11 +268,19 @@ export default function SupportPanel() {
         .select()
         .single();
       if (error) throw error;
+      // Reaplicar jerarquía según rol
+      if ([1, 2, 3].includes(payload.id_rol)) {
+        await applyHierarchy(payload.id, payload.supervisor_id);
+      } else {
+        // Roles sin jerarquía (4, 5): limpiar
+        await applyHierarchy(payload.id, null);
+      }
       return data;
     },
     onSuccess: () => {
       toast.success("Usuario actualizado");
       qc.invalidateQueries({ queryKey: ["sp_users"] });
+      qc.invalidateQueries({ queryKey: ["sp_hierarchy"] });
       setDialogOpen(false);
     },
     onError: (e: any) => toast.error(e.message || "Error al actualizar"),
@@ -333,6 +359,43 @@ export default function SupportPanel() {
     return careers.filter((c) => c.id_faculty === form.id_faculty);
   }, [careers, form.id_faculty]);
 
+  // Candidatos a supervisor según el rol elegido en el formulario:
+  // - Rol 1 (DocentePlanta) -> Director de Programa (rol 2) de la misma carrera
+  // - Rol 2 (DirectorPrograma) -> Decano de Facultad (rol 3) de la misma facultad
+  // - Rol 3 (DecanoFacultad) -> Vicerrector Académico (rol 4), único en el sistema
+  // - Roles 4 y 5 -> sin supervisor
+  const supervisorCandidates = useMemo(() => {
+    if (form.id_rol === 1) {
+      if (!form.id_professional_career) return [];
+      return users.filter(
+        (u) => u.id_rol === 2 && u.id_professional_career === form.id_professional_career
+      );
+    }
+    if (form.id_rol === 2) {
+      if (!form.id_faculty) return [];
+      return users.filter((u) => u.id_rol === 3 && u.id_faculty === form.id_faculty);
+    }
+    if (form.id_rol === 3) {
+      return users.filter((u) => u.id_rol === 4);
+    }
+    return [];
+  }, [users, form.id_rol, form.id_faculty, form.id_professional_career]);
+
+  // Auto-seleccionar el supervisor cuando solo hay un candidato y aún no se ha elegido uno válido
+  useEffect(() => {
+    if (![1, 2, 3].includes(form.id_rol)) {
+      if (form.supervisor_id !== null) setForm((f) => ({ ...f, supervisor_id: null }));
+      return;
+    }
+    const validIds = supervisorCandidates.map((s) => s.id);
+    if (form.supervisor_id !== null && !validIds.includes(form.supervisor_id)) {
+      setForm((f) => ({ ...f, supervisor_id: null }));
+    }
+    if (form.supervisor_id === null && supervisorCandidates.length === 1) {
+      setForm((f) => ({ ...f, supervisor_id: supervisorCandidates[0].id }));
+    }
+  }, [supervisorCandidates, form.id_rol, form.supervisor_id]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return users.filter((u) => {
@@ -363,6 +426,7 @@ export default function SupportPanel() {
   };
   const openEdit = (u: UserRow) => {
     setEditing(u);
+    const currentSup = supervisorOf(u.id);
     setForm({
       cc: u.cc,
       email: u.email,
@@ -375,6 +439,7 @@ export default function SupportPanel() {
       password: "",
       id_faculty: u.id_faculty,
       id_professional_career: u.id_professional_career,
+      supervisor_id: currentSup ? currentSup.id : null,
     });
     setDialogOpen(true);
   };
@@ -391,6 +456,17 @@ export default function SupportPanel() {
     }
     if (!editing && !form.password) {
       toast.error("La contraseña es obligatoria al crear");
+      return;
+    }
+    // Validar supervisor obligatorio para roles 1, 2 y 3
+    if ([1, 2, 3].includes(form.id_rol) && form.supervisor_id === null) {
+      const msg =
+        form.id_rol === 3
+          ? "No hay Vicerrector Académico disponible como supervisor."
+          : form.id_rol === 2
+            ? "Debes seleccionar un Decano de Facultad como supervisor."
+            : "Debes seleccionar un Director de Programa como supervisor.";
+      toast.error(msg);
       return;
     }
     if (editing) {
@@ -801,6 +877,91 @@ export default function SupportPanel() {
             {form.id_rol === 5 && (
               <div className="sm:col-span-2 text-xs text-muted-foreground italic">
                 Nota: el rol Soporte normalmente no pertenece a ninguna facultad/carrera.
+              </div>
+            )}
+            {form.id_rol === 4 && (
+              <div className="sm:col-span-2 text-xs text-muted-foreground italic">
+                Nota: el rol Vicerrector Académico no pertenece a ninguna facultad/carrera y no tiene supervisor.
+              </div>
+            )}
+
+            {/* Asignación automática de supervisor según el rol */}
+            {[1, 2, 3].includes(form.id_rol) && (
+              <div className="sm:col-span-2 space-y-2 rounded-md border bg-muted/30 p-3">
+                <Label className="flex items-center gap-2">
+                  <Network className="h-4 w-4 text-primary" />
+                  Supervisor asignado
+                </Label>
+                {form.id_rol === 3 ? (
+                  // Decano -> Vicerrector único
+                  supervisorCandidates.length === 0 ? (
+                    <p className="text-xs text-destructive">
+                      No existe ningún Vicerrector Académico en el sistema. Crea primero ese usuario.
+                    </p>
+                  ) : (
+                    <div className="text-sm">
+                      <span className="font-medium">{fullName(supervisorCandidates[0])}</span>
+                      <span className="text-muted-foreground"> · Vicerrector Académico</span>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Asignado automáticamente: el Vicerrector Académico es único en el sistema.
+                      </p>
+                    </div>
+                  )
+                ) : form.id_rol === 2 ? (
+                  // Director de programa -> Decano de la facultad seleccionada
+                  !form.id_faculty ? (
+                    <p className="text-xs text-muted-foreground">
+                      Selecciona primero una facultad para ver el Decano correspondiente.
+                    </p>
+                  ) : supervisorCandidates.length === 0 ? (
+                    <p className="text-xs text-destructive">
+                      No existe un Decano para esta facultad. Crea primero ese usuario.
+                    </p>
+                  ) : (
+                    <Select
+                      value={form.supervisor_id ? String(form.supervisor_id) : ""}
+                      onValueChange={(v) => setForm({ ...form, supervisor_id: Number(v) })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona el Decano" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {supervisorCandidates.map((s) => (
+                          <SelectItem key={s.id} value={String(s.id)}>
+                            {fullName(s)} · Decano de Facultad
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )
+                ) : (
+                  // Docente Planta -> Director de la carrera seleccionada
+                  !form.id_professional_career ? (
+                    <p className="text-xs text-muted-foreground">
+                      Selecciona primero una carrera profesional para ver el Director correspondiente.
+                    </p>
+                  ) : supervisorCandidates.length === 0 ? (
+                    <p className="text-xs text-destructive">
+                      No existe un Director de Programa para esta carrera. Crea primero ese usuario.
+                    </p>
+                  ) : (
+                    <Select
+                      value={form.supervisor_id ? String(form.supervisor_id) : ""}
+                      onValueChange={(v) => setForm({ ...form, supervisor_id: Number(v) })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona el Director de Programa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {supervisorCandidates.map((s) => (
+                          <SelectItem key={s.id} value={String(s.id)}>
+                            {fullName(s)} · Director de Programa
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )
+                )}
               </div>
             )}
             <div className="space-y-2 sm:col-span-2">
