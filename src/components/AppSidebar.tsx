@@ -107,7 +107,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
 
   // Careers within selected faculty (only those with at least 1 subordinate)
   const careersWithSubs = useMemo(() => {
-    if (selectedFacultyId == null) return [];
+    if (selectedFacultyId == null) return { list: [] as { career: typeof careers[number]; count: number }[], unassigned: [] as typeof subordinates };
     const careerMap = new Map<number, number>();
     const unassigned: typeof subordinates = [];
     subordinates
