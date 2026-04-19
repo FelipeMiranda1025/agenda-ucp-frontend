@@ -501,6 +501,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                                 variant="outline"
                                 role="combobox"
                                 aria-expanded={comboboxOpen}
+                                disabled={isAgendaReadOnly}
                                 className="flex-1 justify-between font-normal h-auto min-h-10 whitespace-normal text-left"
                               >
                                 {formData[field.name]
@@ -542,16 +543,20 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
                               </Command>
                             </PopoverContent>
                           </Popover>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            className="shrink-0"
-                            onClick={() => setSubjectDialogOpen(true)}
-                            title={t("subject.manage")}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <SubjectManagementDialog open={subjectDialogOpen} onOpenChange={setSubjectDialogOpen} />
+                          {!isAgendaReadOnly && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="shrink-0"
+                                onClick={() => setSubjectDialogOpen(true)}
+                                title={t("subject.manage")}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <SubjectManagementDialog open={subjectDialogOpen} onOpenChange={setSubjectDialogOpen} />
+                            </>
+                          )}
                         </>
                       ) : (
                         <>
