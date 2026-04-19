@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import React, { createContext, useState, useCallback, type ReactNode } from 'react';
 import { User, AuthState, getRoleName } from '@/types/auth';
 import { findUserByCredentials } from '@/hooks/useDatabase';
 
@@ -7,7 +7,7 @@ interface AuthContextType extends AuthState {
   logout: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextType | null>(null);
 
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -79,8 +79,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
-  return ctx;
-};
+export { useAuth } from "@/hooks/useAuth";

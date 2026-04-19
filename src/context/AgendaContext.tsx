@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from "react";
+import React, { createContext, useState, useCallback, useMemo, useEffect } from "react";
 import { DropdownOption, Record as AgendaRecord, MetricasPie, ScheduleBlock, ScheduleData } from "@/types/agenda";
 import { initialDropdownOptions } from "@/data/initialDropdownOptions";
 import { subfunctions } from "@/data/subfunctions";
@@ -35,13 +35,9 @@ interface AgendaContextType {
   loadFromAgendaView: () => Promise<boolean>;
 }
 
-const AgendaContext = createContext<AgendaContextType | null>(null);
+export const AgendaContext = createContext<AgendaContextType | null>(null);
 
-export const useAgenda = () => {
-  const ctx = useContext(AgendaContext);
-  if (!ctx) throw new Error("useAgenda must be used within AgendaProvider");
-  return ctx;
-};
+export { useAgenda } from "@/hooks/useAgenda";
 
 export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
