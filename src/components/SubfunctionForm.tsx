@@ -120,6 +120,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   const [newOptionValue, setNewOptionValue] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const lastUpsertRef = useRef<string>("");
+  const lastProcessedSubjectRef = useRef<string | null>(null);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [comboboxOpen, setComboboxOpen] = useState(false);
   const [activityComboboxOpen, setActivityComboboxOpen] = useState<string | null>(null);
@@ -221,18 +222,13 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
     const subjects = dbSubjects.filter((s) => s.name.toLowerCase() === String(selectedSubjectName).toLowerCase());
     if (subjects.length === 0) return;
 
-    // If multiple variants exist, require user to manually select the program
     const hasMultiple = subjects.length > 1;
-    const currentPrograma = formData["programa"] as string;
-    const programaBelongsToVariants = currentPrograma
-      ? subjects.some((s) => {
-          const car = dbProfessionalCareers?.find((c) => c.id === s.id_professional_career);
-          return car?.name === currentPrograma;
-        })
-      : false;
+    const subjectChanged = selectedSubjectName !== lastProcessedSubjectRef.current;
 
-    if (hasMultiple && !programaBelongsToVariants) {
-      // Clear dependent fields and let user pick the program from "Seleccionar..."
+    // If the subject just changed and has multiple variants, ALWAYS clear program and derived
+    // fields so the user must explicitly pick a program ("Seleccionar...").
+    if (subjectChanged && hasMultiple) {
+      lastProcessedSubjectRef.current = selectedSubjectName;
       setFormData((prev) => ({
         ...prev,
         programa: "",
@@ -244,6 +240,10 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       }));
       return;
     }
+
+    // Mark as processed (single-variant case, or multi-variant with program already chosen)
+    lastProcessedSubjectRef.current = selectedSubjectName;
+
 
     const subject = resolveSubjectRecord(subjects, formData["facultad"] as string, formData["programa"] as string);
     if (!subject) return;
