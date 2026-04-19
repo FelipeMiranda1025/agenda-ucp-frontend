@@ -382,7 +382,7 @@ export default function SupportPanel() {
   }, [users, form.id_rol, form.id_faculty, form.id_professional_career]);
 
   // Auto-seleccionar el supervisor cuando solo hay un candidato y aún no se ha elegido uno válido
-  React.useEffect(() => {
+  useEffect(() => {
     if (![1, 2, 3].includes(form.id_rol)) {
       if (form.supervisor_id !== null) setForm((f) => ({ ...f, supervisor_id: null }));
       return;
