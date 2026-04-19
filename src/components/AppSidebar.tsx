@@ -36,6 +36,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
   const { roleName, user } = useAuth();
   const isVicerrector = roleName === "VicerrectorAcadémico";
   const isDecano = roleName === "DecanoFacultad";
+  const isDirector = roleName === "DirectorPrograma";
   const { t } = useLanguage();
   const { data: faculties = [] } = useFaculties();
   const { data: careers = [] } = useProfessionalCareers();
@@ -56,10 +57,18 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
     staleTime: 1000 * 60 * 30,
   });
 
+  const reviewerRole: "vicerrector" | "decano" | "director" | null = isVicerrector
+    ? "vicerrector"
+    : isDecano
+    ? "decano"
+    : isDirector
+    ? "director"
+    : null;
+
   const { data: approvedCcs = [] } = useApprovedAgendaCcs(
-    isVicerrector ? "vicerrector" : "decano",
-    isDecano ? user?.id : undefined,
-    isVicerrector || isDecano
+    (reviewerRole ?? "vicerrector"),
+    isVicerrector ? undefined : user?.id,
+    !!reviewerRole
   );
   const approvedSet = useMemo(() => new Set(approvedCcs), [approvedCcs]);
 
@@ -118,9 +127,9 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
   // - Decano: only docentes whose agenda was approved by their director.
   const subordinates = useMemo(() => {
     const base = docentesList.filter((d) => d.firstName !== "Yo");
-    if (isVicerrector || isDecano) return base.filter((d) => approvedSet.has(d.id));
+    if (isVicerrector || isDecano || isDirector) return base.filter((d) => approvedSet.has(d.id));
     return base;
-  }, [docentesList, isVicerrector, isDecano, approvedSet]);
+  }, [docentesList, isVicerrector, isDecano, isDirector, approvedSet]);
   const selfDocente = useMemo(
     () => docentesList.find((d) => d.firstName === "Yo"),
     [docentesList]
@@ -271,7 +280,21 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                   </button>
                 )}
 
-                {facultiesWithSubs.list.map(({ faculty, count }) => (
+                {/* Director: flat list of docentes (same career, with submitted agenda) */}
+                {isDirector && subordinates.map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() => handleSelectDocente(d)}
+                    className={`${itemBtnClass} ${
+                      selectedDocente?.id === d.id ? "bg-accent text-accent-foreground font-medium" : ""
+                    }`}
+                  >
+                    <User className="h-4 w-4 shrink-0" />
+                    <span className="whitespace-normal break-words">{getDocenteFullName(d)}</span>
+                  </button>
+                ))}
+
+                {!isDirector && facultiesWithSubs.list.map(({ faculty, count }) => (
                   <button
                     key={faculty.id}
                     onClick={() => goCareers(faculty.id)}
@@ -284,7 +307,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                   </button>
                 ))}
 
-                {facultiesWithSubs.unassigned.length > 0 && (
+                {!isDirector && facultiesWithSubs.unassigned.length > 0 && (
                   <button
                     onClick={() => {
                       setSelectedFacultyId(null);

@@ -579,15 +579,51 @@ export function useUpdateAgendaViewStatus() {
 // - forRole='vicerrector' → agendas approved by a DecanoFacultad (rol 3)
 // - forRole='decano' → agendas approved by a DirectorPrograma (rol 2),
 //   restricted to docentes within the dean's faculty (currentUserCc)
+// - forRole='director' → docentes (rol 1) in the same professional career
+//   as the director who have at least one agenda_view registered
+//   (i.e. the docente has confirmed/submitted their agenda at least once)
 // =============================================
 export function useApprovedAgendaCcs(
-  forRole: "vicerrector" | "decano",
+  forRole: "vicerrector" | "decano" | "director",
   currentUserCc?: string,
   enabled: boolean = true
 ) {
   return useQuery<string[]>({
     queryKey: ["approved_agenda_ccs", forRole, currentUserCc],
     queryFn: async () => {
+      // ---------- DIRECTOR branch ----------
+      if (forRole === "director") {
+        if (!currentUserCc) return [];
+
+        // Director's professional career
+        const { data: director } = await supabase
+          .from("users")
+          .select("id_professional_career")
+          .eq("cc", currentUserCc)
+          .maybeSingle();
+        const careerId = (director as any)?.id_professional_career ?? null;
+        if (careerId == null) return [];
+
+        // Any agenda_view (regardless of status) means the docente confirmed it at least once
+        const { data: views, error: vErr } = await (supabase.from("agenda_views" as any) as any)
+          .select("user_cc");
+        if (vErr || !views || views.length === 0) return [];
+        const submittedCcs = Array.from(
+          new Set((views as any[]).map((r) => r.user_cc as string))
+        );
+        if (submittedCcs.length === 0) return [];
+
+        // Restrict to DocentePlanta (rol 1) in the same career
+        const { data: docentes } = await supabase
+          .from("users")
+          .select("cc")
+          .in("cc", submittedCcs)
+          .eq("id_rol", 1)
+          .eq("id_professional_career", careerId);
+        return Array.from(new Set((docentes ?? []).map((u: any) => u.cc as string)));
+      }
+
+      // ---------- VICERRECTOR / DECANO branches (existing logic) ----------
       const approverRolId = forRole === "vicerrector" ? 3 : 2;
 
       // 1. Approved agenda_views (with reviewer_cc)
