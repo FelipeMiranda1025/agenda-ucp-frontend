@@ -868,6 +868,91 @@ export default function SupportPanel() {
                 Nota: el rol Soporte normalmente no pertenece a ninguna facultad/carrera.
               </div>
             )}
+            {form.id_rol === 4 && (
+              <div className="sm:col-span-2 text-xs text-muted-foreground italic">
+                Nota: el rol Vicerrector Académico no pertenece a ninguna facultad/carrera y no tiene supervisor.
+              </div>
+            )}
+
+            {/* Asignación automática de supervisor según el rol */}
+            {[1, 2, 3].includes(form.id_rol) && (
+              <div className="sm:col-span-2 space-y-2 rounded-md border bg-muted/30 p-3">
+                <Label className="flex items-center gap-2">
+                  <Network className="h-4 w-4 text-primary" />
+                  Supervisor asignado
+                </Label>
+                {form.id_rol === 3 ? (
+                  // Decano -> Vicerrector único
+                  supervisorCandidates.length === 0 ? (
+                    <p className="text-xs text-destructive">
+                      No existe ningún Vicerrector Académico en el sistema. Crea primero ese usuario.
+                    </p>
+                  ) : (
+                    <div className="text-sm">
+                      <span className="font-medium">{fullName(supervisorCandidates[0])}</span>
+                      <span className="text-muted-foreground"> · Vicerrector Académico</span>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Asignado automáticamente: el Vicerrector Académico es único en el sistema.
+                      </p>
+                    </div>
+                  )
+                ) : form.id_rol === 2 ? (
+                  // Director de programa -> Decano de la facultad seleccionada
+                  !form.id_faculty ? (
+                    <p className="text-xs text-muted-foreground">
+                      Selecciona primero una facultad para ver el Decano correspondiente.
+                    </p>
+                  ) : supervisorCandidates.length === 0 ? (
+                    <p className="text-xs text-destructive">
+                      No existe un Decano para esta facultad. Crea primero ese usuario.
+                    </p>
+                  ) : (
+                    <Select
+                      value={form.supervisor_id ? String(form.supervisor_id) : ""}
+                      onValueChange={(v) => setForm({ ...form, supervisor_id: Number(v) })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona el Decano" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {supervisorCandidates.map((s) => (
+                          <SelectItem key={s.id} value={String(s.id)}>
+                            {fullName(s)} · Decano de Facultad
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )
+                ) : (
+                  // Docente Planta -> Director de la carrera seleccionada
+                  !form.id_professional_career ? (
+                    <p className="text-xs text-muted-foreground">
+                      Selecciona primero una carrera profesional para ver el Director correspondiente.
+                    </p>
+                  ) : supervisorCandidates.length === 0 ? (
+                    <p className="text-xs text-destructive">
+                      No existe un Director de Programa para esta carrera. Crea primero ese usuario.
+                    </p>
+                  ) : (
+                    <Select
+                      value={form.supervisor_id ? String(form.supervisor_id) : ""}
+                      onValueChange={(v) => setForm({ ...form, supervisor_id: Number(v) })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecciona el Director de Programa" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {supervisorCandidates.map((s) => (
+                          <SelectItem key={s.id} value={String(s.id)}>
+                            {fullName(s)} · Director de Programa
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )
+                )}
+              </div>
+            )}
             <div className="space-y-2 sm:col-span-2">
               <Label>
                 Contraseña {editing ? "(dejar vacío para no cambiar)" : "*"}
