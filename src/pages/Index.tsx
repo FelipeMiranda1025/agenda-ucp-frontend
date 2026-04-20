@@ -19,7 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, ClipboardList, History, Settings, Power } from "lucide-react";
+import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, ClipboardList, History, Settings, Power, BarChart3 } from "lucide-react";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import {
   AlertDialog,
@@ -404,6 +404,11 @@ const Index = () => {
                 {user?.rolId === 4 && (
                   <DropdownMenuItem onClick={() => setSettingsOpen(true)} className="gap-2 cursor-pointer">
                     <Settings className="h-4 w-4" /> {t("profile.settings")}
+                  </DropdownMenuItem>
+                )}
+                {user?.rolId === 4 && (
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")} className="gap-2 cursor-pointer">
+                    <BarChart3 className="h-4 w-4" /> {t("profile.dashboard")}
                   </DropdownMenuItem>
                 )}
                 {user?.rolId === 4 && (
