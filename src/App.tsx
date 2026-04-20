@@ -16,6 +16,8 @@ import ScheduleBuilder from "./pages/ScheduleBuilder";
 import AuditLog from "./pages/AuditLog";
 import NotFound from "./pages/NotFound";
 import SupportPanel from "./pages/SupportPanel";
+import { SystemMaintenance } from "@/components/SystemMaintenance";
+import { useSystemEnabled } from "@/hooks/useSystemEnabled";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
@@ -42,6 +44,7 @@ class AgendaErrorBoundary extends React.Component<{ children: React.ReactNode },
 
 const AppContent = () => {
   const { isAuthenticated, roleName } = useAuth();
+  const { enabled: systemEnabled } = useSystemEnabled();
 
   if (!isAuthenticated) {
     return <LoginDialog />;
@@ -50,6 +53,11 @@ const AppContent = () => {
   // Rol Soporte: panel exclusivo de gestión de usuarios. No carga AgendaProvider ni rutas normales.
   if (roleName === "Soporte") {
     return <SupportPanel />;
+  }
+
+  // Sistema apagado por el Vicerrector: bloquea a todos excepto Soporte y Vicerrector
+  if (!systemEnabled && roleName !== "VicerrectorAcadémico") {
+    return <SystemMaintenance />;
   }
 
   return (

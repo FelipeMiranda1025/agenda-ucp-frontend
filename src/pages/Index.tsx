@@ -19,8 +19,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, ClipboardList, History, Settings } from "lucide-react";
+import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, ClipboardList, History, Settings, Power } from "lucide-react";
 import { SettingsDialog } from "@/components/SettingsDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useSystemEnabled, useToggleSystemEnabled } from "@/hooks/useSystemEnabled";
+import { toast } from "sonner";
 
 // Roles that can see the audit log — currently all roles; restrict later as needed
 const AUDIT_VISIBLE_ROLES = [1, 2, 3, 4];
