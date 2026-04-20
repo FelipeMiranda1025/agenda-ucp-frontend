@@ -406,6 +406,21 @@ const Index = () => {
                     <Settings className="h-4 w-4" /> {t("profile.settings")}
                   </DropdownMenuItem>
                 )}
+                {user?.rolId === 4 && (
+                  <DropdownMenuItem
+                    onClick={() => setSystemSwitchOpen(true)}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <Power className="h-4 w-4" />
+                    <span className="flex-1">{t("profile.systemSwitch")}</span>
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        systemEnabled ? "bg-primary" : "bg-destructive"
+                      }`}
+                      aria-hidden
+                    />
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout} className="gap-2 cursor-pointer text-destructive">
                   <LogOut className="h-4 w-4" /> {t("profile.logout")}
@@ -497,6 +512,44 @@ const Index = () => {
       )}
 
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+
+      <AlertDialog open={systemSwitchOpen} onOpenChange={setSystemSwitchOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("profile.systemSwitchConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {systemEnabled
+                ? t("profile.systemSwitchConfirmDescriptionOff")
+                : t("profile.systemSwitchConfirmDescriptionOn")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel") || "Cancelar"}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                const next = !systemEnabled;
+                try {
+                  await toggleSystem.mutateAsync(next);
+                  toast.success(
+                    next
+                      ? t("profile.systemSwitchToastOn")
+                      : t("profile.systemSwitchToastOff")
+                  );
+                } catch (e) {
+                  toast.error(String((e as Error)?.message || e));
+                } finally {
+                  setSystemSwitchOpen(false);
+                }
+              }}
+              className={systemEnabled ? "bg-destructive hover:bg-destructive/90" : ""}
+            >
+              {systemEnabled
+                ? t("profile.systemSwitchConfirmActionOff")
+                : t("profile.systemSwitchConfirmActionOn")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
