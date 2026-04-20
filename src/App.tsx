@@ -16,6 +16,7 @@ import ScheduleBuilder from "./pages/ScheduleBuilder";
 import AuditLog from "./pages/AuditLog";
 import NotFound from "./pages/NotFound";
 import SupportPanel from "./pages/SupportPanel";
+import Dashboard from "./pages/Dashboard";
 import { SystemMaintenance } from "@/components/SystemMaintenance";
 import { useSystemEnabled } from "@/hooks/useSystemEnabled";
 
@@ -70,6 +71,7 @@ const AppContent = () => {
             <Route path="/schedule" element={<ScheduleBuilder />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/audit" element={<AuditLog />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
