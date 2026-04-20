@@ -51,6 +51,9 @@ const Index = () => {
   const [readTick, setReadTick] = useState(0);
   const [visibleSection, setVisibleSection] = useState<string>("header.production");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [systemSwitchOpen, setSystemSwitchOpen] = useState(false);
+  const { enabled: systemEnabled } = useSystemEnabled();
+  const toggleSystem = useToggleSystemEnabled();
 
   const isVicerrector = roleName === "VicerrectorAcadémico";
   const isDecano = roleName === "DecanoFacultad";
