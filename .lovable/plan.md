@@ -2,59 +2,94 @@
 
 ## Análisis
 
-El usuario quiere que el VicerrectorAcadémico (rolId=4) tenga un nuevo ítem en su menú del avatar, debajo de "Ajustes", llamado **"Interruptor"**, que actúa como switch global del sistema:
+El usuario quiere un nuevo ítem **"Dashboard"** en el menú del avatar del Vicerrector (rolId=4), ubicado **encima de "Interruptor"** (entre "Ajustes" y "Interruptor"). Al hacer clic, abre una página nueva (`/dashboard`) con gráficas totalizadoras de TODA la actividad registrada en la app, con filtros por docente, facultad y/o programa, para generar reportes.
 
-- **Encendido (default)**: comportamiento actual.
-- **Apagado**: todos los demás roles (DocentePlanta, DirectorPrograma, DecanoFacultad) ven una pantalla de "Sistema en mantenimiento" al iniciar sesión y NO pueden acceder a la app. Soporte (rol 5) y VicerrectorAcadémico (rol 4) siguen accediendo normalmente.
+### Datos disponibles
+- `agendas` (jsonb `data`, `subfunction_id`, `docente_cc`, `total_horas`) → fuente principal de registros por subfunción.
+- `agenda_views` (`status`: pending/approved/returned, `user_cc`, `reviewer_cc`, `reviewed_at`) → estado de aprobaciones.
+- `users` (cc, nombres, `id_faculty`, `id_professional_career`, `id_rol`).
+- `faculties`, `professional_careers`, `subjects`.
+- 11 subfunciones (`subfunctions.ts`): Docencia Directa, Indirecta, Trabajos de Grado, Prácticas, Investigación, Proyección Social, Complementarias, Formación Docentes, Administrativas, etc.
 
-El estado debe persistir en BD (afecta a todos los usuarios) y reflejarse en tiempo real para los usuarios ya logueados.
+## Estructura de la página `/dashboard`
 
-## Cambios
+Layout:
+- **Header**: título "Dashboard de reportes", botón "Volver", botón "Exportar PDF" (futuro, opcional v1).
+- **Barra de filtros** (sticky, parte superior):
+  - Combobox **Docente** (con búsqueda — todos los docentes o "Todos").
+  - Select **Facultad** ("Todas" / cada facultad).
+  - Select **Programa** (filtrado por facultad seleccionada / "Todos").
+  - Select **Estado de agenda** (Todos / Aprobada / Pendiente / Devuelta).
+  - Botón "Limpiar filtros".
+- **Cards de KPIs** (4 tarjetas resumen, top):
+  1. Total docentes con agenda registrada
+  2. Total horas semestrales acumuladas
+  3. % Agendas aprobadas
+  4. Promedio horas/docente
+- **Gráficas** (grid 2 columnas, 1 col en móvil), una por subfunción + cruzadas:
+  1. **Barras horizontales** — Total horas por subfunción (Docencia Directa, Indirecta, Investigación, Proyección Social, Complementarias, Formación, Administrativas, Trabajos de Grado, Prácticas).
+  2. **Pastel** — Estados de agenda (Aprobadas / Pendientes / Devueltas).
+  3. **Barras** — Docentes que dictaron 16 horas exactas de Docencia Directa vs. otros (cumplimiento norma).
+  4. **Barras apiladas** — Distribución de horas por docente (top 10) según subfunción.
+  5. **Barras** — Total horas por facultad.
+  6. **Barras** — Total horas por programa (top 10 si "Todos").
+  7. **Pastel** — Distribución de actividades académico-administrativas aprobadas (cuenta de docentes con `administrativas` aprobadas).
+  8. **Línea/Barras** — Aprobaciones por mes (últimos 6 meses, según `reviewed_at`).
+  9. **Barras** — Cantidad total de proyectos de Trabajos de Grado.
+  10. **Barras** — Cantidad total de estudiantes en Prácticas Académicas.
 
-### 1. Base de datos — nueva tabla `system_settings`
+Todas las gráficas se recalculan reactivamente al cambiar filtros (en cliente con `useMemo`).
 
-Migración:
-- Tabla con una sola fila singleton: `key text PK`, `value jsonb`, `updated_at`, `updated_by text`.
-- Insertar fila inicial: `('system_enabled', '{"enabled": true}')`.
-- RLS: lectura pública (anon+authenticated); update permitido (la app valida rol antes de mutar, igual que el resto del proyecto).
-- Habilitar realtime: `ALTER PUBLICATION supabase_realtime ADD TABLE public.system_settings`.
+## Arquitectura técnica
 
-### 2. Hook nuevo `src/hooks/useSystemEnabled.ts`
-- `useSystemEnabled()`: query a `system_settings` donde `key='system_enabled'`, devuelve `boolean`.
-- Suscripción realtime a `postgres_changes` para invalidar la query cuando cambie.
-- `useToggleSystemEnabled()`: mutación que hace upsert con el nuevo valor + `updated_by = user.id`.
+### 1. Hook nuevo `src/hooks/useDashboardData.ts`
+Una sola query consolidada que trae:
+- `agendas` (todas, con `data`, `subfunction_id`, `docente_cc`, `total_horas`)
+- `agenda_views` (todas)
+- `users` (todos los docentes — rolId 1, 2, 3) con join virtual a `faculties`/`professional_careers`
+- `faculties`
+- `professional_careers`
 
-### 3. `src/pages/Index.tsx`
-- Agregar ítem `DropdownMenuItem` debajo de "Ajustes", visible solo si `user?.rolId === 4`:
-  - Icono `Power` de lucide-react.
-  - Label: `t("profile.systemSwitch")` ("Interruptor" / "System Switch").
-  - Al hacer clic abre un `AlertDialog` de confirmación con el estado actual ("Encendido / Apagado") y un botón para alternar.
-- Mostrar un badge sutil junto al ítem indicando el estado actual (punto verde/rojo).
+Devuelve estructura normalizada lista para filtrado/agregación.
 
-### 4. Bloqueo global — `src/App.tsx`
-- En `AppContent`, después de validar `isAuthenticated`, leer `useSystemEnabled()`.
-- Si `enabled === false` y `roleName !== "Soporte"` y `roleName !== "VicerrectorAcadémico"` → renderizar pantalla de mantenimiento (componente nuevo `SystemMaintenance.tsx`) con icono, mensaje y botón de cerrar sesión.
+### 2. Página nueva `src/pages/Dashboard.tsx`
+- Protegida: solo `rolId === 4` (Vicerrector). Si otro rol entra, redirige a `/`.
+- Usa `useDashboardData()` + estado local de filtros.
+- `useMemo` para agregaciones derivadas (por subfunción, facultad, programa, docente).
+- Renderiza KPIs + grid de `ChartContainer` (recharts ya disponible en `src/components/ui/chart.tsx`).
 
-### 5. `src/components/SystemMaintenance.tsx` (nuevo)
-Pantalla full-screen con logo UCP, icono de candado/herramientas, título "Sistema en mantenimiento", subtítulo explicativo y botón "Cerrar sesión".
+### 3. Componentes auxiliares (en mismo archivo o separados)
+- `<KpiCard title value icon />`
+- `<DashboardFilters />` (Combobox docente con `cmdk`, igual patrón que asignatura).
+- Cada gráfica como sub-componente pequeño dentro de `Dashboard.tsx`.
 
-### 6. i18n — `src/i18n/translations.ts`
-Agregar claves:
-- `profile.systemSwitch` → "Interruptor" / "System Switch"
-- `profile.systemSwitchOn` / `Off`
-- `profile.systemSwitchConfirmTitle/Description/Action`
-- `maintenance.title` → "Sistema en mantenimiento" / "System under maintenance"
-- `maintenance.description` → "El acceso al sistema fue temporalmente deshabilitado por el Vicerrector Académico. Intente más tarde."
-- `maintenance.logout` → "Cerrar sesión"
+### 4. Ruta `src/App.tsx`
+Añadir `<Route path="/dashboard" element={<Dashboard />} />`.
+
+### 5. `src/pages/Index.tsx`
+Insertar nuevo `DropdownMenuItem` **antes** del bloque del Interruptor (línea 409), visible solo si `user?.rolId === 4`:
+```tsx
+<DropdownMenuItem onClick={() => navigate("/dashboard")} className="gap-2 cursor-pointer">
+  <BarChart3 className="h-4 w-4" /> {t("profile.dashboard")}
+</DropdownMenuItem>
+```
+Importar `BarChart3` de lucide-react.
+
+### 6. i18n `src/i18n/translations.ts`
+Añadir claves ES/EN: `profile.dashboard`, `dashboard.title`, `dashboard.back`, `dashboard.filters.*`, `dashboard.kpi.*`, `dashboard.chart.*`, etc.
+
+## Reglas de agregación clave
+- **"Cuántos docentes dictaron 16 h de Docencia Directa"**: contar docentes únicos cuya suma de `horasSemana` en registros de `subfunction_id='docencia-directa'` sea exactamente 16 (cumple norma).
+- **"Aprobados de actividades académico-administrativas"**: cruzar `agendas` con `subfunction_id='administrativas'` y `agenda_views.status='approved'` por `docente_cc=user_cc`.
+- **Filtros**: si Docente seleccionado → filtrar todo a sus agendas; si Facultad → filtrar usuarios con `id_faculty` y luego sus agendas; idem Programa.
 
 ## Archivos
 
 | Archivo | Cambio |
 |---|---|
-| Migración SQL | Crear tabla `system_settings`, insertar fila inicial, RLS, realtime |
-| `src/hooks/useSystemEnabled.ts` | Nuevo hook con query + realtime + mutación toggle |
-| `src/pages/Index.tsx` | Nuevo `DropdownMenuItem` "Interruptor" con AlertDialog (solo rolId=4) |
-| `src/App.tsx` | Renderizar `SystemMaintenance` cuando enabled=false y rol bloqueado |
-| `src/components/SystemMaintenance.tsx` | Nuevo componente pantalla de mantenimiento |
-| `src/i18n/translations.ts` | Claves ES/EN para interruptor y mantenimiento |
+| `src/hooks/useDashboardData.ts` | **Nuevo** — Queries consolidadas (agendas + agenda_views + users + faculties + careers) |
+| `src/pages/Dashboard.tsx` | **Nuevo** — Página con filtros, KPIs y 10 gráficas usando recharts |
+| `src/App.tsx` | Añadir ruta `/dashboard` |
+| `src/pages/Index.tsx` | Añadir `DropdownMenuItem` "Dashboard" encima de "Interruptor" (solo rolId=4) |
+| `src/i18n/translations.ts` | Claves ES/EN para Dashboard, filtros, KPIs y títulos de gráficas |
 
