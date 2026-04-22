@@ -384,7 +384,7 @@ const Dashboard = () => {
             <SelectTrigger><SelectValue placeholder={t("dashboard.faculty")} /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("dashboard.allFaculties")}</SelectItem>
-              {data.faculties.map((f) => (
+              {faculties.map((f) => (
                 <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
               ))}
             </SelectContent>
