@@ -26,6 +26,15 @@ const translations: Record<string, Record<Language, string>> = {
   "profile.view": { es: "Ver perfil", en: "View profile" },
   "profile.logout": { es: "Cerrar sesión", en: "Log out" },
 
+  // Export agenda
+  "export.downloadAgenda": { es: "Descargar agenda", en: "Download agenda" },
+  "export.disabledReason": {
+    es: "Disponible al crear el horario de permanencia",
+    en: "Available once the permanence schedule is created",
+  },
+  "export.success": { es: "Agenda descargada correctamente", en: "Agenda downloaded successfully" },
+  "export.error": { es: "No se pudo generar la agenda", en: "Could not generate the agenda" },
+
   // Language
   "lang.es": { es: "Español (Colombia)", en: "Spanish (Colombia)" },
   "lang.en": { es: "English", en: "English" },
