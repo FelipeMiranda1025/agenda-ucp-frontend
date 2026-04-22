@@ -124,7 +124,7 @@ const Dashboard = () => {
   }, [data, docenteCc, facultyId, careerId, statusFilter]);
 
   const kpis = useMemo(() => {
-    if (!filtered) return null;
+    if (!filtered) return { docentesConAgenda: 0, totalHoras: 0, pctAprobadas: 0, promedio: 0 };
     const { agendas, latestViewByCc, allowedCcs } = filtered;
     const docentesConAgenda = new Set(agendas.map((a) => a.docente_cc)).size;
     const totalHoras = agendas.reduce((sum, a) => sum + (a.total_horas || 0), 0);
