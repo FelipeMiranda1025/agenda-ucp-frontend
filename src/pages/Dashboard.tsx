@@ -13,7 +13,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import {
   Bar,
   BarChart,
@@ -25,6 +24,7 @@ import {
   Pie,
   PieChart,
   ResponsiveContainer,
+  Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
 } from "recharts";
@@ -439,7 +439,7 @@ const Dashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" />
                 <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <RechartsTooltip />
                 <Bar dataKey="horas" fill={PALETTE[0]} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -452,7 +452,7 @@ const Dashboard = () => {
                   {estadosAgenda.map((e, i) => <Cell key={i} fill={e.color} />)}
                 </Pie>
                 <Legend />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <RechartsTooltip />
               </PieChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -463,7 +463,7 @@ const Dashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <RechartsTooltip />
                 <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                   {cumplimiento16h.map((e, i) => <Cell key={i} fill={e.color} />)}
                 </Bar>
@@ -477,7 +477,7 @@ const Dashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" />
                 <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 10 }} />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <RechartsTooltip />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 {topDocentes.keys.map((k, i) => (
                   <Bar key={k} dataKey={k} stackId="a" fill={PALETTE[i % PALETTE.length]} />
@@ -492,7 +492,7 @@ const Dashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-15} textAnchor="end" height={70} />
                 <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <RechartsTooltip />
                 <Bar dataKey="horas" fill={PALETTE[3]} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -504,7 +504,7 @@ const Dashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" />
                 <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 10 }} />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <RechartsTooltip />
                 <Bar dataKey="horas" fill={PALETTE[4]} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -517,7 +517,7 @@ const Dashboard = () => {
                   {adminAprobadas.map((e, i) => <Cell key={i} fill={e.color} />)}
                 </Pie>
                 <Legend />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <RechartsTooltip />
               </PieChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -528,7 +528,7 @@ const Dashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="mes" />
                 <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <RechartsTooltip />
                 <Line type="monotone" dataKey="total" stroke={PALETTE[0]} strokeWidth={2} dot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
@@ -540,7 +540,7 @@ const Dashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-15} textAnchor="end" height={70} />
                 <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <RechartsTooltip />
                 <Bar dataKey="proyectos" fill={PALETTE[6]} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -552,7 +552,7 @@ const Dashboard = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-15} textAnchor="end" height={70} />
                 <YAxis />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <RechartsTooltip />
                 <Bar dataKey="estudiantes" fill={PALETTE[7]} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
