@@ -373,6 +373,48 @@ export type Database = {
         }
         Relationships: []
       }
+      lineamientos_documents: {
+        Row: {
+          applied: boolean
+          applied_at: string | null
+          applied_by: string | null
+          file_name: string
+          file_path: string
+          id: string
+          rules_extracted: Json
+          semester_label: string
+          summary: string | null
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          applied?: boolean
+          applied_at?: string | null
+          applied_by?: string | null
+          file_name: string
+          file_path: string
+          id?: string
+          rules_extracted?: Json
+          semester_label: string
+          summary?: string | null
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          applied?: boolean
+          applied_at?: string | null
+          applied_by?: string | null
+          file_name?: string
+          file_path?: string
+          id?: string
+          rules_extracted?: Json
+          semester_label?: string
+          summary?: string | null
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       professional_careers: {
         Row: {
           description: string | null
