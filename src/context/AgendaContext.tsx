@@ -110,10 +110,11 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const docenteId = selectedDocente?.id ?? "";
   const records = useMemo(() => recordsByDocente[docenteId] || [], [recordsByDocente, docenteId]);
 
-  // Read-only when reviewing someone else's agenda (no role can fill another user's agenda)
+  // DecanoFacultad can edit subordinates' agendas; other roles are read-only on others' agendas
+  const canEditOthers = roleName === "DecanoFacultad";
   const isAgendaReadOnly = useMemo(
-    () => !!(selectedDocente && user && selectedDocente.id !== user.id),
-    [selectedDocente, user]
+    () => !!(selectedDocente && user && selectedDocente.id !== user.id && !canEditOthers),
+    [selectedDocente, user, canEditOthers]
   );
 
   // Helper: generate indirect teaching records from all docencia-directa records
