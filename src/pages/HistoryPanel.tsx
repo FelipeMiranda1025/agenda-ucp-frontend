@@ -195,9 +195,6 @@ const HistoryPanel = () => {
             <AlertDialogTitle>{t("history.copyToCurrent")}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("history.copyConfirm")}
-              {confirmCopy && user?.rolId !== 1 && (
-                <span className="block mt-2 font-medium text-foreground">{confirmCopy.name}</span>
-              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
