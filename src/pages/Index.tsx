@@ -19,7 +19,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, ClipboardList, History, Settings, Power, BarChart3 } from "lucide-react";
+import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, ClipboardList, History, Settings, Power, BarChart3, Download } from "lucide-react";
+import { exportAgendaToExcel } from "@/lib/exportAgenda";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import {
   AlertDialog,
@@ -64,7 +65,7 @@ const Index = () => {
   const mainRef = useRef<HTMLDivElement>(null);
 
   // Global comments & notifications
-  const { setSelectedDocente, docentesList, loadFromAgendaView } = useAgenda();
+  const { setSelectedDocente, docentesList, loadFromAgendaView, hasSchedule, records, getSchedule, selectedDocente } = useAgenda();
   const { data: allComments = [] } = useAllAgendaComments();
   const markRead = useMarkCommentsRead();
   const { data: agendaView } = useAgendaView(user?.id);
@@ -396,6 +397,33 @@ const Index = () => {
                 <DropdownMenuItem onClick={() => navigate("/profile")} className="gap-2 cursor-pointer">
                   <User className="h-4 w-4" /> {t("profile.view")}
                 </DropdownMenuItem>
+                {user && user.rolId !== 5 && (
+                  <DropdownMenuItem
+                    disabled={!hasSchedule}
+                    onSelect={(e) => {
+                      if (!hasSchedule) {
+                        e.preventDefault();
+                        return;
+                      }
+                      try {
+                        exportAgendaToExcel({
+                          user,
+                          selectedDocente,
+                          records,
+                          schedule: getSchedule(),
+                        });
+                        toast.success(t("export.success"));
+                      } catch (err) {
+                        console.error(err);
+                        toast.error(t("export.error"));
+                      }
+                    }}
+                    className={`gap-2 ${hasSchedule ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}
+                    title={!hasSchedule ? t("export.disabledReason") : undefined}
+                  >
+                    <Download className="h-4 w-4" /> {t("export.downloadAgenda")}
+                  </DropdownMenuItem>
+                )}
                 {user && AUDIT_VISIBLE_ROLES.includes(user.rolId) && (
                   <DropdownMenuItem onClick={() => navigate("/audit")} className="gap-2 cursor-pointer">
                     <ClipboardList className="h-4 w-4" /> {t("audit.viewAudit")}
