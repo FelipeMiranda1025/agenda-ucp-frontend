@@ -37,8 +37,7 @@ export function LineamientosImportSection() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
-  const { data: semesterValue } = useSemesterLabel();
-  const semesterLabel = (semesterValue as any)?.label ?? "2025-1";
+  const { label: semesterLabel } = useSemesterLabel();
 
   const upload = useUploadLineamientos();
   const apply = useApplyExtractedRules();
