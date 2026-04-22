@@ -2,69 +2,136 @@
 
 ## Análisis
 
-El usuario quiere agregar "Descargar agenda" en el menú del avatar (entre "Ver perfil" y "Registro de auditoría"), visible para todos los roles **excepto Soporte (rolId=5)**. La opción debe estar **siempre visible** pero **deshabilitada hasta que exista un horario de permanencia** (`hasSchedule === true` en `AgendaContext`). Al hacer clic, descarga un `.xlsx` que reproduce **exactamente** la plantilla `AGENDAS_DOCENTES_TDS_2026-1.xlsx` (cabecera + bloques 1.1-1.4 + 2.1-2.5 + totales/promedio + horario semanal), rellenando solo los datos del docente actualmente seleccionado en el sidebar.
+Tres cambios solicitados:
 
-Estructura de la plantilla detectada (1 hoja "Agenda"):
-- Encabezado: "AGENDA SEMESTRAL DE TRABAJO", Nombre, Programa, Semestre, Periodo.
-- **1. PRODUCCIÓN** (rowspan 27): 1.1 Docencia directa, 1.2 Indirecta, 1.3 Trabajos de grado, 1.4 Prácticas, total "Horas Actividades de Docencia".
-- **2. ACTIVIDADES DIFERENTES A LA DOCENCIA** (rowspan 42): 2.1 Investigación, 2.2 Proyección social, 2.3 Complementarias, 2.4 Formación, 2.5 Académico-administrativas, total + subtotal investigación+social+formación.
-- Totales finales: Total horas semestre, Promedio semanal, Horas semestre (920), Horas faltantes.
-- Hojas adicionales (Page 2-5 vacías en la plantilla): se reservarán para "Horario de Permanencia" (cuadrícula días×horas).
+1. **Export Excel sólo para Vicerrector** (no para todos los roles). El semestre genera una nueva agenda cada periodo, por lo que el Vicerrector necesita conservar copia formal.
+2. **Interruptor de sistema = corte de semestre.** Cuando el Vicerrector apague el interruptor, al volverlo a encender el sistema NO debe cargar agendas previas. Apagar = fin de semestre. Encender = nuevo semestre vacío.
+3. **Nuevo ítem "Historial"** en el menú del avatar (debajo de "Ajustes"), visible para todos los roles excepto Soporte. Permite consultar agendas anteriores aprobadas y **copiarlas a la agenda actual**.
 
 ## Solución
 
-### 1. Librería
-Usar `exceljs` (soporta merges, estilos, bordes, anchos de columna, mejor que SheetJS para fidelidad visual). Añadir a `package.json`.
+### 1. Restringir exportación a Excel únicamente al Vicerrector
 
-### 2. Nuevo módulo `src/lib/exportAgenda.ts`
-Función `exportAgendaToExcel({ user, selectedDocente, records, schedule, subfunctions, dropdownOptions, semesterLabel })`:
-- Crea workbook con hoja **"Agenda"** y hoja **"Horario Permanencia"**.
-- **Hoja Agenda** — replica plantilla fielmente:
-  - Filas 1-6: cabecera con merges (`AGENDA SEMESTRAL DE TRABAJO`, nombre completo, programa, semestre, periodo).
-  - Bloque PRODUCCIÓN con merge vertical "1. PRODUCCIÓN" en columna A; subbloques 1.1-1.4 cada uno con su tabla (encabezados, filas dinámicas según registros, fila "Total ..." con `SUM(...)`).
-  - Fila "Horas Actividades de Docencia" con `=SUM(totales 1.1..1.4)`.
-  - Bloque ACTIVIDADES DIFERENTES con merge vertical "2. ACTIVIDADES DIFERENTES A LA DOCENCIA"; subbloques 2.1-2.5 análogos. Fila "Total investigación + Proyección social + Formación".
-  - Fila "Horas Diferentes a la Docencia" con `=SUM(...)`.
-  - Bloque final: `Total horas semestre`, `Promedio semanal semestre` (=total/23), `Horas semestre` (920), `Horas faltantes` (=920-total).
-  - Estilos: bordes, fondo gris para encabezados de subbloque, negrita en totales, anchos A=4, B=42, C-F=14.
-- **Hoja Horario Permanencia**: cuadrícula con columnas Lunes-Sábado (6 días) × filas 8:00-21:00, celdas pintadas con `block.color` y `block.label` desde `getSchedule().blocks`.
-- Mapeo de registros → filas plantilla:
-  - 1.1: `records.filter(r => r.subfunctionId === "docencia-directa")` → columnas Asignatura, Programa, Horas/sem, #Sem, Total.
-  - 1.2-1.4 y 2.x análogo, leyendo `r.data[fieldName]` según `subfunctions[i].fields`.
-- Nombre de archivo: `Agenda_<FirstName>_<LastName>_<semesterLabel>.xlsx` con `FileSaver` o `Blob` + `URL.createObjectURL`.
+`src/pages/Index.tsx` (líneas 400-426): cambiar la condición del `DropdownMenuItem` "Descargar agenda":
 
-### 3. UI — `src/pages/Index.tsx` menú avatar
-Insertar nuevo `<DropdownMenuItem>` entre "Ver perfil" (línea 396-398) y la opción de auditoría (línea 399-403):
-- Visible si `user && user.rolId !== 5` (todos menos Soporte).
-- `disabled={!hasSchedule}` — cuando deshabilitado, mostrar `cursor-not-allowed opacity-50` y tooltip `t("export.disabledReason")` ("Crea primero el horario de permanencia").
-- `onClick`: lee del contexto `records`, `getSchedule()`, `selectedDocente`, `subfunctions`, llama `exportAgendaToExcel(...)`, muestra `toast.success(t("export.success"))`.
-- Icono: `Download` de `lucide-react`.
-- Importar `useAgenda` (`Index.tsx` ya está dentro de `AgendaProvider`).
+```text
+ANTES: {user && user.rolId !== 5 && ( ... )}
+DESPUÉS: {user?.rolId === 4 && ( ... )}
+```
 
-### 4. i18n — claves nuevas en `src/i18n/translations.ts`
+Mantener disabled-by-`hasSchedule` y la lógica de export existente intactas. Reordenar el ítem para que aparezca debajo de "Dashboard" y arriba del interruptor (más coherente con su rol exclusivo).
+
+### 2. Reset semestral al activar el interruptor
+
+#### 2.1 Esquema (migración)
+
+Añadir nueva tabla `semester_archives` para guardar snapshots históricos al apagar el sistema:
+
+```sql
+CREATE TABLE public.semester_archives (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  semester_label text NOT NULL,
+  archived_at  timestamptz NOT NULL DEFAULT now(),
+  archived_by  text,
+  agenda_views jsonb NOT NULL DEFAULT '[]'::jsonb,
+  agenda_comments jsonb NOT NULL DEFAULT '[]'::jsonb,
+  agendas      jsonb NOT NULL DEFAULT '[]'::jsonb,
+  schedules    jsonb NOT NULL DEFAULT '[]'::jsonb
+);
+ALTER TABLE public.semester_archives ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "anyone read" ON public.semester_archives FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "anyone insert" ON public.semester_archives FOR INSERT TO anon, authenticated WITH CHECK (true);
+```
+
+Añadir clave `system_settings.key='semester_label'` con valor `{label: "2026-1"}` para nombrar el semestre activo.
+
+#### 2.2 Hook nuevo `useSemesterReset` (`src/hooks/useSemesterArchive.ts`)
+
+Función `archiveAndResetSemester()`:
+1. Lee `agenda_views`, `agenda_comments`, `agendas` (todas las filas).
+2. Inserta una fila en `semester_archives` con esos snapshots + `semester_label` actual + `archived_by = user.id`.
+3. Borra todas las filas de `agenda_views`, `agenda_comments`, `agendas`.
+4. Incrementa el `semester_label` en `system_settings` (ej. `2026-1` → `2026-2`, `2026-2` → `2027-1`).
+
+#### 2.3 Modificar el toggle del interruptor
+
+`src/pages/Index.tsx` `AlertDialog` de `systemSwitchOpen`:
+- **Al apagar** (`enabled: true → false`): mostrar mensaje claro "Apagar el sistema cierra el semestre actual. Las agendas serán archivadas y el sistema iniciará un nuevo semestre cuando se vuelva a encender." Al confirmar: ejecutar `archiveAndResetSemester()` y luego `toggleSystem.mutate(false)`.
+- **Al encender** (`false → true`): mostrar mensaje "Iniciar un nuevo semestre. Las agendas estarán vacías para todos los docentes." Al confirmar: solo `toggleSystem.mutate(true)`. (El reset ya ocurrió al apagar.)
+
+#### 2.4 Limpiar memoria local en `AgendaContext`
+
+`src/context/AgendaContext.tsx`: suscribirse al evento de reseteo (vía `useSystemEnabled` cambio de `enabled` o invalidando `agenda_views` query) — cuando se detecte que el sistema pasó de `false → true`, limpiar `recordsByDocente` y `scheduleByDocente` (estado local) y forzar `loadFromAgendaView` (que ya no encontrará registros, dejando agenda vacía).
+
+### 3. Nuevo ítem "Historial" (debajo de Ajustes)
+
+#### 3.1 Nueva página `src/pages/HistoryPanel.tsx`
+
+Ruta `/history` (añadir en `src/App.tsx` **fuera** del `AgendaProvider`, igual que `/dashboard`).
+
+Layout:
+- Header con botón "Volver".
+- Listado tipo tabla de `semester_archives` ordenadas por `archived_at desc`: columnas `Semestre`, `Fecha de archivo`, `# Docentes`, `Acciones`.
+- Al hacer clic en una fila → vista detalle: lista de docentes con agenda en ese archivo. Cada docente:
+  - Visualización en sólo lectura de los `records` archivados (reutilizar `SummaryPanel` adaptado o tabla simple agrupada por subfunción).
+  - Botón **"Copiar a mi agenda actual"**.
+
+#### 3.2 Filtrado por rol
+
+- **Docente (rol 1)**: sólo ve sus propios snapshots (filtra por `user_cc === user.id` dentro del JSONB `agenda_views`).
+- **DirectorPrograma (2) / DecanoFacultad (3)**: ve los suyos + sus subordinados (usa la misma jerarquía que ya consume `useSubordinatesWithNames`).
+- **Vicerrector (4)**: ve todos.
+- **Soporte (5)**: el ítem del menú no aparece.
+
+#### 3.3 Acción "Copiar a mi agenda actual"
+
+- Toma los `records` archivados del docente seleccionado.
+- Llama a `useUpsertAgendaView({ userCc: <docenteDestino>, records, status: "pending" })`.
+  - Para **rol 1**: destino siempre es el propio usuario.
+  - Para **roles 2/3/4**: destino es el `selectedDocente` actual (con confirmación previa "Esto reemplazará la agenda actual de X. ¿Continuar?").
+- Muestra `toast.success("Agenda copiada")`.
+- Invalida `agenda_views` para que la UI refleje los nuevos registros al volver a `/`.
+
+#### 3.4 Entrada en el menú del avatar (`src/pages/Index.tsx`)
+
+Insertar nuevo `DropdownMenuItem` justo **después** del bloque de "Ajustes" (línea 432-436) y **antes** del bloque de Dashboard:
+
+```tsx
+{user && user.rolId !== 5 && (
+  <DropdownMenuItem onClick={() => navigate("/history")} className="gap-2 cursor-pointer">
+    <History className="h-4 w-4" /> {t("profile.history")}
+  </DropdownMenuItem>
+)}
+```
+
+`History` ya está importado de lucide-react.
+
+### 4. i18n nuevas claves (`src/i18n/translations.ts`)
+
 | key | ES | EN |
 |---|---|---|
-| `export.downloadAgenda` | "Descargar agenda" | "Download agenda" |
-| `export.disabledReason` | "Disponible al crear el horario de permanencia" | "Available once the permanence schedule is created" |
-| `export.success` | "Agenda descargada correctamente" | "Agenda downloaded successfully" |
-| `export.error` | "No se pudo generar la agenda" | "Could not generate the agenda" |
-
-### 5. Validación de `hasSchedule`
-`hasSchedule` ya existe en `AgendaContext` (memoria local: `scheduleByDocente[docenteId].blocks.length > 0`). El export usará el mismo gate. Cuando el usuario aún no creó horario, el item del menú aparece **gris/deshabilitado** sin navegar ni descargar.
-
-### 6. Datos rellenados desde el contexto actual
-- **Nombre docente**: `selectedDocente.firstName + lastName` (o `user` si "Yo").
-- **Programa académico**: del usuario seleccionado (necesita lookup a `users`/`professional_careers`); para v1 se toma del registro 1.1 más reciente o cae a `—`.
-- **Semestre lectivo**: leer de `system_settings` key `semester_label` o fallback `"2026-1"`.
-- **Registros**: `records` ya filtrados por docente seleccionado (el contexto los expone así).
-- **Horario**: `getSchedule().blocks`.
+| `profile.history` | "Historial" | "History" |
+| `history.title` | "Historial de agendas" | "Agenda history" |
+| `history.semester` | "Semestre" | "Semester" |
+| `history.archivedAt` | "Fecha de archivo" | "Archived at" |
+| `history.docentesCount` | "# Docentes" | "# Teachers" |
+| `history.viewDetail` | "Ver detalle" | "View detail" |
+| `history.copyToCurrent` | "Copiar a mi agenda actual" | "Copy to my current agenda" |
+| `history.copyConfirm` | "Esto reemplazará la agenda actual. ¿Continuar?" | "This will replace the current agenda. Continue?" |
+| `history.copySuccess` | "Agenda copiada correctamente" | "Agenda copied successfully" |
+| `history.empty` | "No hay agendas archivadas" | "No archived agendas" |
+| `system.shutdownSemester` | "Apagar el sistema cerrará el semestre actual y archivará todas las agendas. Al volver a encender se iniciará un nuevo semestre vacío." | "Turning off the system will close the current semester and archive all agendas. Turning it back on starts a new empty semester." |
+| `system.startNewSemester` | "Se iniciará un nuevo semestre con agendas vacías para todos los docentes." | "A new semester will start with empty agendas for all teachers." |
 
 ## Archivos
 
 | Archivo | Cambio |
 |---|---|
-| `package.json` | Añadir dependencia `exceljs` |
-| `src/lib/exportAgenda.ts` | **Nuevo** — genera `.xlsx` replicando la plantilla con datos del docente + hoja horario |
-| `src/pages/Index.tsx` | Insertar `DropdownMenuItem` "Descargar agenda" entre "Ver perfil" y auditoría; lógica disabled según `hasSchedule`; `onClick` llama al exporter |
-| `src/i18n/translations.ts` | Añadir `export.downloadAgenda`, `export.disabledReason`, `export.success`, `export.error` (ES/EN) |
+| `supabase/migrations/<timestamp>_semester_archives.sql` | Crear tabla `semester_archives` + RLS + insertar `system_settings.semester_label` por defecto |
+| `src/hooks/useSemesterArchive.ts` | **Nuevo** — hooks `useSemesterArchives()` (listar), `useArchiveAndResetSemester()` (snapshot + truncar tablas + bump label), `useSemesterLabel()` |
+| `src/pages/HistoryPanel.tsx` | **Nuevo** — listar archivos, ver detalle por docente, botón "Copiar a mi agenda actual" filtrado por rol |
+| `src/App.tsx` | Añadir `<Route path="/history" element={<HistoryPanel />} />` fuera de AgendaProvider |
+| `src/pages/Index.tsx` | (a) Cambiar export Excel a `rolId === 4` y reubicar entre Dashboard e interruptor. (b) Añadir item "Historial" tras "Ajustes" para todos menos Soporte. (c) Modificar `AlertDialog` del interruptor: nuevos textos + ejecutar `archiveAndResetSemester` al apagar |
+| `src/context/AgendaContext.tsx` | Detectar transición `systemEnabled false→true` (vía `useSystemEnabled`) y limpiar `recordsByDocente` y `scheduleByDocente` locales |
+| `src/i18n/translations.ts` | Añadir todas las claves de la tabla anterior (ES/EN) |
 
