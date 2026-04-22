@@ -415,6 +415,16 @@ const Dashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        {isError && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 text-destructive px-4 py-3 text-sm">
+            {t("dashboard.error")}
+          </div>
+        )}
+        {!isError && !hasAgendas && (
+          <div className="rounded-md border border-border bg-muted/40 text-muted-foreground px-4 py-3 text-sm">
+            {t("dashboard.noData")}
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard icon={<Users className="h-5 w-5" />} title={t("dashboard.kpi.docentes")} value={kpis.docentesConAgenda} />
           <KpiCard icon={<Clock className="h-5 w-5" />} title={t("dashboard.kpi.totalHoras")} value={kpis.totalHoras} />
