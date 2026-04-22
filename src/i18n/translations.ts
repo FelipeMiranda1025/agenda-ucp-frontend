@@ -25,6 +25,34 @@ const translations: Record<string, Record<Language, string>> = {
   // Profile dropdown
   "profile.view": { es: "Ver perfil", en: "View profile" },
   "profile.logout": { es: "Cerrar sesión", en: "Log out" },
+  "profile.history": { es: "Historial", en: "History" },
+
+  // History panel
+  "history.title": { es: "Historial de agendas", en: "Agenda history" },
+  "history.semester": { es: "Semestre", en: "Semester" },
+  "history.archivedAt": { es: "Fecha de archivo", en: "Archived at" },
+  "history.docentesCount": { es: "# Docentes", en: "# Teachers" },
+  "history.viewDetail": { es: "Ver detalle", en: "View detail" },
+  "history.copyToCurrent": { es: "Copiar a mi agenda actual", en: "Copy to my current agenda" },
+  "history.copyConfirm": { es: "Esto reemplazará la agenda actual. ¿Continuar?", en: "This will replace the current agenda. Continue?" },
+  "history.copySuccess": { es: "Agenda copiada correctamente", en: "Agenda copied successfully" },
+  "history.empty": { es: "No hay agendas archivadas", en: "No archived agendas" },
+  "history.docente": { es: "Docente", en: "Teacher" },
+  "history.recordsCount": { es: "Registros", en: "Records" },
+  "history.actions": { es: "Acciones", en: "Actions" },
+  "history.you": { es: "Yo", en: "Me" },
+  "common.back": { es: "Volver", en: "Back" },
+
+  // System shutdown / new semester
+  "system.shutdownSemester": {
+    es: "Apagar el sistema cerrará el semestre actual y archivará todas las agendas. Al volver a encender se iniciará un nuevo semestre vacío.",
+    en: "Turning off the system will close the current semester and archive all agendas. Turning it back on starts a new empty semester.",
+  },
+  "system.startNewSemester": {
+    es: "Se iniciará un nuevo semestre con agendas vacías para todos los docentes.",
+    en: "A new semester will start with empty agendas for all teachers.",
+  },
+  "system.archiveSuccess": { es: "Semestre archivado correctamente", en: "Semester archived successfully" },
 
   // Export agenda
   "export.downloadAgenda": { es: "Descargar agenda", en: "Download agenda" },
