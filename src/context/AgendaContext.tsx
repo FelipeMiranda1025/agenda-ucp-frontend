@@ -169,7 +169,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const addRecord = useCallback((record: Omit<AgendaRecord, "id" | "createdAt">) => {
     if (!docenteId) return;
-    if (user && docenteId !== user.id) {
+    if (user && docenteId !== user.id && !canEditOthers) {
       console.warn("[AgendaContext] addRecord blocked: cannot modify another user's agenda");
       return;
     }
@@ -180,7 +180,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         { ...record, id: String(Date.now()), createdAt: new Date().toISOString() },
       ],
     }));
-  }, [docenteId, user]);
+  }, [docenteId, user, canEditOthers]);
 
   const updateRecord = useCallback((id: string, data: AgendaRecord["data"], totalHoras: number) => {
     if (!docenteId) return;
