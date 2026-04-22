@@ -16,6 +16,8 @@ import {
   RecommendationRule,
 } from "@/hooks/useRecommendationRules";
 import { Loader2, RotateCcw, Save, Eye, EyeOff, Plus, X } from "lucide-react";
+import { LineamientosImportSection } from "@/components/LineamientosImportSection";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Props {
   open: boolean;
@@ -242,28 +244,37 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{t("settings.title")}</DialogTitle>
           <DialogDescription>{t("settings.description")}</DialogDescription>
         </DialogHeader>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <ScrollArea className="flex-1 -mx-6 px-6">
+          <div className="space-y-6 pr-1">
+            <LineamientosImportSection />
+
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold">{t("settings.manualEditTitle")}</h3>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Category)} className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="investigacion">{t("settings.investigacion")}</TabsTrigger>
+                    <TabsTrigger value="administrativas">{t("settings.administrativas")}</TabsTrigger>
+                    <TabsTrigger value="formacion">{t("settings.formacion")}</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="investigacion" className="mt-4">{renderRules("investigacion", grouped.investigacion)}</TabsContent>
+                  <TabsContent value="administrativas" className="mt-4">{renderRules("administrativas", grouped.administrativas)}</TabsContent>
+                  <TabsContent value="formacion" className="mt-4">{renderRules("formacion", grouped.formacion)}</TabsContent>
+                </Tabs>
+              )}
+            </div>
           </div>
-        ) : (
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Category)} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="investigacion">{t("settings.investigacion")}</TabsTrigger>
-              <TabsTrigger value="administrativas">{t("settings.administrativas")}</TabsTrigger>
-              <TabsTrigger value="formacion">{t("settings.formacion")}</TabsTrigger>
-            </TabsList>
-            <TabsContent value="investigacion" className="mt-4">{renderRules("investigacion", grouped.investigacion)}</TabsContent>
-            <TabsContent value="administrativas" className="mt-4">{renderRules("administrativas", grouped.administrativas)}</TabsContent>
-            <TabsContent value="formacion" className="mt-4">{renderRules("formacion", grouped.formacion)}</TabsContent>
-          </Tabs>
-        )}
+        </ScrollArea>
 
         <DialogFooter className="gap-2 sm:gap-2">
           <Button
