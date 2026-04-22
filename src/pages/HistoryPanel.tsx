@@ -17,7 +17,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useSemesterArchives, type SemesterArchive } from "@/hooks/useSemesterArchive";
-import { useSubordinatesWithNames, useAllDocentes, useUpsertAgendaView } from "@/hooks/useDatabase";
+import { useUpsertAgendaView } from "@/hooks/useDatabase";
 import { toast } from "sonner";
 
 interface ArchivedDocenteEntry {
