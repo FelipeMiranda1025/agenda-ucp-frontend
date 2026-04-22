@@ -49,7 +49,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { data, isLoading } = useDashboardData();
+  const { data, isLoading, isError } = useDashboardData();
 
   const [docenteCc, setDocenteCc] = useState<string>("all");
   const [docenteOpen, setDocenteOpen] = useState(false);
