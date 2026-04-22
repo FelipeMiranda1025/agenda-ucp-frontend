@@ -17,7 +17,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useSemesterArchives, type SemesterArchive } from "@/hooks/useSemesterArchive";
-import { useSubordinatesWithNames, useAllDocentes, useUpsertAgendaView } from "@/hooks/useDatabase";
+import { useUpsertAgendaView } from "@/hooks/useDatabase";
 import { toast } from "sonner";
 
 interface ArchivedDocenteEntry {
@@ -28,30 +28,20 @@ interface ArchivedDocenteEntry {
 
 const HistoryPanel = () => {
   const navigate = useNavigate();
-  const { user, roleName } = useAuth();
+  const { user } = useAuth();
   const { t } = useLanguage();
   const { data: archives = [], isLoading } = useSemesterArchives();
   const upsertAgendaView = useUpsertAgendaView();
 
-  const isVicerrector = roleName === "VicerrectorAcadémico";
-  const { data: subordinates = [] } = useSubordinatesWithNames(isVicerrector ? undefined : user?.id);
-  const { data: allDocentes = [] } = useAllDocentes(isVicerrector);
-
-  const allowedCcs = useMemo<Set<string> | null>(() => {
-    if (!user) return new Set();
-    if (isVicerrector) return null; // null = ver todo
-    const set = new Set<string>([user.id]);
-    const list = isVicerrector ? allDocentes : subordinates;
-    for (const s of list) set.add(s.id);
-    return set;
-  }, [user, isVicerrector, subordinates, allDocentes]);
+  const allowedCcs = useMemo<Set<string>>(() => {
+    return new Set<string>(user ? [user.id] : []);
+  }, [user]);
 
   const [selectedArchive, setSelectedArchive] = useState<SemesterArchive | null>(null);
   const [confirmCopy, setConfirmCopy] = useState<{ entry: ArchivedDocenteEntry; name: string } | null>(null);
 
   const filterEntries = (archive: SemesterArchive): ArchivedDocenteEntry[] => {
     const entries = (archive.agenda_views || []) as ArchivedDocenteEntry[];
-    if (allowedCcs === null) return entries;
     return entries.filter((e) => allowedCcs.has(e.user_cc));
   };
 
@@ -63,18 +53,14 @@ const HistoryPanel = () => {
 
   const docenteNameByCc = useMemo(() => {
     const map = new Map<string, string>();
-    const list = isVicerrector ? allDocentes : subordinates;
-    for (const s of list) {
-      map.set(s.id, [s.firstName, s.secondName, s.firstLastName, s.secondLastName].filter(Boolean).join(" "));
-    }
     if (user) map.set(user.id, t("history.you"));
     return map;
-  }, [subordinates, allDocentes, user, isVicerrector, t]);
+  }, [user, t]);
 
   const handleCopy = async (entry: ArchivedDocenteEntry) => {
     try {
-      // Docente (rol 1): destino siempre es el propio usuario
-      const targetCc = user?.rolId === 1 ? user.id : entry.user_cc;
+      // Cada rol solo puede copiar su propia agenda archivada a su agenda actual
+      const targetCc = user!.id;
       await upsertAgendaView.mutateAsync({
         userCc: targetCc,
         records: entry.records || [],
@@ -209,9 +195,6 @@ const HistoryPanel = () => {
             <AlertDialogTitle>{t("history.copyToCurrent")}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("history.copyConfirm")}
-              {confirmCopy && user?.rolId !== 1 && (
-                <span className="block mt-2 font-medium text-foreground">{confirmCopy.name}</span>
-              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
