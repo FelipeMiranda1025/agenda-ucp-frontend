@@ -62,21 +62,36 @@ const AppContent = () => {
   }
 
   return (
-    <AgendaErrorBoundary>
-      <AgendaProvider>
-        <InactivityWarning />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/schedule" element={<ScheduleBuilder />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/audit" element={<AuditLog />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </AgendaProvider>
-    </AgendaErrorBoundary>
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <AgendaErrorBoundary>
+              <AgendaProvider>
+                <InactivityWarning />
+                <Index />
+              </AgendaProvider>
+            </AgendaErrorBoundary>
+          }
+        />
+        <Route
+          path="/schedule"
+          element={
+            <AgendaErrorBoundary>
+              <AgendaProvider>
+                <InactivityWarning />
+                <ScheduleBuilder />
+              </AgendaProvider>
+            </AgendaErrorBoundary>
+          }
+        />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/audit" element={<AuditLog />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
   );
 };
 
