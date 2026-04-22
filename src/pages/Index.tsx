@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useSystemEnabled, useToggleSystemEnabled } from "@/hooks/useSystemEnabled";
+import { useArchiveAndResetSemester } from "@/hooks/useSemesterArchive";
 import { toast } from "sonner";
 
 // Roles that can see the audit log — currently all roles; restrict later as needed
@@ -55,6 +56,7 @@ const Index = () => {
   const [systemSwitchOpen, setSystemSwitchOpen] = useState(false);
   const { enabled: systemEnabled } = useSystemEnabled();
   const toggleSystem = useToggleSystemEnabled();
+  const archiveAndReset = useArchiveAndResetSemester();
 
   const isVicerrector = roleName === "VicerrectorAcadémico";
   const isDecano = roleName === "DecanoFacultad";
@@ -397,7 +399,27 @@ const Index = () => {
                 <DropdownMenuItem onClick={() => navigate("/profile")} className="gap-2 cursor-pointer">
                   <User className="h-4 w-4" /> {t("profile.view")}
                 </DropdownMenuItem>
+                {user && AUDIT_VISIBLE_ROLES.includes(user.rolId) && (
+                  <DropdownMenuItem onClick={() => navigate("/audit")} className="gap-2 cursor-pointer">
+                    <ClipboardList className="h-4 w-4" /> {t("audit.viewAudit")}
+                  </DropdownMenuItem>
+                )}
+                {user?.rolId === 4 && (
+                  <DropdownMenuItem onClick={() => setSettingsOpen(true)} className="gap-2 cursor-pointer">
+                    <Settings className="h-4 w-4" /> {t("profile.settings")}
+                  </DropdownMenuItem>
+                )}
                 {user && user.rolId !== 5 && (
+                  <DropdownMenuItem onClick={() => navigate("/history")} className="gap-2 cursor-pointer">
+                    <History className="h-4 w-4" /> {t("profile.history")}
+                  </DropdownMenuItem>
+                )}
+                {user?.rolId === 4 && (
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")} className="gap-2 cursor-pointer">
+                    <BarChart3 className="h-4 w-4" /> {t("profile.dashboard")}
+                  </DropdownMenuItem>
+                )}
+                {user?.rolId === 4 && (
                   <DropdownMenuItem
                     disabled={!hasSchedule}
                     onSelect={(e) => {
@@ -422,21 +444,6 @@ const Index = () => {
                     title={!hasSchedule ? t("export.disabledReason") : undefined}
                   >
                     <Download className="h-4 w-4" /> {t("export.downloadAgenda")}
-                  </DropdownMenuItem>
-                )}
-                {user && AUDIT_VISIBLE_ROLES.includes(user.rolId) && (
-                  <DropdownMenuItem onClick={() => navigate("/audit")} className="gap-2 cursor-pointer">
-                    <ClipboardList className="h-4 w-4" /> {t("audit.viewAudit")}
-                  </DropdownMenuItem>
-                )}
-                {user?.rolId === 4 && (
-                  <DropdownMenuItem onClick={() => setSettingsOpen(true)} className="gap-2 cursor-pointer">
-                    <Settings className="h-4 w-4" /> {t("profile.settings")}
-                  </DropdownMenuItem>
-                )}
-                {user?.rolId === 4 && (
-                  <DropdownMenuItem onClick={() => navigate("/dashboard")} className="gap-2 cursor-pointer">
-                    <BarChart3 className="h-4 w-4" /> {t("profile.dashboard")}
                   </DropdownMenuItem>
                 )}
                 {user?.rolId === 4 && (
@@ -552,8 +559,8 @@ const Index = () => {
             <AlertDialogTitle>{t("profile.systemSwitchConfirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
               {systemEnabled
-                ? t("profile.systemSwitchConfirmDescriptionOff")
-                : t("profile.systemSwitchConfirmDescriptionOn")}
+                ? t("system.shutdownSemester")
+                : t("system.startNewSemester")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -562,6 +569,11 @@ const Index = () => {
               onClick={async () => {
                 const next = !systemEnabled;
                 try {
+                  // Al apagar: archivar el semestre actual antes de bajar la bandera
+                  if (!next) {
+                    await archiveAndReset.mutateAsync({ archivedBy: user?.id });
+                    toast.success(t("system.archiveSuccess"));
+                  }
                   await toggleSystem.mutateAsync(next);
                   toast.success(
                     next
