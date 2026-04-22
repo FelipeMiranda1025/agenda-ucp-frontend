@@ -315,13 +315,16 @@ const Dashboard = () => {
     setStatusFilter("all");
   };
 
-  if (isLoading || !data || !kpis) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-muted-foreground">{t("dashboard.loading")}</div>
       </div>
     );
   }
+
+  const faculties = data?.faculties ?? [];
+  const hasAgendas = (data?.agendas?.length ?? 0) > 0;
 
   return (
     <div className="min-h-screen bg-background">
