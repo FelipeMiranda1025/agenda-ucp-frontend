@@ -1,1 +1,4 @@
 project_id = "krkunoyzutsaxcourblc"
+
+[functions.parse-lineamientos]
+verify_jwt = false
