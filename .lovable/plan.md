@@ -2,34 +2,49 @@
 
 ## Análisis
 
-El usuario quiere un script SQL completo, listo para copiar/pegar en DBeaver (PostgreSQL), que reproduzca toda la BD del proyecto: tablas, índices, FKs, triggers, vistas, funciones, RLS y datos semilla. Debe ejecutarse sin errores en una BD vacía.
+El Dashboard se renderiza dentro de `<AgendaErrorBoundary><AgendaProvider>...` (`src/App.tsx` líneas 64-79). Cuando el Vicerrector entra a `/dashboard` y no existen agendas creadas/aprobadas, `AgendaProvider` falla al inicializar (no encuentra registros del usuario actual → lanza error) y la `AgendaErrorBoundary` muestra `"Error al cargar la agenda. Recarga la página."` con pantalla en blanco.
 
-Voy a inspeccionar el estado real de la BD (estructura + datos actuales) para garantizar fidelidad antes de generar el script.
+Adicionalmente, `Dashboard.tsx` tampoco maneja el caso `isError` del hook `useDashboardData` ni un dataset vacío de forma explícita: si la query falla, queda atrapado en el spinner de "loading" indefinidamente (líneas 307-313).
 
-## Pasos antes de entregar
+## Solución
 
-1. Listar todas las migraciones existentes para reconstruir el esquema actual.
-2. Consultar `information_schema` y `pg_indexes` para FKs, índices, defaults reales.
-3. Consultar contenido de catálogos y datos seed (`roles`, `states`, `semester`, `faculties`, `education_levels`, `professional_careers`, `subjects`, `users`, `indirect_teaching`, `investigations`, `social_projects`, `teacher_training`, `degree_works`, `complementary_activities`, `administrative_activities`, `academic_practices`, `user_hierarchy`, `recommendation_rules`, `system_settings`).
-4. Consolidar en un único bloque SQL idempotente:
-   - `CREATE SCHEMA IF NOT EXISTS public`
-   - `CREATE TABLE IF NOT EXISTS` para las 23 tablas con tipos, defaults, PKs y UNIQUE
-   - Funciones `update_updated_at_column()` y `audit_trigger_func()`
-   - Triggers (audit + updated_at) en las tablas relevantes
-   - Índices auxiliares (`agendas(docente_cc, subfunction_id)`, `agenda_views(user_cc)`, `audit_log(table_name, record_id)`, etc.)
-   - `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` + políticas RLS tal como están en producción
-   - `INSERT ... ON CONFLICT DO NOTHING` con todos los datos actuales (roles, states, users, subjects, asignaturas, jerarquía, etc.)
-   - `SELECT setval(...)` al final para resetear secuencias
-5. Entregar el script en un único bloque ```sql en el chat (sin archivos, sin documentos, sin presentation-artifact).
+### 1. Sacar `Dashboard` (y otras rutas que no necesitan agenda) del `AgendaProvider`
+En `src/App.tsx` reorganizar `AppContent` así:
+- `BrowserRouter` envuelve TODAS las rutas.
+- Las rutas que **no** dependen del `AgendaProvider` (`/dashboard`, `/audit`, `/profile`) se montan directamente.
+- Sólo `/` y `/schedule` se envuelven en `<AgendaErrorBoundary><AgendaProvider>...`.
 
-## Compatibilidad DBeaver
+```text
+BrowserRouter
+├── /dashboard      → <Dashboard />        (sin AgendaProvider)
+├── /audit          → <AuditLog />         (sin AgendaProvider)
+├── /profile        → <Profile />          (sin AgendaProvider)
+├── /               → <AgendaErrorBoundary><AgendaProvider><Index/></...>
+├── /schedule       → <AgendaErrorBoundary><AgendaProvider><ScheduleBuilder/></...>
+└── *               → <NotFound />
+```
 
-- 100% PostgreSQL estándar (mismo dialecto que Supabase usa).
-- Sin `auth.*`, sin `storage.*`, sin extensiones propietarias de Supabase. Las políticas RLS usan roles `anon` y `authenticated`; agregaré al inicio `CREATE ROLE IF NOT EXISTS` envueltos en bloques `DO $$` para que no falle si esos roles no existen en una BD limpia.
-- Usaré `gen_random_uuid()` (requiere `pgcrypto`); incluiré `CREATE EXTENSION IF NOT EXISTS pgcrypto`.
-- Todo idempotente: `IF NOT EXISTS`, `ON CONFLICT DO NOTHING`, `CREATE OR REPLACE FUNCTION`, `DROP TRIGGER IF EXISTS ... ; CREATE TRIGGER ...`.
+Esto elimina la causa raíz del "Ha ocurrido un error" al entrar a `/dashboard`.
 
-## Entrega
+### 2. `Dashboard.tsx` — degradación elegante con dataset vacío
+- Extraer también `isError` y `error` de `useDashboardData()`.
+- Reemplazar el guard actual (`if (isLoading || !data || !kpis)`) por:
+  - Si `isLoading` → spinner.
+  - Si `isError` → banner de aviso (no pantalla blanca) **encima del framework** + continuar renderizando con dataset vacío.
+  - Si `data` está disponible pero vacío → renderizar normalmente; los `useMemo` ya producen arrays vacíos y KPIs en 0.
+- Asegurar que `kpis` nunca sea `null`: cambiar `if (!filtered) return null;` por `if (!filtered) return { docentesConAgenda: 0, totalHoras: 0, pctAprobadas: 0, promedio: 0 };`.
+- Igual para `filtered`: cuando `data` no existe, devolver una estructura vacía coherente (`{ agendas: [], views: [], users: [], faculties: [], careers: [], userByCc: new Map(), allowedCcs: new Set(), latestViewByCc: new Map() }`) en lugar de `null`, para que todos los `useMemo` sigan devolviendo `[]`.
+- Añadir, debajo de los KPIs, un mensaje sutil `t("dashboard.noData")` ("Aún no hay agendas registradas") cuando `agendas.length === 0` — la página sigue siendo navegable y muestra todo en cero.
 
-La respuesta final será un único mensaje en chat que comienza con una breve nota de uso (1-2 líneas) y a continuación un solo bloque ```sql … ``` con todo el script. Sin archivos adjuntos, sin descargas.
+### 3. i18n — clave nueva
+- `dashboard.noData` ES: "Aún no hay agendas registradas. Las estadísticas se mostrarán en cero hasta que existan datos." / EN equivalente.
+- `dashboard.error`: "No se pudo cargar la información. Mostrando dashboard en cero." / EN equivalente.
+
+## Archivos
+
+| Archivo | Cambio |
+|---|---|
+| `src/App.tsx` | Mover `BrowserRouter` afuera del `AgendaProvider`; envolver sólo `/` y `/schedule` con `<AgendaErrorBoundary><AgendaProvider>`. `/dashboard`, `/audit`, `/profile`, `*` van fuera |
+| `src/pages/Dashboard.tsx` | `filtered` y `kpis` devuelven estructura vacía en lugar de `null`; manejar `isError`; banner cuando no hay agendas; renderizar siempre el framework |
+| `src/i18n/translations.ts` | Añadir `dashboard.noData` y `dashboard.error` (ES/EN) |
 
