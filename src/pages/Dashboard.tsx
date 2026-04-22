@@ -13,7 +13,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import {
   Bar,
   BarChart,
@@ -25,6 +24,7 @@ import {
   Pie,
   PieChart,
   ResponsiveContainer,
+  Tooltip as RechartsTooltip,
   XAxis,
   YAxis,
 } from "recharts";
