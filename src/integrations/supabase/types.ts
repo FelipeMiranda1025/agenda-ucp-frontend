@@ -480,6 +480,39 @@ export type Database = {
         }
         Relationships: []
       }
+      semester_archives: {
+        Row: {
+          agenda_comments: Json
+          agenda_views: Json
+          agendas: Json
+          archived_at: string
+          archived_by: string | null
+          id: string
+          schedules: Json
+          semester_label: string
+        }
+        Insert: {
+          agenda_comments?: Json
+          agenda_views?: Json
+          agendas?: Json
+          archived_at?: string
+          archived_by?: string | null
+          id?: string
+          schedules?: Json
+          semester_label: string
+        }
+        Update: {
+          agenda_comments?: Json
+          agenda_views?: Json
+          agendas?: Json
+          archived_at?: string
+          archived_by?: string | null
+          id?: string
+          schedules?: Json
+          semester_label?: string
+        }
+        Relationships: []
+      }
       social_projects: {
         Row: {
           id: number
