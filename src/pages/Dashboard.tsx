@@ -70,7 +70,18 @@ const Dashboard = () => {
   }, []);
 
   const filtered = useMemo(() => {
-    if (!data) return null;
+    if (!data) {
+      return {
+        agendas: [] as NonNullable<typeof data>["agendas"],
+        views: [] as NonNullable<typeof data>["views"],
+        users: [] as NonNullable<typeof data>["users"],
+        faculties: [] as NonNullable<typeof data>["faculties"],
+        careers: [] as NonNullable<typeof data>["careers"],
+        userByCc: new Map<string, NonNullable<typeof data>["users"][number]>(),
+        allowedCcs: new Set<string>(),
+        latestViewByCc: new Map<string, NonNullable<typeof data>["views"][number]>(),
+      };
+    }
     const { agendas, views, users, faculties, careers } = data;
 
     const userByCc = new Map(users.map((u) => [u.cc, u]));
