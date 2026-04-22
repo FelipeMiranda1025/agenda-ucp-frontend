@@ -184,7 +184,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const updateRecord = useCallback((id: string, data: AgendaRecord["data"], totalHoras: number) => {
     if (!docenteId) return;
-    if (user && docenteId !== user.id) {
+    if (user && docenteId !== user.id && !canEditOthers) {
       console.warn("[AgendaContext] updateRecord blocked: cannot modify another user's agenda");
       return;
     }
@@ -192,11 +192,11 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       ...prev,
       [docenteId]: (prev[docenteId] || []).map((r) => (r.id === id ? { ...r, data, totalHoras } : r)),
     }));
-  }, [docenteId, user]);
+  }, [docenteId, user, canEditOthers]);
 
   const deleteRecord = useCallback((id: string) => {
     if (!docenteId) return;
-    if (user && docenteId !== user.id) {
+    if (user && docenteId !== user.id && !canEditOthers) {
       console.warn("[AgendaContext] deleteRecord blocked: cannot modify another user's agenda");
       return;
     }
@@ -210,12 +210,12 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       }
       return { ...prev, [docenteId]: filtered };
     });
-  }, [docenteId, generateIndirectRecords, user]);
+  }, [docenteId, generateIndirectRecords, user, canEditOthers]);
 
   // Upsert: match by subfunctionId + ALL string values in data (composite key)
   const upsertRecord = useCallback((subfunctionId: string, data: AgendaRecord["data"], totalHoras: number) => {
     if (!docenteId) return;
-    if (user && docenteId !== user.id) {
+    if (user && docenteId !== user.id && !canEditOthers) {
       console.warn("[AgendaContext] upsertRecord blocked: cannot modify another user's agenda");
       return;
     }
@@ -253,7 +253,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       return { ...prev, [docenteId]: newRecords };
     });
-  }, [docenteId, user, generateIndirectRecords]);
+  }, [docenteId, user, canEditOthers, generateIndirectRecords]);
 
   const getRecordsBySubfunction = useCallback(
     (subfunctionId: string) => records.filter((r) => r.subfunctionId === subfunctionId),
@@ -262,7 +262,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const saveSchedule = useCallback((blocks: ScheduleBlock[]) => {
     if (!docenteId) return;
-    if (user && docenteId !== user.id) {
+    if (user && docenteId !== user.id && !canEditOthers) {
       console.warn("[AgendaContext] saveSchedule blocked: cannot modify another user's agenda");
       return;
     }
@@ -274,7 +274,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         lastModified: new Date().toISOString(),
       },
     }));
-  }, [docenteId, user]);
+  }, [docenteId, user, canEditOthers]);
 
   const getSchedule = useCallback(() => {
     return scheduleByDocente[docenteId] || null;
