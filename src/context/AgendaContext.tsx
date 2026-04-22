@@ -6,6 +6,7 @@ import { DocentePlanta } from "@/types/docentePlanta";
 import { supabase } from "@/integrations/supabase/client";
 import { useSubordinatesWithNames, useAllDocentes, SubordinateDocente } from "@/hooks/useDatabase";
 import { useAuth } from "@/context/AuthContext";
+import { useSystemEnabled } from "@/hooks/useSystemEnabled";
 
 interface AgendaContextType {
   dropdownOptions: DropdownOption[];
@@ -319,6 +320,22 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       loadFromAgendaView();
     }
   }, [docenteId]);
+
+  // Detectar transición del interruptor del sistema (false → true): nuevo semestre.
+  // Limpia memoria local de registros y horarios para que ningún docente conserve datos del semestre anterior.
+  const { enabled: systemEnabled } = useSystemEnabled();
+  const prevEnabledRef = React.useRef<boolean>(systemEnabled);
+  useEffect(() => {
+    if (prevEnabledRef.current === false && systemEnabled === true) {
+      console.log("[AgendaContext] Nuevo semestre detectado: limpiando memoria local.");
+      setRecordsByDocente({});
+      setScheduleByDocente({});
+      setHasPendingAgendaView(false);
+      // Re-cargar (encontrará 0 registros para el nuevo semestre)
+      if (docenteId) loadFromAgendaView();
+    }
+    prevEnabledRef.current = systemEnabled;
+  }, [systemEnabled, docenteId, loadFromAgendaView]);
 
   const metricas = useMemo<MetricasPie>(() => {
     const prodIds = subfunctions.filter((s) => s.sectionId === "produccion").map((s) => s.id);
