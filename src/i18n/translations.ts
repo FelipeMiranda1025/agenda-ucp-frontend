@@ -267,6 +267,8 @@ const translations: Record<string, Record<Language, string>> = {
   "profile.dashboard": { es: "Dashboard", en: "Dashboard" },
   "dashboard.title": { es: "Dashboard de reportes", en: "Reports Dashboard" },
   "dashboard.loading": { es: "Cargando datos...", en: "Loading data..." },
+  "dashboard.noData": { es: "Aún no hay agendas registradas. Las estadísticas se mostrarán en cero hasta que existan datos.", en: "No agendas registered yet. Statistics will show zero until data exists." },
+  "dashboard.error": { es: "No se pudo cargar la información. Mostrando dashboard en cero.", en: "Could not load data. Showing dashboard with zero values." },
   "dashboard.searchDocente": { es: "Buscar docente...", en: "Search teacher..." },
   "dashboard.noResults": { es: "Sin resultados", en: "No results" },
   "dashboard.allDocentes": { es: "Todos los docentes", en: "All teachers" },
