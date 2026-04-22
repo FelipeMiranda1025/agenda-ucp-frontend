@@ -49,7 +49,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { data, isLoading } = useDashboardData();
+  const { data, isLoading, isError } = useDashboardData();
 
   const [docenteCc, setDocenteCc] = useState<string>("all");
   const [docenteOpen, setDocenteOpen] = useState(false);
@@ -70,7 +70,18 @@ const Dashboard = () => {
   }, []);
 
   const filtered = useMemo(() => {
-    if (!data) return null;
+    if (!data) {
+      return {
+        agendas: [] as NonNullable<typeof data>["agendas"],
+        views: [] as NonNullable<typeof data>["views"],
+        users: [] as NonNullable<typeof data>["users"],
+        faculties: [] as NonNullable<typeof data>["faculties"],
+        careers: [] as NonNullable<typeof data>["careers"],
+        userByCc: new Map<string, NonNullable<typeof data>["users"][number]>(),
+        allowedCcs: new Set<string>(),
+        latestViewByCc: new Map<string, NonNullable<typeof data>["views"][number]>(),
+      };
+    }
     const { agendas, views, users, faculties, careers } = data;
 
     const userByCc = new Map(users.map((u) => [u.cc, u]));
@@ -113,7 +124,7 @@ const Dashboard = () => {
   }, [data, docenteCc, facultyId, careerId, statusFilter]);
 
   const kpis = useMemo(() => {
-    if (!filtered) return null;
+    if (!filtered) return { docentesConAgenda: 0, totalHoras: 0, pctAprobadas: 0, promedio: 0 };
     const { agendas, latestViewByCc, allowedCcs } = filtered;
     const docentesConAgenda = new Set(agendas.map((a) => a.docente_cc)).size;
     const totalHoras = agendas.reduce((sum, a) => sum + (a.total_horas || 0), 0);
@@ -304,13 +315,16 @@ const Dashboard = () => {
     setStatusFilter("all");
   };
 
-  if (isLoading || !data || !kpis) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-muted-foreground">{t("dashboard.loading")}</div>
       </div>
     );
   }
+
+  const faculties = data?.faculties ?? [];
+  const hasAgendas = (data?.agendas?.length ?? 0) > 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -370,7 +384,7 @@ const Dashboard = () => {
             <SelectTrigger><SelectValue placeholder={t("dashboard.faculty")} /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("dashboard.allFaculties")}</SelectItem>
-              {data.faculties.map((f) => (
+              {faculties.map((f) => (
                 <SelectItem key={f.id} value={String(f.id)}>{f.name}</SelectItem>
               ))}
             </SelectContent>
@@ -401,6 +415,16 @@ const Dashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        {isError && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 text-destructive px-4 py-3 text-sm">
+            {t("dashboard.error")}
+          </div>
+        )}
+        {!isError && !hasAgendas && (
+          <div className="rounded-md border border-border bg-muted/40 text-muted-foreground px-4 py-3 text-sm">
+            {t("dashboard.noData")}
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard icon={<Users className="h-5 w-5" />} title={t("dashboard.kpi.docentes")} value={kpis.docentesConAgenda} />
           <KpiCard icon={<Clock className="h-5 w-5" />} title={t("dashboard.kpi.totalHoras")} value={kpis.totalHoras} />
