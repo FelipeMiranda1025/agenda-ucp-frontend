@@ -3,7 +3,8 @@ import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Lock, User } from 'lucide-react';
+import { Lock, User, Mail, Loader2, ArrowLeft } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import ucpLogoWhite from '@/assets/ucp-logo-white.png';
 
 const MAX_FAILED_ATTEMPTS = 3;
@@ -37,9 +38,13 @@ export const LoginDialog: React.FC = () => {
   const [passwordError, setPasswordError] = useState('');
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showMessage, setShowMessage] = useState(false);
-  const [countdown, setCountdown] = useState(5);
-  const [redirected, setRedirected] = useState(false);
+  // Recuperar contraseña
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotIdentifier, setForgotIdentifier] = useState('');
+  const [forgotIdentifierError, setForgotIdentifierError] = useState('');
+  const [forgotSending, setForgotSending] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState('');
 
   // Rate limiting
   const [failedAttempts, setFailedAttempts] = useState(0);
@@ -67,33 +72,47 @@ export const LoginDialog: React.FC = () => {
     };
   }, [lockoutUntil]);
 
-  // Forgot password redirect logic
-  useEffect(() => {
-    if (!showMessage) return;
-    if (redirected) return;
-    if (countdown <= 0) {
-      const link = document.createElement('a');
-      link.href = 'https://www.gmail.com';
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setRedirected(true);
-      const hideTimer = setTimeout(() => {
-        setShowMessage(false);
-        setRedirected(false);
-        setCountdown(5);
-      }, 120000);
-      return () => clearTimeout(hideTimer);
-    }
-    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [showMessage, countdown, redirected]);
-
   const handleForgotPassword = () => {
-    setShowMessage(true);
-    setCountdown(5);
+    setForgotOpen(true);
+    setForgotIdentifier('');
+    setForgotIdentifierError('');
+    setForgotError('');
+    setForgotSuccess('');
+  };
+
+  const handleSendForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotIdentifierError('');
+
+    const trimmed = forgotIdentifier.trim();
+    const idError = getUsernameError(trimmed);
+    if (idError) {
+      setForgotIdentifierError(idError);
+      return;
+    }
+
+    setForgotSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'request-password-reset',
+        { body: { identifier: trimmed } }
+      );
+
+      if (error || (data && (data as any).error)) {
+        setForgotError(
+          ((data as any)?.error as string) ||
+            'Intenta nuevamente.'
+        );
+      } else {
+        setForgotOpen(false);
+        setForgotSuccess('Se envió la nueva contraseña al correo');
+      }
+    } catch {
+      setForgotError('Intenta nuevamente.');
+    } finally {
+      setForgotSending(false);
+    }
   };
 
   const isLockedOut = lockoutUntil !== null && Date.now() < lockoutUntil;
@@ -229,17 +248,10 @@ export const LoginDialog: React.FC = () => {
             </button>
           </div>
 
-          {showMessage && (
-            <div className="text-center space-y-1">
-              <p className="text-sm font-medium text-foreground">
-                Debes escribir a soporte@ucp.edu.co
-              </p>
-              {!redirected && (
-                <p className="text-sm text-muted-foreground">
-                  Redirigiendo en {countdown}...
-                </p>
-              )}
-            </div>
+          {forgotSuccess && (
+            <p className="text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md px-3 py-2 text-center dark:text-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-800">
+              {forgotSuccess}
+            </p>
           )}
 
           {serverError && (
@@ -263,6 +275,88 @@ export const LoginDialog: React.FC = () => {
           </Button>
         </form>
       </div>
+
+      {forgotOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-background rounded-2xl shadow-2xl border overflow-hidden">
+            <div className="bg-primary px-6 py-5 flex items-center gap-3">
+              <Mail className="h-5 w-5 text-primary-foreground" />
+              <h3 className="text-primary-foreground text-lg font-semibold">
+                Recuperar contraseña
+              </h3>
+            </div>
+
+            <form onSubmit={handleSendForgot} className="p-6 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Ingresa tu cédula o correo institucional. Enviaremos una contraseña
+                temporal al correo registrado en el sistema.
+              </p>
+
+              <div className="space-y-2">
+                <Label htmlFor="forgotIdentifier" className="text-sm font-medium">
+                  Cédula o correo institucional
+                </Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="forgotIdentifier"
+                    type="text"
+                    placeholder="Ej: 1234567890 o correo@ucp.edu.co"
+                    value={forgotIdentifier}
+                    onChange={(e) => {
+                      setForgotIdentifier(e.target.value);
+                      setForgotIdentifierError('');
+                      setForgotError('');
+                    }}
+                    className="pl-10"
+                    autoFocus
+                    maxLength={100}
+                    disabled={forgotSending}
+                  />
+                </div>
+                {forgotIdentifierError && (
+                  <p className="text-sm text-destructive text-left">
+                    {forgotIdentifierError}
+                  </p>
+                )}
+              </div>
+
+              {forgotError && (
+                <p className="text-sm text-destructive font-medium bg-destructive/10 rounded-md px-3 py-2">
+                  {forgotError}
+                </p>
+              )}
+
+              <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setForgotOpen(false)}
+                  disabled={forgotSending}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={forgotSending}
+                >
+                  {forgotSending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    'Enviar contraseña temporal'
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
