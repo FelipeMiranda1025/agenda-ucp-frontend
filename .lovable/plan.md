@@ -1,110 +1,52 @@
-
-
 ## Análisis
 
-El Vicerrector no quiere editar regla por regla. Su flujo real es: subir el PDF de lineamientos del semestre y que el sistema **interprete el texto** y actualice automáticamente las reglas de recomendación. El PDF adjunto (Lineamientos 2025-2) contiene los Artículos 1-8 con reglas cuantificables claras: cargas horarias por rol/situación (10h, 13h, 16h, 6h, 5h, etc.), límites de trabajos de grado/lecturas (hasta 4), tiempos por actividad (Líder Colectivo 4h, Comité Curricular 3h, etc.) y equivalencias posgrado→pregrado.
+Dos cambios independientes pero complementarios sobre la gestión de contraseñas:
 
-La opción "Ajustes" debe **mantener todo lo actual** (tabs Investigación/Administrativas/Formación con edición manual, switch activo/inactivo, crear, restablecer) y **añadir un nuevo bloque superior** para subir el PDF e importar reglas automáticamente vía IA.
+### 1. "Olvidé mi contraseña" — flujo nuevo
+Hoy redirige a Gmail (línea 75-81 de `LoginDialog.tsx`). Se reemplaza por:
+- Modal que pide la **cédula o correo institucional**.
+- Backend (edge function) busca el usuario, genera una **contraseña temporal aleatoria** (12 caracteres, cumple política: mayúsc + minúsc + número + especial), la guarda hasheada (SHA-256, mismo algoritmo que `AuthContext.hashPassword`) en `users.password`, y envía un correo al `email` institucional con la contraseña en texto plano.
+- Toast de éxito: "Hemos enviado una contraseña temporal a tu correo institucional".
+- El usuario inicia sesión con esa contraseña temporal y luego puede cambiarla desde su perfil.
 
-## Solución
+### 2. Cambiar contraseña desde "Ver perfil"
+- Botón **"Cambiar contraseña"** debajo del avatar/foto en `Profile.tsx`.
+- Abre un `Dialog` con flujo en 2 pasos:
+  1. **Paso 1 — Validación**: input "Contraseña actual" + botón "Verificar". Hashea y compara contra `users.password WHERE cc = user.id`. Si no coincide → error visible. Si coincide → habilita paso 2.
+  2. **Paso 2 — Nueva contraseña**: inputs "Nueva contraseña" y "Confirmar contraseña" con la misma política que login (`isValidPassword`: ≥8 chars, mayúsc, minúsc, número, especial). Botón "Confirmar" → actualiza `users.password` con el nuevo hash.
+- Al confirmar: toast de éxito y cierra el modal. La sesión sigue activa (no se requiere re-login porque sólo cambia el hash).
 
-### 1. Storage para los PDFs históricos
-Crear bucket `lineamientos` (privado) para guardar cada PDF subido (auditoría/historial).
+## Infraestructura de email
 
-### 2. Tabla nueva `lineamientos_documents`
-Registra cada subida: `id`, `semester_label`, `file_path`, `uploaded_by`, `uploaded_at`, `rules_extracted` (jsonb con las reglas que la IA extrajo), `applied` (bool). RLS abierta como las demás.
+El proyecto **no tiene infraestructura de email aún**. Como el usuario eligió "Configurar dominio propio (notify.ucp.edu.co)":
 
-### 3. Edge Function `parse-lineamientos`
-- Recibe `{ filePath }`.
-- Descarga el PDF del bucket vía service role.
-- Extrae texto (usa `pdfjs-dist` desde Deno o convierte a base64 y lo manda a Gemini directamente — Gemini 2.5 Pro acepta PDF como input multimodal, así que **se manda el PDF completo a `google/gemini-2.5-pro` vía Lovable AI Gateway** sin parser intermedio).
-- Prompt de sistema: "Eres analista de lineamientos académicos UCP. Extrae las reglas cuantificables del PDF y devuélvelas como JSON estricto…" + schema de salida.
-- Schema de tool calling:
-  ```json
-  {
-    "rules": [
-      {
-        "category": "investigacion|administrativas|formacion",
-        "rule_key": "string snake_case",
-        "label": "Texto humano de la regla",
-        "hours": number,
-        "subjects": number,
-        "source_article": "Art. 6.a"
-      }
-    ],
-    "summary": "string"
-  }
-  ```
-- Devuelve `{ rules, summary, raw_text? }`.
-- Configurar `verify_jwt = false` en `supabase/config.toml` para que el cliente la invoque sin sesión Supabase (usamos auth local).
+1. Mostrar el diálogo de configuración de dominio para que el usuario añada los registros NS en `ucp.edu.co` apuntando al subdominio `notify`.
+2. Tras la configuración (incluso con DNS en propagación), se monta la infraestructura de email de Lovable (cola pgmq, tablas, cron) y se hace **scaffold de transactional email**.
+3. Se crea una nueva plantilla `password-reset-temporary.tsx` en `_shared/transactional-email-templates/` con la marca UCP (logo, color institucional, tipografía sobria) que muestra: saludo personalizado, contraseña temporal en bloque destacado monoespaciado, instrucción "Inicia sesión y cámbiala desde tu perfil", aviso de seguridad.
+4. Una nueva edge function `request-password-reset` recibe `{ identifier }` (cédula o email), valida con Zod, busca el usuario, genera la contraseña, actualiza el hash en `users` y dispara `send-transactional-email` con `templateName: "password-reset-temporary"` y `templateData: { name, tempPassword }`.
+5. Una segunda edge function `change-password` recibe `{ userCc, currentPassword, newPassword }`, hashea ambos, valida que `currentPassword` coincida y actualiza con el nuevo hash. (Se hace server-side para evitar que el cliente pueda forzar updates sin validar la actual.)
 
-### 4. Hook `useLineamientosImport.ts`
-- `useUploadLineamientos()`: sube PDF al bucket → invoca edge function → guarda fila en `lineamientos_documents` con `rules_extracted`.
-- `useApplyExtractedRules()`: dada una lista de reglas extraídas, hace upsert en `recommendation_rules` (match por `rule_key`; crea si no existe, actualiza `hours`/`subjects`/`label` si existe). Marca `applied=true` en el documento.
-
-### 5. UI — `SettingsDialog.tsx` rediseñado
-
-Estructura nueva con dos secciones colapsables/separadas:
-
-**Bloque A (NUEVO, arriba) — "Importar lineamientos desde PDF"**
-- Visible solo para `rolId === 4` (Vicerrector).
-- Dropzone + input file `accept=".pdf"` con drag-and-drop.
-- Estado: `idle → uploading → parsing → preview → applied`.
-- Botón "Procesar con IA" → llama edge function.
-- **Vista previa**: tabla de reglas extraídas agrupadas por categoría con columnas `Etiqueta · Horas · #Asignaturas · Artículo fuente · ✓ aplicar`. Checkbox por fila para incluir/excluir.
-- Botones: "Aplicar reglas seleccionadas" (ejecuta upsert masivo + invalida `recommendation_rules` para refrescar tabs inferiores) y "Descartar".
-- Banner: "Última importación: <semester_label> · <fecha> · <usuario>" con link "Ver historial" → muestra `lineamientos_documents` ordenado desc.
-
-**Bloque B (existente, abajo) — Tabs de edición manual**
-- Mantiene tal cual: tabs Investigación/Administrativas/Formación, edición línea por línea, switch activo/inactivo, crear regla nueva, restablecer, guardar todo.
-- Sin cambios funcionales.
-
-### 6. Manejo del PDF de muestra
-El PDF que adjuntaste se usa como **caso de prueba** del prompt: el sistema debe extraer al menos:
-- Investigador principal → 10h docencia / 11h registro
-- Co-investigador → 13h / 6h
-- Sin proyecto → 16h
-- Director programa/jefe departamento → 6h
-- Director posgrado → 5h descarga / 9h registro
-- Coordinación de área → 3h descarga / 6h registro
-- Decanos/Vicerrector/Director Doctorado → 1 curso
-- Formación doctorado → 8h / 15h registro
-- Formación maestría → 12h / 7h registro
-- Formación pedagógica → hasta 3h descarga
-- Asesorías trabajo grado → hasta 4
-- Lectura trabajos grado → hasta 4
-- Líder Colectivo 4h, Participación Colectivo 2h, Comité Curricular 3h, Comité Básico Facultad 2h, Líder Grupo Investigación 4h, Líder Revista 2h
-- Equivalencias posgrado: Especialización ×1.5, Maestría ×2.0, Doctorado ×2.5
-
-### 7. i18n nuevas claves (`src/i18n/translations.ts`)
-
-| key | ES | EN |
-|---|---|---|
-| `settings.importPdfTitle` | "Importar lineamientos (PDF)" | "Import guidelines (PDF)" |
-| `settings.importPdfDesc` | "Sube el PDF oficial del semestre. La IA extraerá las reglas y podrás revisarlas antes de aplicar." | "Upload the official semester PDF. AI will extract rules for you to review before applying." |
-| `settings.dropPdf` | "Arrastra el PDF aquí o haz clic para seleccionar" | "Drag the PDF here or click to select" |
-| `settings.processWithAi` | "Procesar con IA" | "Process with AI" |
-| `settings.processing` | "Analizando documento…" | "Analyzing document…" |
-| `settings.extractedRules` | "Reglas extraídas" | "Extracted rules" |
-| `settings.sourceArticle` | "Artículo fuente" | "Source article" |
-| `settings.applySelected` | "Aplicar reglas seleccionadas" | "Apply selected rules" |
-| `settings.appliedSuccess` | "Lineamientos aplicados correctamente" | "Guidelines applied successfully" |
-| `settings.lastImport` | "Última importación" | "Last import" |
-| `settings.viewHistory` | "Ver historial" | "View history" |
-| `settings.importError` | "No se pudo procesar el PDF" | "Could not process the PDF" |
-| `settings.notVicerrector` | "Solo el Vicerrector Académico puede importar lineamientos" | "Only the Academic Vice-Rector can import guidelines" |
-
-### 8. Restricción de acceso
-El bloque de importación solo aparece si `user.rolId === 4`. Para otros roles que abran "Ajustes" (no aplica hoy porque el item está restringido a Vicerrector en `Index.tsx`) se ocultaría también.
+> Nota sobre DNS: el envío real de correos sólo funcionará una vez que `notify.ucp.edu.co` esté verificado (puede tardar hasta 72h). Hasta entonces la infraestructura queda lista pero los correos quedan en cola; el flujo se podrá probar en cuanto DNS verifique.
 
 ## Archivos
 
 | Archivo | Cambio |
 |---|---|
-| `supabase/migrations/<timestamp>_lineamientos.sql` | Crear bucket `lineamientos` (privado) + políticas storage; crear tabla `lineamientos_documents` con RLS abierta |
-| `supabase/functions/parse-lineamientos/index.ts` | **Nuevo** — recibe `filePath`, descarga del bucket, envía PDF a `google/gemini-2.5-pro` vía Lovable AI Gateway con tool-call schema, devuelve `{ rules, summary }` |
-| `supabase/config.toml` | Añadir bloque `[functions.parse-lineamientos]` con `verify_jwt = false` |
-| `src/hooks/useLineamientosImport.ts` | **Nuevo** — `useUploadLineamientos`, `useApplyExtractedRules`, `useLineamientosHistory` |
-| `src/components/SettingsDialog.tsx` | Añadir bloque superior "Importar lineamientos PDF" (dropzone + preview + aplicar) **conservando** las tabs existentes intactas |
-| `src/i18n/translations.ts` | Añadir las claves listadas en sección 7 (ES/EN) |
+| `src/components/LoginDialog.tsx` | Reemplazar `handleForgotPassword`: abrir un sub-modal con input de cédula/correo + botón "Enviar contraseña temporal". Llama a `supabase.functions.invoke('request-password-reset', ...)`. Eliminar el redirect a Gmail y el contador. |
+| `src/pages/Profile.tsx` | Añadir botón "Cambiar contraseña" debajo del avatar. Renderizar `<ChangePasswordDialog>`. |
+| `src/components/ChangePasswordDialog.tsx` | **Nuevo**. Dialog con flujo de 2 pasos (validar actual → nueva + confirmar). Usa `supabase.functions.invoke('change-password', ...)`. Validación de política con `isValidPassword`. |
+| `supabase/functions/request-password-reset/index.ts` | **Nuevo**. Genera contraseña temporal, actualiza hash en `users`, invoca `send-transactional-email`. CORS, validación con Zod. |
+| `supabase/functions/change-password/index.ts` | **Nuevo**. Verifica contraseña actual y actualiza hash. CORS, validación con Zod. |
+| `supabase/functions/_shared/transactional-email-templates/password-reset-temporary.tsx` | **Nuevo**. Plantilla React Email con marca UCP. |
+| `supabase/functions/_shared/transactional-email-templates/registry.ts` | Registrar la nueva plantilla. |
+| `src/i18n/translations.ts` | Nuevas claves: `forgotPassword.title`, `forgotPassword.identifier`, `forgotPassword.send`, `forgotPassword.success`, `forgotPassword.notFound`, `profilePage.changePassword`, `changePassword.currentLabel`, `changePassword.verify`, `changePassword.newLabel`, `changePassword.confirmLabel`, `changePassword.confirm`, `changePassword.success`, `changePassword.wrongCurrent`, `changePassword.mismatch`, `changePassword.weak`. |
 
+## Pasos de implementación (orden)
+
+1. Mostrar diálogo de configuración del dominio `notify.ucp.edu.co`.
+2. Tras setup del dominio: provisionar infraestructura de email + scaffold de transactional emails.
+3. Crear plantilla `password-reset-temporary.tsx` con estilo UCP.
+4. Crear edge functions `request-password-reset` y `change-password`.
+5. Refactorizar `LoginDialog.tsx` (forgot password modal).
+6. Crear `ChangePasswordDialog.tsx` y wiring en `Profile.tsx`.
+7. Añadir traducciones ES/EN.
