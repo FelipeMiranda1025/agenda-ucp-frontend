@@ -3,7 +3,8 @@ import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Lock, User } from 'lucide-react';
+import { Lock, User, Mail, Loader2, ArrowLeft } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import ucpLogoWhite from '@/assets/ucp-logo-white.png';
 
 const MAX_FAILED_ATTEMPTS = 3;
@@ -37,9 +38,13 @@ export const LoginDialog: React.FC = () => {
   const [passwordError, setPasswordError] = useState('');
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showMessage, setShowMessage] = useState(false);
-  const [countdown, setCountdown] = useState(5);
-  const [redirected, setRedirected] = useState(false);
+  // Recuperar contraseña
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotIdentifier, setForgotIdentifier] = useState('');
+  const [forgotIdentifierError, setForgotIdentifierError] = useState('');
+  const [forgotSending, setForgotSending] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotSuccess, setForgotSuccess] = useState('');
 
   // Rate limiting
   const [failedAttempts, setFailedAttempts] = useState(0);
@@ -67,33 +72,47 @@ export const LoginDialog: React.FC = () => {
     };
   }, [lockoutUntil]);
 
-  // Forgot password redirect logic
-  useEffect(() => {
-    if (!showMessage) return;
-    if (redirected) return;
-    if (countdown <= 0) {
-      const link = document.createElement('a');
-      link.href = 'https://www.gmail.com';
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setRedirected(true);
-      const hideTimer = setTimeout(() => {
-        setShowMessage(false);
-        setRedirected(false);
-        setCountdown(5);
-      }, 120000);
-      return () => clearTimeout(hideTimer);
-    }
-    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [showMessage, countdown, redirected]);
-
   const handleForgotPassword = () => {
-    setShowMessage(true);
-    setCountdown(5);
+    setForgotOpen(true);
+    setForgotIdentifier('');
+    setForgotIdentifierError('');
+    setForgotError('');
+    setForgotSuccess('');
+  };
+
+  const handleSendForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError('');
+    setForgotIdentifierError('');
+
+    const trimmed = forgotIdentifier.trim();
+    const idError = getUsernameError(trimmed);
+    if (idError) {
+      setForgotIdentifierError(idError);
+      return;
+    }
+
+    setForgotSending(true);
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'request-password-reset',
+        { body: { identifier: trimmed } }
+      );
+
+      if (error || (data && (data as any).error)) {
+        setForgotError(
+          ((data as any)?.error as string) ||
+            'Intenta nuevamente.'
+        );
+      } else {
+        setForgotOpen(false);
+        setForgotSuccess('Se envió la nueva contraseña al correo');
+      }
+    } catch {
+      setForgotError('Intenta nuevamente.');
+    } finally {
+      setForgotSending(false);
+    }
   };
 
   const isLockedOut = lockoutUntil !== null && Date.now() < lockoutUntil;
