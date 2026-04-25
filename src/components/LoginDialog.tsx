@@ -275,6 +275,88 @@ export const LoginDialog: React.FC = () => {
           </Button>
         </form>
       </div>
+
+      {forgotOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md bg-background rounded-2xl shadow-2xl border overflow-hidden">
+            <div className="bg-primary px-6 py-5 flex items-center gap-3">
+              <Mail className="h-5 w-5 text-primary-foreground" />
+              <h3 className="text-primary-foreground text-lg font-semibold">
+                Recuperar contraseña
+              </h3>
+            </div>
+
+            <form onSubmit={handleSendForgot} className="p-6 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Ingresa tu cédula o correo institucional. Enviaremos una contraseña
+                temporal al correo registrado en el sistema.
+              </p>
+
+              <div className="space-y-2">
+                <Label htmlFor="forgotIdentifier" className="text-sm font-medium">
+                  Cédula o correo institucional
+                </Label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="forgotIdentifier"
+                    type="text"
+                    placeholder="Ej: 1234567890 o correo@ucp.edu.co"
+                    value={forgotIdentifier}
+                    onChange={(e) => {
+                      setForgotIdentifier(e.target.value);
+                      setForgotIdentifierError('');
+                      setForgotError('');
+                    }}
+                    className="pl-10"
+                    autoFocus
+                    maxLength={100}
+                    disabled={forgotSending}
+                  />
+                </div>
+                {forgotIdentifierError && (
+                  <p className="text-sm text-destructive text-left">
+                    {forgotIdentifierError}
+                  </p>
+                )}
+              </div>
+
+              {forgotError && (
+                <p className="text-sm text-destructive font-medium bg-destructive/10 rounded-md px-3 py-2">
+                  {forgotError}
+                </p>
+              )}
+
+              <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setForgotOpen(false)}
+                  disabled={forgotSending}
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={forgotSending}
+                >
+                  {forgotSending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    'Enviar contraseña temporal'
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
