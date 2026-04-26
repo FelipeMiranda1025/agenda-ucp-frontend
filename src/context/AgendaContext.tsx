@@ -3,7 +3,7 @@ import { DropdownOption, Record as AgendaRecord, MetricasPie, ScheduleBlock, Sch
 import { initialDropdownOptions } from "@/data/initialDropdownOptions";
 import { subfunctions } from "@/data/subfunctions";
 import { DocentePlanta } from "@/types/docentePlanta";
-import { supabase } from "@/integrations/supabase/client";
+import { api, qs } from "@/lib/api";
 import { useSubordinatesWithNames, useAllDocentes, SubordinateDocente } from "@/hooks/useDatabase";
 import { useAuth } from "@/context/AuthContext";
 import { useSystemEnabled } from "@/hooks/useSystemEnabled";
@@ -290,13 +290,11 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const loadFromAgendaView = useCallback(async (): Promise<boolean> => {
     if (!docenteId) return false;
     try {
-      const { data, error } = await (supabase.from("agenda_views" as any) as any)
-        .select("*")
-        .eq("user_cc", docenteId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error || !data) return false;
+      const list = await api.get<Array<{ status: string; records: AgendaRecord[] }>>(
+        `/agenda-views${qs({ user_cc: docenteId, limit: 1, order: "created_at.desc" })}`
+      );
+      const data = list[0];
+      if (!data) return false;
       if (data.status === "pending" || data.status === "approved" || data.status === "returned") {
         setHasPendingAgendaView(data.status === "pending");
         const savedRecords = data.records as AgendaRecord[];
