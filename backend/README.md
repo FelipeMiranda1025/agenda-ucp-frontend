@@ -56,11 +56,27 @@ El API queda en `http://localhost:3001/api`.
 ## Roadmap (próximas fases)
 
 - **Fase 2**: Auth (`/api/auth/login`, `/api/auth/forgot-password`) y Users CRUD
+  - JWT firmado con `JWT_SECRET` (sin Supabase Auth)
+  - Hashing de password con `bcrypt`
 - **Fase 3**: Agendas, agenda-views, agenda-comments, subjects, user-hierarchy
 - **Fase 4**: Catálogos y actividades (8 tablas CRUD)
 - **Fase 5**: Audit log (triggers SQL puros), recommendations, lineamientos
-- **Fase 6**: Storage de archivos (volumen Docker para reemplazar Supabase Storage)
-- **Fase 7**: Emails transaccionales (nodemailer + cola en Postgres)
+- **Fase 6**: Subida de archivos + interpretación de texto
+  - **Upload**: `multer` en Express → volumen Docker (`/var/app/uploads`)
+  - **Extracción**: `pdf-parse` para PDF, `mammoth` para DOCX
+  - **Interpretación**: endpoint `POST /api/parse-document` que extrae el texto y lo
+    envía a una API LLM externa (OpenAI o Anthropic Claude) configurada por
+    `OPENAI_API_KEY` o `ANTHROPIC_API_KEY` en `.env`
+  - Reemplaza la edge function `parse-lineamientos` y el storage de Supabase
+- **Fase 7**: Emails transaccionales con `nodemailer`
+  - SMTP configurable por `.env` (Gmail, SendGrid, servidor SMTP de la UCP, Mailgun, etc.)
+  - Variables: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
+  - Endpoints:
+    - `POST /api/auth/forgot-password` → genera token y envía correo de recuperación
+    - `POST /api/auth/reset-password` → valida token y actualiza contraseña
+  - Cola simple en Postgres (`email_queue` table) + worker en proceso (sin pgmq)
+  - Reemplaza las edge functions `send-transactional-email`, `process-email-queue`,
+    `request-password-reset` y `auth-email-hook`
 
 ## Migraciones
 
