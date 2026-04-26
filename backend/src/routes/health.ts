@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { pingDb } from "../db.js";
+import { pingDb } from "../db";
 
 export const healthRouter = Router();
 
@@ -10,7 +10,7 @@ healthRouter.get("/health", async (_req, res) => {
   res.status(dbOk ? 200 : 503).json({
     status: dbOk ? "ok" : "degraded",
     db: dbOk ? "ok" : "error",
-    version: "0.1.0",
+    version: "1.0.0",
     uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
     timestamp: new Date().toISOString(),
   });

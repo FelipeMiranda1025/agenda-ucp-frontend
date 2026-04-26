@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { ApiError, HttpStatus, type ApiErrorBody } from "../types/api.js";
+import { ApiError, HttpStatus, type ApiErrorBody } from "../types/api";
 
 export function notFoundHandler(_req: Request, res: Response): void {
   const body: ApiErrorBody = {
