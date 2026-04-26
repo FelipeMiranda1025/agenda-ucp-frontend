@@ -5,25 +5,40 @@ de planta de la Universidad Católica de Pereira.
 
 ## Arquitectura
 
-Monorepo dividido en dos aplicaciones independientes y desplegables por separado:
+El repositorio está dividido en dos aplicaciones independientes, cada una
+con su propio ciclo de vida y desplegable por separado:
 
 ```
-/
-├── frontend/       React + Vite + TypeScript (UI)
-├── backend/        Node.js + Express + pg (API REST)
-├── docker-compose.yml
-└── .env.example
+/                       ← Frontend (React + Vite + TypeScript)
+├── src/                  Código React (componentes, páginas, hooks)
+├── public/
+├── index.html
+├── package.json          Dependencias del frontend
+├── vite.config.ts
+├── tailwind.config.ts
+├── Dockerfile.frontend   Build estático servido por nginx
+│
+├── backend/            ← API REST (Node.js + Express + pg)
+│   ├── src/              Código del servidor
+│   ├── migrations/       Esquema SQL inicial
+│   ├── package.json      Dependencias del backend
+│   ├── Dockerfile
+│   └── README.md
+│
+├── docker-compose.yml  ← Orquesta postgres + backend + frontend
+├── .env.example
+└── README.md (este archivo)
 ```
 
-- **Frontend**: aplicación SPA construida con React, servida por Nginx en producción.
-- **Backend**: API REST en Node.js que se conecta directamente a PostgreSQL
-  mediante el driver `pg`, sin Supabase, sin Firebase y sin servicios externos.
-- **Base de datos**: PostgreSQL 16 dockerizado, con esquema y datos iniciales
-  cargados automáticamente desde `backend/migrations/` en el primer arranque.
+- **Frontend**: SPA en React 18 + Vite, servida por Nginx en producción.
+- **Backend**: API REST en Node.js 20 + Express, conectado directamente a
+  PostgreSQL mediante el driver `pg`. Sin Supabase, sin Firebase, sin
+  servicios externos.
+- **Base de datos**: PostgreSQL 16 dockerizado. El esquema y los datos
+  iniciales se cargan automáticamente desde `backend/migrations/` en el
+  primer arranque.
 
-## Despliegue rápido (todo con Docker)
-
-Es la forma recomendada para producción institucional UCP.
+## Despliegue completo con Docker (recomendado para producción UCP)
 
 ```bash
 # 1. Clona el repositorio
@@ -32,80 +47,82 @@ cd <NOMBRE_DEL_PROYECTO>
 
 # 2. Configura variables de entorno
 cp .env.example .env
-# Edita .env y cambia POSTGRES_PASSWORD, JWT_SECRET, CORS_ORIGIN, etc.
+# Edita .env: cambia POSTGRES_PASSWORD, JWT_SECRET, CORS_ORIGIN
 
-# 3. Levanta todo (postgres + backend + frontend)
+# 3. Levanta los tres servicios
 docker compose up -d
 
 # 4. Verifica
 curl http://localhost:3001/api/health
-# El frontend queda en http://localhost:8080
+# Frontend: http://localhost:8080
 ```
 
-Para reinicializar la base de datos desde cero:
+Para reinicializar la base de datos desde cero (destruye datos):
 
 ```bash
-docker compose down -v   # destruye el volumen
-docker compose up -d     # recrea todo
+docker compose down -v
+docker compose up -d
 ```
 
 ## Desarrollo local (sin Docker)
 
-Backend y frontend pueden desarrollarse de forma independiente.
+### Frontend
+
+```bash
+npm install
+npm run dev          # http://localhost:5173
+```
 
 ### Backend
 
 ```bash
 cd backend
 cp .env.example .env
-# Asegúrate de tener un PostgreSQL corriendo (puede ser el contenedor docker)
+# Asegúrate de tener PostgreSQL accesible en la URL de .env
 npm install
-npm run dev    # http://localhost:3001/api
+npm run dev          # http://localhost:3001/api
 ```
 
-### Frontend
+Puedes correr solo PostgreSQL con Docker mientras desarrollas el resto local:
 
 ```bash
-cd frontend
-npm install
-npm run dev    # http://localhost:5173
+docker compose up -d postgres
 ```
 
 ## Stack técnico
 
-| Capa       | Tecnologías                                              |
-| ---------- | -------------------------------------------------------- |
-| Frontend   | React 18, Vite 5, TypeScript, Tailwind CSS, shadcn/ui    |
-| Backend    | Node.js 20, Express 4, TypeScript, pg, zod               |
-| Base de datos | PostgreSQL 16                                         |
-| Contenedores | Docker + Docker Compose                                |
+| Capa          | Tecnologías                                              |
+| ------------- | -------------------------------------------------------- |
+| Frontend      | React 18, Vite 5, TypeScript, Tailwind CSS, shadcn/ui    |
+| Backend       | Node.js 20, Express 4, TypeScript, pg, zod               |
+| Base de datos | PostgreSQL 16                                            |
+| Contenedores  | Docker + Docker Compose                                  |
 
 ## Estado actual y roadmap
 
 Este proyecto está en proceso de migración progresiva desde una arquitectura
 basada en Supabase hacia una arquitectura 100% autónoma con Docker.
 
-**Fase 1 (actual — completada)**:
-- ✅ Reorganización del repositorio en `frontend/` + `backend/`
-- ✅ Backend Express + pg con endpoint `/api/health`
-- ✅ Dockerización completa (postgres + backend + frontend)
-- ✅ Esquema de BD migrado a `backend/migrations/`
+**Fase 1 — completada:**
+- Reorganización del repositorio (frontend en raíz, backend en `backend/`)
+- Backend Express + pg con endpoint `/api/health`
+- Dockerización completa (postgres + backend + frontend)
+- Esquema de BD migrado a `backend/migrations/`
 
-**Fases siguientes** (ver `backend/README.md` para detalle):
-- Fase 2: Auth + Users
-- Fase 3: Agendas y dominios principales
-- Fase 4: Catálogos y actividades
-- Fase 5: Audit log + recommendations + lineamientos
-- Fase 6: Storage de archivos
-- Fase 7: Emails transaccionales
-- Fase 8: Limpieza final (eliminar dependencia de Supabase del frontend)
+**Fases siguientes** (ver `backend/README.md`):
+- **Fase 2**: Auth + Users
+- **Fase 3**: Agendas, agenda-views, comentarios, asignaturas, jerarquía
+- **Fase 4**: Catálogos y actividades
+- **Fase 5**: Audit log + recommendations + lineamientos
+- **Fase 6**: Storage de archivos (volumen Docker)
+- **Fase 7**: Emails transaccionales (nodemailer + cola Postgres)
+- **Fase 8**: Limpieza final — eliminar `@supabase/supabase-js` del frontend
 
-Mientras se completan las fases, el frontend sigue funcionando con su
-integración actual a Supabase. Cada fase migra un dominio del frontend al
-nuevo backend de forma incremental.
+Mientras se completan las fases, **el frontend sigue funcionando con su
+integración actual**. Cada fase migra un dominio del frontend al backend
+nuevo de forma incremental, sin romper la aplicación.
 
-## Documentación adicional
+## Variables de entorno
 
-- `backend/README.md` — detalles de la API, estructura y endpoints
-- `frontend/` — código fuente del cliente React
-- `.env.example` — variables de entorno requeridas
+Ver `.env.example` (raíz, para Docker Compose) y `backend/.env.example`
+(para desarrollo local del backend).

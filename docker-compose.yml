@@ -1,19 +1,23 @@
 # =============================================
 # Sistema de Agenda Docente — UCP
-# Despliegue completo: Postgres + Backend API + Frontend
+# Despliegue: PostgreSQL + Backend API + Frontend
 # =============================================
+#
+# Estructura del repositorio:
+#   /            → Frontend (React + Vite)
+#   /backend     → API REST (Node.js + Express)
 #
 # Uso:
 #   1. cp .env.example .env
-#   2. Edita .env con valores seguros
+#   2. Edita .env (al menos POSTGRES_PASSWORD y JWT_SECRET)
 #   3. docker compose up -d
 #
-# Servicios:
+# Servicios expuestos:
 #   - postgres  → localhost:5432
 #   - backend   → http://localhost:3001/api
 #   - frontend  → http://localhost:8080
 #
-# Para reinicializar la BD desde cero:
+# Reinicializar BD:
 #   docker compose down -v && docker compose up -d
 
 services:
@@ -65,8 +69,8 @@ services:
   # ─── Frontend (React + Nginx) ─────────────────
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Dockerfile.frontend
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:3001/api}
     container_name: ucp-frontend
