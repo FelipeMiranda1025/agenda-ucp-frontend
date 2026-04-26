@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api, qs } from "@/lib/api";
 import type {
   DbRole, DbState, DbSemester, DbFaculty,
   DbEducationLevel, DbProfessionalCareer, DbSubject,
@@ -11,46 +11,46 @@ import type {
 } from "@/types/database";
 
 // =============================================
-// Catálogos (read-only hooks)
+// Helper genérico para catálogos
 // =============================================
 
-function useCatalog<T>(table: string, key: string) {
+function useCatalog<T>(path: string, key: string) {
   return useQuery<T[]>({
     queryKey: [key],
-    queryFn: async () => {
-      const { data, error } = await supabase.from(table as any).select("*");
-      if (error) throw error;
-      return (data ?? []) as T[];
-    },
+    queryFn: () => api.get<T[]>(path),
     staleTime: 1000 * 60 * 30, // 30 min cache for catalogs
   });
 }
 
-export const useRoles = () => useCatalog<DbRole>("roles", "roles");
-export const useStates = () => useCatalog<DbState>("states", "states");
-export const useSemesters = () => useCatalog<DbSemester>("semester", "semester");
-export const useFaculties = () => useCatalog<DbFaculty>("faculties", "faculties");
-export const useEducationLevels = () => useCatalog<DbEducationLevel>("education_levels", "education_levels");
-export const useProfessionalCareers = () => useCatalog<DbProfessionalCareer>("professional_careers", "professional_careers");
-
 // =============================================
-// Actividades (read-only hooks)
+// Catálogos
 // =============================================
 
-export const useIndirectTeaching = () => useCatalog<DbActivityBase>("indirect_teaching", "indirect_teaching");
-export const useInvestigations = () => useCatalog<DbActivityBase>("investigations", "investigations");
-export const useSocialProjects = () => useCatalog<DbActivityBase>("social_projects", "social_projects");
-export const useTeacherTraining = () => useCatalog<DbActivityBase>("teacher_training", "teacher_training");
-export const useDegreeWorks = () => useCatalog<DbDegreeWork>("degree_works", "degree_works");
-export const useComplementaryActivities = () => useCatalog<DbActivityBase>("complementary_activities", "complementary_activities");
-export const useAdministrativeActivities = () => useCatalog<DbActivityBase>("administrative_activities", "administrative_activities");
-export const useAcademicPractices = () => useCatalog<DbAcademicPractice>("academic_practices", "academic_practices");
+export const useRoles = () => useCatalog<DbRole>("/roles", "roles");
+export const useStates = () => useCatalog<DbState>("/states", "states");
+export const useSemesters = () => useCatalog<DbSemester>("/semester", "semester");
+export const useFaculties = () => useCatalog<DbFaculty>("/faculties", "faculties");
+export const useEducationLevels = () => useCatalog<DbEducationLevel>("/education-levels", "education_levels");
+export const useProfessionalCareers = () => useCatalog<DbProfessionalCareer>("/professional-careers", "professional_careers");
+
+// =============================================
+// Actividades
+// =============================================
+
+export const useIndirectTeaching = () => useCatalog<DbActivityBase>("/indirect-teaching", "indirect_teaching");
+export const useInvestigations = () => useCatalog<DbActivityBase>("/investigations", "investigations");
+export const useSocialProjects = () => useCatalog<DbActivityBase>("/social-projects", "social_projects");
+export const useTeacherTraining = () => useCatalog<DbActivityBase>("/teacher-training", "teacher_training");
+export const useDegreeWorks = () => useCatalog<DbDegreeWork>("/degree-works", "degree_works");
+export const useComplementaryActivities = () => useCatalog<DbActivityBase>("/complementary-activities", "complementary_activities");
+export const useAdministrativeActivities = () => useCatalog<DbActivityBase>("/administrative-activities", "administrative_activities");
+export const useAcademicPractices = () => useCatalog<DbAcademicPractice>("/academic-practices", "academic_practices");
 
 // =============================================
 // Subjects
 // =============================================
 
-export const useSubjects = () => useCatalog<DbSubject>("subjects", "subjects");
+export const useSubjects = () => useCatalog<DbSubject>("/subjects", "subjects");
 
 // =============================================
 // Agendas (CRUD)
@@ -59,15 +59,7 @@ export const useSubjects = () => useCatalog<DbSubject>("subjects", "subjects");
 export function useAgendas(docenteCc?: string) {
   return useQuery<DbAgenda[]>({
     queryKey: ["agendas", docenteCc],
-    queryFn: async () => {
-      let query = supabase.from("agendas").select("*");
-      if (docenteCc) {
-        query = query.eq("docente_cc", docenteCc);
-      }
-      const { data, error } = await query.order("confirmed_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as unknown as DbAgenda[];
-    },
+    queryFn: () => api.get<DbAgenda[]>(`/agendas${qs({ docente_cc: docenteCc })}`),
     enabled: !!docenteCc,
   });
 }
@@ -75,11 +67,7 @@ export function useAgendas(docenteCc?: string) {
 export function useInsertAgenda() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (agenda: DbAgendaInsert) => {
-      const { data, error } = await supabase.from("agendas").insert(agenda as any).select().single();
-      if (error) throw error;
-      return data as unknown as DbAgenda;
-    },
+    mutationFn: (agenda: DbAgendaInsert) => api.post<DbAgenda>("/agendas", agenda),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agendas"] });
     },
@@ -89,11 +77,8 @@ export function useInsertAgenda() {
 export function useUpdateAgenda() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<DbAgenda> & { id: string }) => {
-      const { data, error } = await supabase.from("agendas").update(updates as any).eq("id", id).select().single();
-      if (error) throw error;
-      return data as unknown as DbAgenda;
-    },
+    mutationFn: ({ id, ...updates }: Partial<DbAgenda> & { id: string }) =>
+      api.put<DbAgenda>(`/agendas/${id}`, updates),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agendas"] });
     },
@@ -103,10 +88,7 @@ export function useUpdateAgenda() {
 export function useDeleteAgenda() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("agendas").delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => api.delete(`/agendas/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agendas"] });
     },
@@ -120,15 +102,7 @@ export function useDeleteAgenda() {
 export function useAgendaComments(docenteCc?: string) {
   return useQuery<DbAgendaComment[]>({
     queryKey: ["agenda_comments", docenteCc],
-    queryFn: async () => {
-      let query = supabase.from("agenda_comments" as any).select("*");
-      if (docenteCc) {
-        query = query.eq("reviewer_cc", docenteCc).or(`agenda_id.in.(select id from agendas where docente_cc='${docenteCc}')`);
-      }
-      const { data, error } = await (query as any).order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as DbAgendaComment[];
-    },
+    queryFn: () => api.get<DbAgendaComment[]>(`/agenda-comments${qs({ docente_cc: docenteCc })}`),
     enabled: !!docenteCc,
   });
 }
@@ -138,11 +112,9 @@ export function useAgendaCommentsByAgenda(agendaIds?: string[]) {
     queryKey: ["agenda_comments_by_agenda", agendaIds],
     queryFn: async () => {
       if (!agendaIds || agendaIds.length === 0) return [];
-      const { data, error } = await (supabase.from("agenda_comments" as any).select("*") as any)
-        .in("agenda_id", agendaIds)
-        .order("created_at", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as DbAgendaComment[];
+      return api.get<DbAgendaComment[]>(
+        `/agenda-comments${qs({ agenda_ids: agendaIds.join(",") })}`
+      );
     },
     enabled: !!agendaIds && agendaIds.length > 0,
   });
@@ -151,14 +123,9 @@ export function useAgendaCommentsByAgenda(agendaIds?: string[]) {
 export function useAllAgendaComments() {
   return useQuery<(DbAgendaComment & { read_by?: string[] })[]>({
     queryKey: ["agenda_comments_all"],
-    queryFn: async () => {
-      const { data, error } = await (supabase.from("agenda_comments" as any).select("*") as any)
-        .order("created_at", { ascending: false })
-        .limit(100);
-      if (error) throw error;
-      return (data ?? []) as (DbAgendaComment & { read_by?: string[] })[];
-    },
-    refetchInterval: 15000, // poll every 15s for new comments
+    queryFn: () =>
+      api.get<(DbAgendaComment & { read_by?: string[] })[]>("/agenda-comments?all=true&limit=100"),
+    refetchInterval: 15000,
   });
 }
 
@@ -166,20 +133,12 @@ export function useMarkCommentsRead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ commentIds, userCc }: { commentIds: string[]; userCc: string }) => {
-      for (const id of commentIds) {
-        await (supabase.from("agenda_comments" as any) as any)
-          .update({ read_by: supabase.rpc ? undefined : undefined })
-          .eq("id", id);
-        // Use raw SQL approach via rpc or direct update with array_append
-        // Since we can't use array_append easily, we'll fetch and update
-        const { data: existing } = await (supabase.from("agenda_comments" as any).select("read_by") as any).eq("id", id).single();
-        const currentReadBy: string[] = existing?.read_by || [];
-        if (!currentReadBy.includes(userCc)) {
-          await (supabase.from("agenda_comments" as any) as any)
-            .update({ read_by: [...currentReadBy, userCc] })
-            .eq("id", id);
-        }
-      }
+      // El backend implementa append idempotente sobre read_by[]
+      await Promise.all(
+        commentIds.map((id) =>
+          api.put(`/agenda-comments/${id}/read`, { user_cc: userCc })
+        )
+      );
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agenda_comments_all"] });
@@ -191,11 +150,8 @@ export function useMarkCommentsRead() {
 export function useInsertAgendaComment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (comment: DbAgendaCommentInsert) => {
-      const { data, error } = await (supabase.from("agenda_comments" as any) as any).insert(comment).select().single();
-      if (error) throw error;
-      return data as DbAgendaComment;
-    },
+    mutationFn: (comment: DbAgendaCommentInsert) =>
+      api.post<DbAgendaComment>("/agenda-comments", comment),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agenda_comments"] });
       qc.invalidateQueries({ queryKey: ["agenda_comments_by_agenda"] });
@@ -207,10 +163,7 @@ export function useInsertAgendaComment() {
 export function useDeleteAgendaComment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await (supabase.from("agenda_comments" as any) as any).delete().eq("id", id);
-      if (error) throw error;
-    },
+    mutationFn: (id: string) => api.delete(`/agenda-comments/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agenda_comments"] });
       qc.invalidateQueries({ queryKey: ["agenda_comments_by_agenda"] });
@@ -226,35 +179,11 @@ export function useDeleteAgendaComment() {
 export function useAuditLog(tableName?: string, recordId?: string) {
   return useQuery<import("@/types/database").DbAuditLog[]>({
     queryKey: ["audit_log", tableName, recordId],
-    queryFn: async () => {
-      let query = supabase.from("audit_log" as any).select("*");
-      if (tableName) query = query.eq("table_name", tableName);
-      if (recordId) query = query.eq("record_id", recordId);
-      const { data, error } = await (query as any).order("created_at", { ascending: false }).limit(200);
-      if (error) throw error;
-      return (data ?? []) as import("@/types/database").DbAuditLog[];
-    },
+    queryFn: () =>
+      api.get<import("@/types/database").DbAuditLog[]>(
+        `/audit-log${qs({ table_name: tableName, record_id: recordId, limit: 200 })}`
+      ),
   });
-}
-
-// =============================================
-// Users (login validation)
-// =============================================
-
-export async function findUserByCredentials(
-  usernameOrEmail: string,
-  hashedPassword: string
-) {
-  const { data, error } = await supabase
-    .from("users")
-    .select("*")
-    .or(`cc.eq.${usernameOrEmail},email.eq.${usernameOrEmail}`)
-    .eq("password", hashedPassword)
-    .eq("id_state", 1)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data as unknown as import("@/types/database").DbUser | null;
 }
 
 // =============================================
@@ -264,41 +193,28 @@ export async function findUserByCredentials(
 export function useUserHierarchy() {
   return useQuery<DbUserHierarchy[]>({
     queryKey: ["user_hierarchy"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("user_hierarchy" as any).select("*");
-      if (error) throw error;
-      return (data ?? []) as unknown as DbUserHierarchy[];
-    },
+    queryFn: () => api.get<DbUserHierarchy[]>("/user-hierarchy"),
     staleTime: 1000 * 60 * 30,
   });
 }
 
-/** Obtiene los subordinados directos de un supervisor */
 export function useSubordinates(supervisorId?: number) {
   return useQuery<DbUserHierarchy[]>({
     queryKey: ["user_hierarchy", "subordinates", supervisorId],
-    queryFn: async () => {
-      const { data, error } = await (supabase.from("user_hierarchy" as any) as any)
-        .select("*")
-        .eq("supervisor_id", supervisorId);
-      if (error) throw error;
-      return (data ?? []) as DbUserHierarchy[];
-    },
+    queryFn: () =>
+      api.get<DbUserHierarchy[]>(`/user-hierarchy${qs({ supervisor_id: supervisorId })}`),
     enabled: !!supervisorId,
   });
 }
 
-/** Obtiene el supervisor de un usuario */
 export function useSupervisor(userId?: number) {
   return useQuery<DbUserHierarchy | null>({
     queryKey: ["user_hierarchy", "supervisor", userId],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("user_hierarchy" as any) as any)
-        .select("*")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (error) throw error;
-      return data as DbUserHierarchy | null;
+      const list = await api.get<DbUserHierarchy[]>(
+        `/user-hierarchy${qs({ user_id: userId })}`
+      );
+      return list[0] ?? null;
     },
     enabled: !!userId,
   });
@@ -307,11 +223,8 @@ export function useSupervisor(userId?: number) {
 export function useInsertUserHierarchy() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (entry: DbUserHierarchyInsert) => {
-      const { data, error } = await (supabase.from("user_hierarchy" as any) as any).insert(entry).select().single();
-      if (error) throw error;
-      return data as DbUserHierarchy;
-    },
+    mutationFn: (entry: DbUserHierarchyInsert) =>
+      api.post<DbUserHierarchy>("/user-hierarchy", entry),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user_hierarchy"] });
     },
@@ -321,10 +234,7 @@ export function useInsertUserHierarchy() {
 export function useDeleteUserHierarchy() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (userId: number) => {
-      const { error } = await (supabase.from("user_hierarchy" as any) as any).delete().eq("user_id", userId);
-      if (error) throw error;
-    },
+    mutationFn: (userId: number) => api.delete(`/user-hierarchy/${userId}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["user_hierarchy"] });
     },
@@ -339,14 +249,10 @@ export function useAgendaView(userCc?: string) {
   return useQuery<DbAgendaView | null>({
     queryKey: ["agenda_views", userCc],
     queryFn: async () => {
-      const { data, error } = await (supabase.from("agenda_views" as any) as any)
-        .select("*")
-        .eq("user_cc", userCc)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      return data as DbAgendaView | null;
+      const list = await api.get<DbAgendaView[]>(
+        `/agenda-views${qs({ user_cc: userCc, limit: 1, order: "created_at.desc" })}`
+      );
+      return list[0] ?? null;
     },
     enabled: !!userCc,
   });
@@ -355,31 +261,31 @@ export function useAgendaView(userCc?: string) {
 export function useUpsertAgendaView() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ userCc, records, status }: { userCc: string; records: any[]; status?: string }) => {
-      // Check if there's an existing view for this user
-      const { data: existing } = await (supabase.from("agenda_views" as any) as any)
-        .select("id")
-        .eq("user_cc", userCc)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+    mutationFn: async ({
+      userCc,
+      records,
+      status,
+    }: {
+      userCc: string;
+      records: any[];
+      status?: string;
+    }) => {
+      // Buscar la vista más reciente del usuario
+      const existing = await api.get<DbAgendaView[]>(
+        `/agenda-views${qs({ user_cc: userCc, limit: 1, order: "created_at.desc" })}`
+      );
 
-      if (existing) {
-        const { data, error } = await (supabase.from("agenda_views" as any) as any)
-          .update({ records, status: status || "pending" })
-          .eq("id", existing.id)
-          .select()
-          .single();
-        if (error) throw error;
-        return data as DbAgendaView;
-      } else {
-        const { data, error } = await (supabase.from("agenda_views" as any) as any)
-          .insert({ user_cc: userCc, records, status: status || "pending" })
-          .select()
-          .single();
-        if (error) throw error;
-        return data as DbAgendaView;
+      if (existing.length > 0) {
+        return api.put<DbAgendaView>(`/agenda-views/${existing[0].id}`, {
+          records,
+          status: status || "pending",
+        });
       }
+      return api.post<DbAgendaView>("/agenda-views", {
+        user_cc: userCc,
+        records,
+        status: status || "pending",
+      } satisfies Partial<DbAgendaViewInsert>);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agenda_views"] });
@@ -400,44 +306,45 @@ export function usePendingAgendaViewsForSupervisor(supervisorCc?: string) {
     queryFn: async () => {
       if (!supervisorCc) return [];
 
-      // 1. Get the numeric user ID of the supervisor from their cc
-      const { data: supervisorUser, error: supErr } = await supabase
-        .from("users")
-        .select("id")
-        .eq("cc", supervisorCc)
-        .maybeSingle();
-      if (supErr || !supervisorUser) return [];
+      // 1. Obtener id numérico del supervisor a partir de su cc
+      const supervisorUser = await api
+        .get<{ id: number } | null>(`/users/by-cc/${supervisorCc}`)
+        .catch(() => null);
+      if (!supervisorUser) return [];
 
-      // 2. Get subordinate user_ids from hierarchy
-      const { data: hierarchy, error: hErr } = await (supabase.from("user_hierarchy" as any) as any)
-        .select("user_id")
-        .eq("supervisor_id", supervisorUser.id);
-      if (hErr || !hierarchy || hierarchy.length === 0) return [];
+      // 2. Subordinados del supervisor
+      const hierarchy = await api.get<DbUserHierarchy[]>(
+        `/user-hierarchy${qs({ supervisor_id: supervisorUser.id })}`
+      );
+      if (hierarchy.length === 0) return [];
 
-      const subordinateIds = hierarchy.map((h: any) => h.user_id);
+      const subordinateIds = hierarchy.map((h) => h.user_id);
 
-      // 3. Get cc values for those subordinates
-      const { data: subordinateUsers, error: uErr } = await supabase
-        .from("users")
-        .select("id, cc, first_name, second_name, first_last_name")
-        .in("id", subordinateIds);
-      if (uErr || !subordinateUsers || subordinateUsers.length === 0) return [];
+      // 3. Datos de los subordinados
+      const subordinateUsers = await api.get<
+        Array<{
+          id: number;
+          cc: string;
+          first_name: string;
+          second_name?: string;
+          first_last_name: string;
+        }>
+      >(`/users${qs({ ids: subordinateIds.join(",") })}`);
+      if (subordinateUsers.length === 0) return [];
 
-      const ccList = subordinateUsers.map((u: any) => u.cc);
+      const ccList = subordinateUsers.map((u) => u.cc);
 
-      // 4. Get pending agenda_views for those ccs
-      const { data: pendingViews, error: vErr } = await (supabase.from("agenda_views" as any) as any)
-        .select("*")
-        .in("user_cc", ccList)
-        .eq("status", "pending");
-      if (vErr || !pendingViews || pendingViews.length === 0) return [];
+      // 4. Agenda views pendientes para esos cc
+      const pendingViews = await api.get<DbAgendaView[]>(
+        `/agenda-views${qs({ user_ccs: ccList.join(","), status: "pending" })}`
+      );
+      if (pendingViews.length === 0) return [];
 
-      // 5. Map agenda views to include docente name
-      return pendingViews.map((view: any) => {
-        const user = subordinateUsers.find((u: any) => u.cc === view.user_cc);
+      return pendingViews.map((view) => {
+        const user = subordinateUsers.find((u) => u.cc === view.user_cc);
         const nameParts = [user?.first_name, user?.second_name, user?.first_last_name].filter(Boolean);
         return {
-          agendaView: view as DbAgendaView,
+          agendaView: view,
           docenteName: nameParts.join(" "),
           docenteCc: view.user_cc,
           createdAt: view.created_at,
@@ -463,44 +370,51 @@ export interface SubordinateDocente {
   idProfessionalCareer: number | null;
 }
 
+interface RawUserRow {
+  cc: string;
+  first_name?: string;
+  second_name?: string;
+  first_last_name?: string;
+  second_last_name?: string;
+  id_faculty?: number | null;
+  id_professional_career?: number | null;
+  id_rol?: number;
+  id?: number;
+}
+
+function mapUserRowToSubordinate(u: RawUserRow): SubordinateDocente {
+  return {
+    id: u.cc,
+    firstName: u.first_name || "",
+    secondName: u.second_name || "",
+    firstLastName: u.first_last_name || "",
+    secondLastName: u.second_last_name || "",
+    idFaculty: u.id_faculty ?? null,
+    idProfessionalCareer: u.id_professional_career ?? null,
+  };
+}
+
 export function useSubordinatesWithNames(supervisorCc?: string) {
   return useQuery<SubordinateDocente[]>({
     queryKey: ["subordinates_with_names", supervisorCc],
     queryFn: async () => {
       if (!supervisorCc) return [];
 
-      // 1. Get supervisor's internal id from cc
-      const { data: supUser, error: supErr } = await supabase
-        .from("users")
-        .select("id")
-        .eq("cc", supervisorCc)
-        .maybeSingle();
-      if (supErr || !supUser) return [];
+      const supUser = await api
+        .get<{ id: number } | null>(`/users/by-cc/${supervisorCc}`)
+        .catch(() => null);
+      if (!supUser) return [];
 
-      // 2. Get subordinate user_ids from hierarchy
-      const { data: hierarchy, error: hErr } = await (supabase.from("user_hierarchy" as any) as any)
-        .select("user_id")
-        .eq("supervisor_id", supUser.id);
-      if (hErr || !hierarchy || hierarchy.length === 0) return [];
+      const hierarchy = await api.get<DbUserHierarchy[]>(
+        `/user-hierarchy${qs({ supervisor_id: supUser.id })}`
+      );
+      if (hierarchy.length === 0) return [];
 
-      const subordinateIds = hierarchy.map((h: any) => h.user_id);
-
-      // 3. Get user details for those subordinates
-      const { data: users, error: uErr } = await supabase
-        .from("users")
-        .select("cc, first_name, second_name, first_last_name, second_last_name, id_faculty, id_professional_career")
-        .in("id", subordinateIds);
-      if (uErr || !users) return [];
-
-      return users.map((u: any) => ({
-        id: u.cc,
-        firstName: u.first_name || "",
-        secondName: u.second_name || "",
-        firstLastName: u.first_last_name || "",
-        secondLastName: u.second_last_name || "",
-        idFaculty: u.id_faculty ?? null,
-        idProfessionalCareer: u.id_professional_career ?? null,
-      }));
+      const subordinateIds = hierarchy.map((h) => h.user_id);
+      const users = await api.get<RawUserRow[]>(
+        `/users${qs({ ids: subordinateIds.join(",") })}`
+      );
+      return users.map(mapUserRowToSubordinate);
     },
     enabled: !!supervisorCc,
     staleTime: 1000 * 60 * 30,
@@ -512,21 +426,10 @@ export function useAllDocentes(enabled: boolean = true) {
   return useQuery<SubordinateDocente[]>({
     queryKey: ["all_docentes"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("users")
-        .select("cc, first_name, second_name, first_last_name, second_last_name, id_faculty, id_professional_career, id_rol")
-        .in("id_rol", [1, 2, 3])
-        .eq("id_state", 1);
-      if (error || !data) return [];
-      return data.map((u: any) => ({
-        id: u.cc,
-        firstName: u.first_name || "",
-        secondName: u.second_name || "",
-        firstLastName: u.first_last_name || "",
-        secondLastName: u.second_last_name || "",
-        idFaculty: u.id_faculty ?? null,
-        idProfessionalCareer: u.id_professional_career ?? null,
-      }));
+      const data = await api.get<RawUserRow[]>(
+        `/users${qs({ rols: "1,2,3", id_state: 1 })}`
+      );
+      return data.map(mapUserRowToSubordinate);
     },
     enabled,
     staleTime: 1000 * 60 * 10,
@@ -539,13 +442,11 @@ export function useUserNameByCc(cc?: string | null) {
     queryKey: ["user_name_by_cc", cc],
     queryFn: async () => {
       if (!cc) return null;
-      const { data, error } = await supabase
-        .from("users")
-        .select("first_name, second_name, first_last_name, second_last_name")
-        .eq("cc", cc)
-        .maybeSingle();
-      if (error || !data) return null;
-      return [data.first_name, data.second_name, data.first_last_name, data.second_last_name]
+      const user = await api
+        .get<RawUserRow | null>(`/users/by-cc/${cc}`)
+        .catch(() => null);
+      if (!user) return null;
+      return [user.first_name, user.second_name, user.first_last_name, user.second_last_name]
         .filter(Boolean)
         .join(" ");
     },
@@ -557,15 +458,23 @@ export function useUserNameByCc(cc?: string | null) {
 export function useUpdateAgendaViewStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, status, reviewerCc, reviewerComment }: { id: string; status: string; reviewerCc: string; reviewerComment?: string }) => {
-      const { data, error } = await (supabase.from("agenda_views" as any) as any)
-        .update({ status, reviewer_cc: reviewerCc, reviewer_comment: reviewerComment || null, reviewed_at: new Date().toISOString() })
-        .eq("id", id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data as DbAgendaView;
-    },
+    mutationFn: ({
+      id,
+      status,
+      reviewerCc,
+      reviewerComment,
+    }: {
+      id: string;
+      status: string;
+      reviewerCc: string;
+      reviewerComment?: string;
+    }) =>
+      api.put<DbAgendaView>(`/agenda-views/${id}`, {
+        status,
+        reviewer_cc: reviewerCc,
+        reviewer_comment: reviewerComment || null,
+        reviewed_at: new Date().toISOString(),
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agenda_views"] });
       qc.invalidateQueries({ queryKey: ["approved_agenda_ccs"] });
@@ -576,12 +485,6 @@ export function useUpdateAgendaViewStatus() {
 
 // =============================================
 // Approved agenda ccs filtered by approver role
-// - forRole='vicerrector' → agendas approved by a DecanoFacultad (rol 3)
-// - forRole='decano' → agendas approved by a DirectorPrograma (rol 2),
-//   restricted to docentes within the dean's faculty (currentUserCc)
-// - forRole='director' → docentes (rol 1) in the same professional career
-//   as the director who have at least one agenda_view registered
-//   (i.e. the docente has confirmed/submitted their agenda at least once)
 // =============================================
 export function useApprovedAgendaCcs(
   forRole: "vicerrector" | "decano" | "director",
@@ -595,76 +498,61 @@ export function useApprovedAgendaCcs(
       if (forRole === "director") {
         if (!currentUserCc) return [];
 
-        // Director's professional career
-        const { data: director } = await supabase
-          .from("users")
-          .select("id_professional_career")
-          .eq("cc", currentUserCc)
-          .maybeSingle();
-        const careerId = (director as any)?.id_professional_career ?? null;
+        const director = await api
+          .get<RawUserRow | null>(`/users/by-cc/${currentUserCc}`)
+          .catch(() => null);
+        const careerId = director?.id_professional_career ?? null;
         if (careerId == null) return [];
 
-        // Any agenda_view (regardless of status) means the docente confirmed it at least once
-        const { data: views, error: vErr } = await (supabase.from("agenda_views" as any) as any)
-          .select("user_cc");
-        if (vErr || !views || views.length === 0) return [];
-        const submittedCcs = Array.from(
-          new Set((views as any[]).map((r) => r.user_cc as string))
-        );
+        const views = await api.get<Array<{ user_cc: string }>>("/agenda-views?all=true");
+        if (views.length === 0) return [];
+        const submittedCcs = Array.from(new Set(views.map((r) => r.user_cc)));
         if (submittedCcs.length === 0) return [];
 
-        // Restrict to DocentePlanta (rol 1) in the same career
-        const { data: docentes } = await supabase
-          .from("users")
-          .select("cc")
-          .in("cc", submittedCcs)
-          .eq("id_rol", 1)
-          .eq("id_professional_career", careerId);
-        return Array.from(new Set((docentes ?? []).map((u: any) => u.cc as string)));
+        const docentes = await api.get<Array<{ cc: string }>>(
+          `/users${qs({ ccs: submittedCcs.join(","), id_rol: 1, id_professional_career: careerId })}`
+        );
+        return Array.from(new Set(docentes.map((u) => u.cc)));
       }
 
-      // ---------- VICERRECTOR / DECANO branches (existing logic) ----------
+      // ---------- VICERRECTOR / DECANO ----------
       const approverRolId = forRole === "vicerrector" ? 3 : 2;
 
-      // 1. Approved agenda_views (with reviewer_cc)
-      const { data: views, error: vErr } = await (supabase.from("agenda_views" as any) as any)
-        .select("user_cc, reviewer_cc")
-        .eq("status", "approved")
-        .not("reviewer_cc", "is", null);
-      if (vErr || !views || views.length === 0) return [];
+      const views = await api.get<Array<{ user_cc: string; reviewer_cc: string | null }>>(
+        `/agenda-views${qs({ status: "approved", has_reviewer: true })}`
+      );
+      if (views.length === 0) return [];
 
-      const reviewerCcs = Array.from(new Set((views as any[]).map((r) => r.reviewer_cc as string)));
+      const reviewerCcs = Array.from(
+        new Set(views.map((r) => r.reviewer_cc).filter((x): x is string => !!x))
+      );
+      if (reviewerCcs.length === 0) return [];
 
-      // 2. Look up reviewer roles
-      const { data: reviewers, error: rErr } = await supabase
-        .from("users")
-        .select("cc, id_rol")
-        .in("cc", reviewerCcs)
-        .eq("id_rol", approverRolId);
-      if (rErr || !reviewers) return [];
-      const validReviewerSet = new Set<string>((reviewers as any[]).map((u) => u.cc as string));
+      const reviewers = await api.get<Array<{ cc: string }>>(
+        `/users${qs({ ccs: reviewerCcs.join(","), id_rol: approverRolId })}`
+      );
+      const validReviewerSet = new Set(reviewers.map((u) => u.cc));
 
-      const candidateCcs = (views as any[])
-        .filter((v) => validReviewerSet.has(v.reviewer_cc as string))
-        .map((v) => v.user_cc as string);
+      const candidateCcs = views
+        .filter((v) => v.reviewer_cc && validReviewerSet.has(v.reviewer_cc))
+        .map((v) => v.user_cc);
       if (candidateCcs.length === 0) return [];
 
-      // 3. Decano: restrict to docentes in same faculty
+      // Decano: restringir a docentes de su facultad
       if (forRole === "decano" && currentUserCc) {
-        const { data: dean } = await supabase
-          .from("users")
-          .select("id_faculty")
-          .eq("cc", currentUserCc)
-          .maybeSingle();
-        const deanFacultyId = (dean as any)?.id_faculty ?? null;
+        const dean = await api
+          .get<RawUserRow | null>(`/users/by-cc/${currentUserCc}`)
+          .catch(() => null);
+        const deanFacultyId = dean?.id_faculty ?? null;
         if (deanFacultyId == null) return [];
 
-        const { data: docentes } = await supabase
-          .from("users")
-          .select("cc")
-          .in("cc", Array.from(new Set(candidateCcs)))
-          .eq("id_faculty", deanFacultyId);
-        return Array.from(new Set((docentes ?? []).map((u: any) => u.cc as string)));
+        const docentes = await api.get<Array<{ cc: string }>>(
+          `/users${qs({
+            ccs: Array.from(new Set(candidateCcs)).join(","),
+            id_faculty: deanFacultyId,
+          })}`
+        );
+        return Array.from(new Set(docentes.map((u) => u.cc)));
       }
 
       return Array.from(new Set(candidateCcs));
@@ -675,10 +563,7 @@ export function useApprovedAgendaCcs(
 }
 
 // =============================================
-// Careers where ALL active docentes have an agenda approved by the
-// appropriate role:
-// - forRole='vicerrector' → approved by Decano (rol 3); returns careerName + facultyName
-// - forRole='decano' → approved by Director (rol 2); restricted to dean's faculty
+// Fully approved careers
 // =============================================
 export interface FullyApprovedCareer {
   careerId: number;
@@ -698,59 +583,50 @@ export function useFullyApprovedCareers(
     queryFn: async () => {
       const approverRolId = forRole === "vicerrector" ? 3 : 2;
 
-      // Resolve dean's faculty if needed
       let deanFacultyId: number | null = null;
       if (forRole === "decano") {
         if (!currentUserCc) return [];
-        const { data: dean } = await supabase
-          .from("users")
-          .select("id_faculty")
-          .eq("cc", currentUserCc)
-          .maybeSingle();
-        deanFacultyId = (dean as any)?.id_faculty ?? null;
+        const dean = await api
+          .get<RawUserRow | null>(`/users/by-cc/${currentUserCc}`)
+          .catch(() => null);
+        deanFacultyId = dean?.id_faculty ?? null;
         if (deanFacultyId == null) return [];
       }
 
-      // 1. Active docentes (rol 1,2,3) with assigned career, scoped by faculty for decano
-      let usersQuery = supabase
-        .from("users")
-        .select("cc, id_professional_career, id_faculty")
-        .in("id_rol", [1, 2, 3])
-        .eq("id_state", 1)
-        .not("id_professional_career", "is", null);
+      const usersFilter: Record<string, string | number | boolean | null | undefined> = {
+        rols: "1,2,3",
+        id_state: 1,
+        has_career: true,
+      };
       if (forRole === "decano" && deanFacultyId != null) {
-        usersQuery = usersQuery.eq("id_faculty", deanFacultyId);
+        usersFilter.id_faculty = deanFacultyId;
       }
-      const { data: users, error: uErr } = await usersQuery;
-      if (uErr || !users || users.length === 0) return [];
+      const users = await api.get<RawUserRow[]>(`/users${qs(usersFilter)}`);
+      if (users.length === 0) return [];
 
-      // 2. Approved agenda_views with reviewer
-      const { data: views, error: vErr } = await (supabase.from("agenda_views" as any) as any)
-        .select("user_cc, reviewer_cc")
-        .eq("status", "approved")
-        .not("reviewer_cc", "is", null);
-      if (vErr || !views) return [];
+      const views = await api.get<Array<{ user_cc: string; reviewer_cc: string | null }>>(
+        `/agenda-views${qs({ status: "approved", has_reviewer: true })}`
+      );
+      if (views.length === 0) return [];
 
-      const reviewerCcs = Array.from(new Set((views as any[]).map((r) => r.reviewer_cc as string)));
+      const reviewerCcs = Array.from(
+        new Set(views.map((r) => r.reviewer_cc).filter((x): x is string => !!x))
+      );
       if (reviewerCcs.length === 0) return [];
 
-      // 3. Filter reviewers by required role
-      const { data: reviewers } = await supabase
-        .from("users")
-        .select("cc")
-        .in("cc", reviewerCcs)
-        .eq("id_rol", approverRolId);
-      const validReviewerSet = new Set<string>(((reviewers ?? []) as any[]).map((u) => u.cc as string));
+      const reviewers = await api.get<Array<{ cc: string }>>(
+        `/users${qs({ ccs: reviewerCcs.join(","), id_rol: approverRolId })}`
+      );
+      const validReviewerSet = new Set(reviewers.map((u) => u.cc));
 
       const approvedSet = new Set<string>(
-        (views as any[])
-          .filter((v) => validReviewerSet.has(v.reviewer_cc as string))
-          .map((v) => v.user_cc as string)
+        views
+          .filter((v) => v.reviewer_cc && validReviewerSet.has(v.reviewer_cc))
+          .map((v) => v.user_cc)
       );
 
-      // 4. Group docentes by career and check completeness
       const byCareer = new Map<number, { facultyId: number | null; ccs: string[] }>();
-      for (const u of users as any[]) {
+      for (const u of users) {
         const cid = u.id_professional_career as number;
         if (!byCareer.has(cid)) byCareer.set(cid, { facultyId: u.id_faculty ?? null, ccs: [] });
         byCareer.get(cid)!.ccs.push(u.cc);
@@ -764,24 +640,20 @@ export function useFullyApprovedCareers(
       });
       if (fullyIds.length === 0) return [];
 
-      // 5. Resolve career names
-      const { data: careersData } = await supabase
-        .from("professional_careers")
-        .select("id, name")
-        .in("id", fullyIds.map((x) => x.id));
-      const nameMap = new Map<number, string>(((careersData ?? []) as any[]).map((c) => [c.id, c.name]));
+      const careersData = await api.get<Array<{ id: number; name: string }>>(
+        `/professional-careers${qs({ ids: fullyIds.map((x) => x.id).join(",") })}`
+      );
+      const nameMap = new Map(careersData.map((c) => [c.id, c.name]));
 
-      // 6. Resolve faculty names (only meaningful for vicerrector view)
       const facultyIds = Array.from(
         new Set(fullyIds.map((x) => x.facultyId).filter((f): f is number => f != null))
       );
       let facultyNameMap = new Map<number, string>();
       if (facultyIds.length > 0) {
-        const { data: facData } = await supabase
-          .from("faculties")
-          .select("id, name")
-          .in("id", facultyIds);
-        facultyNameMap = new Map<number, string>(((facData ?? []) as any[]).map((f) => [f.id, f.name]));
+        const facData = await api.get<Array<{ id: number; name: string }>>(
+          `/faculties${qs({ ids: facultyIds.join(",") })}`
+        );
+        facultyNameMap = new Map(facData.map((f) => [f.id, f.name]));
       }
 
       return fullyIds.map((x) => ({
