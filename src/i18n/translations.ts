@@ -135,6 +135,18 @@ const translations: Record<string, Record<Language, string>> = {
   "profilePage.secondLastName": { es: "Segundo apellido", en: "Second last name" },
   "profilePage.role": { es: "Rol", en: "Role" },
   "profilePage.status": { es: "Estado", en: "Status" },
+  "profilePage.changePassword": { es: "Cambiar contraseña", en: "Change password" },
+  "profilePage.currentPassword": { es: "Contraseña actual", en: "Current password" },
+  "profilePage.newPassword": { es: "Nueva contraseña", en: "New password" },
+  "profilePage.confirmPassword": { es: "Confirmar contraseña", en: "Confirm password" },
+  "profilePage.passwordChanged": { es: "Contraseña actualizada correctamente", en: "Password updated successfully" },
+  "profilePage.passwordMismatch": { es: "Las contraseñas no coinciden", en: "Passwords do not match" },
+  "profilePage.passwordTooShort": { es: "Mínimo 8 caracteres", en: "At least 8 characters" },
+  "profilePage.passwordSame": { es: "La nueva contraseña debe ser distinta a la actual", en: "New password must be different from current" },
+  "profilePage.currentPasswordInvalid": { es: "Contraseña actual incorrecta", en: "Current password is incorrect" },
+  "profilePage.validate": { es: "Validar", en: "Validate" },
+  "profilePage.cancel": { es: "Cancelar", en: "Cancel" },
+  "profilePage.step": { es: "Paso {n} de 2", en: "Step {n} of 2" },
 
   // Validation toasts
   "validation.16hours": { es: "El docente debe cumplir exactamente 16 horas semanales de Docencia Directa. Actualmente tiene {hours} horas.", en: "The teacher must complete exactly 16 weekly hours of Direct Teaching. Currently has {hours} hours." },
