@@ -18,6 +18,7 @@ const Profile = () => {
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ ...user });
+  const [pwdOpen, setPwdOpen] = useState(false);
 
   if (!user) return null;
 
@@ -75,6 +76,14 @@ const Profile = () => {
                     {initials}
                   </AvatarFallback>
                 </Avatar>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPwdOpen(true)}
+                  className="gap-1.5 w-full"
+                >
+                  <KeyRound className="h-4 w-4" /> {t("profilePage.changePassword")}
+                </Button>
                 <div className="text-center">
                   <p className="font-semibold text-lg">{user.firstName} {user.firstLastName}</p>
                   <p className="text-sm text-muted-foreground capitalize">{roleLabel}</p>
