@@ -1,13 +1,15 @@
 # =============================================
 # Backend API — Agenda UCP
-# Node.js + Express + pg
+# Node.js + Express + pg + multer + pdf-parse + nodemailer
 # =============================================
 
-# ---- Stage 1: build ----
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-COPY package.json ./
+# Dependencias nativas requeridas por pdf-parse
+RUN apk add --no-cache python3 make g++
+
+COPY package.json package-lock.json* ./
 RUN npm install --no-audit --no-fund
 
 COPY tsconfig.json ./
@@ -15,21 +17,26 @@ COPY src ./src
 
 RUN npm run build
 
-# ---- Stage 2: runtime ----
+# ---- Runtime ----
 FROM node:20-alpine AS runtime
 WORKDIR /app
 
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV PORT=4000
 
-COPY package.json ./
+RUN apk add --no-cache wget
+
+COPY package.json package-lock.json* ./
 RUN npm install --omit=dev --no-audit --no-fund
 
 COPY --from=builder /app/dist ./dist
 
-EXPOSE 3001
+# Carpeta de uploads (se monta como volumen en compose)
+RUN mkdir -p /var/app/uploads
+
+EXPOSE 4000
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
-  CMD wget -qO- http://localhost:3001/api/health > /dev/null || exit 1
+  CMD wget -qO- http://localhost:4000/api/health > /dev/null || exit 1
 
-CMD ["node", "dist/server.js"]
+CMD ["node", "dist/index.js"]
