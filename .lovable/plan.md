@@ -1,171 +1,115 @@
-# Separación del proyecto en Frontend + Backend (Fase 1)
-
 ## Objetivo
 
-Resolver la falencia de despliegue separando el código en una estructura de monorepo con dos carpetas independientes, eliminando toda dependencia de Supabase (cloud, self-hosted) y Lovable Cloud. La nueva arquitectura será:
+Implementar el backend Express completo con todas las rutas (auth, catálogos, agendas, comentarios, jerarquía, audit, subjects, users, docente-config, upload+parse documentos), correos SMTP con nodemailer y empaquetado Docker (backend + frontend Nginx + Postgres) según las sugerencias de Claude. El script SQL ya tiene todas las tablas necesarias (`password_reset_tokens`, `uploaded_documents`, `agenda_views`, etc.), así que no hay cambios de base de datos.
 
-- **Frontend**: React + Vite (lo que ya existe), consume un API REST por HTTPS.
-- **Backend**: Node.js + Express + driver `pg` puro contra PostgreSQL, todo dockerizado.
+## Ajustes sobre la propuesta de Claude
 
-Esta entrega es la **Fase 1 (esqueleto)**. El frontend seguirá funcionando con su cliente Supabase actual mientras avanzamos por fases posteriores. Esto evita romper la aplicación mientras se construye el reemplazo.
+Las sugerencias son viables, con estos ajustes para que **funcione realmente**:
 
-## Nueva estructura del repositorio
+1. **Contraseña de DB con `*`**: `1234Ucp*` debe ir URL-encoded en `DATABASE_URL` → `1234Ucp%2A`. Si no, `pg` interpreta mal la cadena.
+2. **`docker-compose.yml`**: quitar `version: "3.8"` (obsoleto en Compose v2) y añadir `healthcheck` al backend para que el frontend espere a que esté arriba.
+3. **Frontend en monorepo**: el código React vive en la raíz (Lovable lo necesita así para el preview). El `Dockerfile` y `nginx.conf` del frontend van en `/frontend/`, y el `build.context` apunta a la raíz (`..`) usando `dockerfile: frontend/Dockerfile`. Así no rompemos el preview de Lovable.
+4. **`init.sql`**: usar el script ya existente `backend/migrations/001_initial_schema.sql` montándolo directamente en `/docker-entrypoint-initdb.d/` (no duplicar archivo).
+5. **bcrypt vs SHA-256**: la BD actual usa SHA-256 (compatible con el seed). Mantengo SHA-256 en login para no romper los usuarios existentes; `bcryptjs` queda en dependencias para uso futuro.
+6. **Auth opcional en upload**: `requireAuth` en `/api/upload` está bien, pero el endpoint actual de "parse-lineamientos" en el frontend no envía JWT todavía. Lo dejo con `requireAuth` y luego se conecta con el login.
+7. **Email HTML**: la plantilla del ejemplo de Claude llegó con HTML mal pegado (líneas vacías). La reescribo limpia.
+8. **Volumen de uploads**: persistido en `uploads-data` y servido estáticamente en `/uploads`.
+9. **Reemplazo de `server.ts` por `index.ts`**: para alinear con el `package.json` propuesto. Se elimina el viejo.
+10. **Puerto backend a 4000** (según propuesta de Claude). El frontend hace proxy vía Nginx a `backend:4000`.
+
+## Estructura final
 
 ```text
-/  (raíz del repo)
-├── frontend/                  ← React + Vite (todo lo que hoy está en raíz)
-│   ├── src/
-│   ├── public/
-│   ├── index.html
-│   ├── package.json
-│   ├── vite.config.ts
-│   ├── tailwind.config.ts
-│   ├── tsconfig*.json
-│   ├── components.json
-│   ├── postcss.config.js
-│   ├── eslint.config.js
-│   ├── vitest.config.ts
-│   ├── .env.example
-│   └── Dockerfile             ← nuevo: build estático servido por nginx
-│
-├── backend/                   ← API Node.js + Express
-│   ├── src/
-│   │   ├── server.ts          ← entry point Express
-│   │   ├── db.ts              ← pool de conexión pg
-│   │   ├── config.ts          ← lectura de variables de entorno
-│   │   ├── middleware/
-│   │   │   ├── error-handler.ts
-│   │   │   └── logger.ts
-│   │   ├── routes/
-│   │   │   ├── health.ts      ← GET /api/health (prueba)
-│   │   │   └── index.ts       ← agregador de rutas
-│   │   └── types/
-│   │       └── api.ts
+ucp-agenda-manager/
+├── docker-compose.yml          (REEMPLAZADO)
+├── .env.example                (raíz, vars compartidas)
+├── src/                        (React, sin cambios — preview Lovable)
+├── frontend/
+│   ├── Dockerfile              (NUEVO)
+│   └── nginx.conf              (NUEVO)
+├── backend/
+│   ├── Dockerfile              (ACTUALIZADO: pdf-parse deps)
+│   ├── package.json            (ACTUALIZADO: +bcryptjs, jwt, multer, nodemailer, pdf-parse, mammoth, uuid)
 │   ├── migrations/
-│   │   └── 001_initial_schema.sql   ← copia consolidada de init.sql
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── Dockerfile             ← nuevo
-│   ├── .env.example
-│   └── README.md
-│
-├── docker-compose.yml         ← orquesta postgres + backend + frontend
-├── .gitignore
-└── README.md                  ← documentación raíz del monorepo
+│   │   └── 001_initial_schema.sql  (sin cambios — ya tiene todas las tablas)
+│   └── src/
+│       ├── index.ts            (NUEVO — reemplaza server.ts)
+│       ├── db.ts               (ACTUALIZADO: añade query/queryOne helpers)
+│       ├── config.ts           (sin cambios)
+│       ├── middleware/
+│       │   ├── auth.ts         (NUEVO — JWT requireAuth)
+│       │   ├── error-handler.ts
+│       │   └── logger.ts
+│       ├── services/
+│       │   └── email.ts        (NUEVO — nodemailer)
+│       └── routes/
+│           ├── index.ts        (ACTUALIZADO — registra todos los routers)
+│           ├── health.ts
+│           ├── auth.ts         (NUEVO — login, me, forgot/reset password)
+│           ├── catalogs.ts     (NUEVO — 13 endpoints GET de catálogos)
+│           ├── subjects.ts     (NUEVO — CRUD)
+│           ├── users.ts        (NUEVO — list, by-cc)
+│           ├── agendas.ts      (NUEVO — CRUD)
+│           ├── agendaViews.ts  (NUEVO — upsert + revisión)
+│           ├── agendaComments.ts (NUEVO — CRUD)
+│           ├── userHierarchy.ts  (NUEVO)
+│           ├── auditLog.ts       (NUEVO — read-only)
+│           ├── docenteConfig.ts  (NUEVO — upsert)
+│           └── upload.ts         (NUEVO — multer + pdf-parse + mammoth)
+└── (server.ts ELIMINADO)
 ```
 
-## Qué se hace en esta fase
+## Pasos de implementación
 
-### 1. Reorganización física de carpetas
+### 1. Backend — dependencias y entrada
+- Reescribir `backend/package.json` con todas las dependencias sugeridas (express, pg, jsonwebtoken, bcryptjs, multer, nodemailer, pdf-parse, mammoth, uuid, dotenv, cors) y devDeps de tipos.
+- Eliminar `backend/src/server.ts` y crear `backend/src/index.ts` que monta CORS, JSON parser, estáticos `/uploads`, todos los routers bajo `/api/...` y `health`.
+- Actualizar `backend/src/db.ts` añadiendo helpers `query()` y `queryOne()` reutilizables (manteniendo el pool actual).
 
-Mover **todo el código del frontend actual** a la subcarpeta `frontend/`:
+### 2. Middleware
+- `backend/src/middleware/auth.ts`: `requireAuth` que verifica `Authorization: Bearer <jwt>` y popula `req.user = { id, cc, rolId }`.
 
-- `src/`, `public/`, `index.html` → `frontend/`
-- `package.json`, `bun.lock`, `vite.config.ts`, `tailwind.config.ts`, `postcss.config.js`, `eslint.config.js`, `vitest.config.ts`, `components.json` → `frontend/`
-- `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json` → `frontend/`
-- `.env.example` (la versión de Vite) → `frontend/.env.example`
+### 3. Servicio de email
+- `backend/src/services/email.ts`: transporter SMTP nodemailer + función `sendPasswordResetEmail(to, firstName, resetUrl)` con plantilla HTML institucional UCP limpia.
 
-El frontend NO se refactoriza en esta fase: sigue importando desde `@/integrations/supabase/client` y consumiendo Supabase tal cual. Esto se reemplazará en fases siguientes.
+### 4. Routers (todos en `backend/src/routes/`)
+- `auth.ts`: `POST /login` (SHA-256, JWT 8h), `GET /me` (protegido), `POST /forgot-password` (genera token UUID, expira en 30min, manda correo), `POST /reset-password` (valida token, actualiza hash).
+- `catalogs.ts`: 13 endpoints GET de solo lectura.
+- `subjects.ts`, `users.ts`, `agendas.ts`, `agendaViews.ts`, `agendaComments.ts`, `userHierarchy.ts`, `auditLog.ts`, `docenteConfig.ts`: CRUD/read protegidos con `requireAuth`.
+- `upload.ts`: `POST /parse-document` con multer (20MB, .pdf/.docx/.doc/.txt), extracción con `pdf-parse` o `mammoth`, persistencia en `uploaded_documents`.
+- `routes/index.ts` (existente): registrar todos los routers anteriores.
 
-### 2. Crear backend nuevo desde cero
+### 5. Backend Dockerfile
+- Actualizar `backend/Dockerfile` para incluir `python3 make g++` (deps nativas de pdf-parse), crear `/var/app/uploads`, exponer `4000`.
 
-Stack: **Node.js 20 + TypeScript + Express + pg + zod + cors + dotenv**.
+### 6. Frontend Docker
+- Crear `frontend/Dockerfile` (build con Vite usando `VITE_API_URL` como ARG, runtime Nginx alpine).
+- Crear `frontend/nginx.conf` con SPA fallback y proxy `/api/` → `http://backend:4000/api/`, `client_max_body_size 25M`.
 
-Archivos creados:
+### 7. Compose y env raíz
+- Reescribir `docker-compose.yml` raíz: 3 servicios (db, backend, frontend), volúmenes nombrados (`db-data`, `uploads-data`), montaje de `./backend/migrations/001_initial_schema.sql` como `/docker-entrypoint-initdb.d/01_init.sql`, `DATABASE_URL` con `*` URL-encoded, healthchecks.
+- Crear `.env.example` en raíz con `POSTGRES_PASSWORD`, `JWT_SECRET`, `SMTP_*`, `FRONTEND_URL`, `VITE_API_URL`.
 
-- `backend/package.json` con scripts `dev`, `build`, `start`, `migrate`.
-- `backend/tsconfig.json` (target ES2022, module NodeNext).
-- `backend/src/config.ts`: lee `DATABASE_URL`, `PORT`, `JWT_SECRET`, `CORS_ORIGIN` desde el entorno.
-- `backend/src/db.ts`: pool global de `pg` con manejo de errores y graceful shutdown.
-- `backend/src/server.ts`: Express con middlewares (cors, json body parser, logger, error handler). Monta `/api`.
-- `backend/src/middleware/error-handler.ts`: convierte excepciones a respuestas JSON consistentes `{ error, code }`.
-- `backend/src/middleware/logger.ts`: log request/response básico.
-- `backend/src/routes/index.ts`: router agregador.
-- `backend/src/routes/health.ts`: endpoint `**GET /api/health**` que devuelve `{ status: 'ok', db: 'ok'|'error', version, uptime }`. Hace `SELECT 1` contra Postgres para validar conexión.
-- `backend/migrations/001_initial_schema.sql`: copia del `init.sql` actual (tablas, índices, datos iniciales). En fases posteriores se irá ajustando (quitar políticas RLS de Supabase, adaptar a auth propia, etc.).
+### 8. Documentación
+- Actualizar `README.md` y `backend/README.md` con instrucciones de arranque (`docker compose up --build -d`), ruta DBeaver (localhost:5432), URLs (frontend 5173, backend 4000), notas de SMTP de Gmail (App Password).
 
-### 3. Dockerización completa
+## Lo que NO se toca
 
-#### `backend/Dockerfile`
+- `src/` (frontend React) — sin cambios; el preview de Lovable sigue funcionando.
+- `backend/migrations/001_initial_schema.sql` — ya está completo.
+- `supabase/` — sigue presente para el preview pero el deploy real no lo usa.
 
-Multi-stage build: `node:20-alpine` para build TypeScript → imagen final ligera ejecutando `node dist/server.js`. Expone puerto `3001`.
+## Pruebas tras la implementación
 
-#### `frontend/Dockerfile`
+1. `docker compose up --build -d` arranca los 3 contenedores.
+2. DBeaver conecta a `localhost:5432` con `admin` / `1234Ucp*` / `agendadocentedb` y ve todas las tablas seedeadas.
+3. `curl http://localhost:4000/api/health` → `{status:"ok"}`.
+4. `curl http://localhost:5173` → frontend React.
+5. Login con CC `12345678` / `1234Ucp*` devuelve JWT.
+6. Upload de un PDF a `/api/upload/parse-document` con el JWT devuelve el texto extraído.
 
-Multi-stage: `node:20-alpine` para `npm run build` → `nginx:alpine` sirviendo `dist/` con configuración SPA (fallback a `index.html`). Expone puerto `80`.
+## Notas de seguridad
 
-#### `docker-compose.yml` (raíz, reemplaza el actual)
-
-Tres servicios:
-
-- **postgres**: `postgres:16-alpine`, volumen persistente `pgdata`, ejecuta `backend/migrations/*.sql` al primer arranque vía `/docker-entrypoint-initdb.d/`.
-- **backend**: build desde `./backend`, depende de postgres healthy, expone `3001`, lee env vars del archivo `.env` raíz.
-- **frontend**: build desde `./frontend`, expone `8080`, configurado para apuntar al backend en build time vía `VITE_API_URL`.
-
-El `docker-compose.yml` actual (con servicios de Supabase: gotrue, postgrest, realtime, kong, studio, meta) se elimina por completo. La carpeta `docker/` y `init.sql` raíz también se eliminan (su contenido se traslada a `backend/migrations/`).
-
-### 4. Variables de entorno
-
-Tres archivos `.env.example`:
-
-- **Raíz** (`./.env.example`): valores compartidos por docker-compose
-  - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
-  - `JWT_SECRET`
-  - `BACKEND_PORT=3001`, `FRONTEND_PORT=8080`
-- `**backend/.env.example**`: para correr backend fuera de Docker
-  - `DATABASE_URL=postgres://...`
-  - `PORT=3001`
-  - `JWT_SECRET=...`
-  - `CORS_ORIGIN=http://localhost:5173`
-- `**frontend/.env.example**`: para correr frontend fuera de Docker
-  - `VITE_API_URL=http://localhost:3001/api` (será usado en futuras fases)
-  - Variables Vite/Supabase actuales se conservan temporalmente
-
-### 5. Documentación
-
-`README.md` raíz reescrito explicando:
-
-- Arquitectura del monorepo
-- Cómo levantar todo con `docker compose up -d` (un solo comando, listo para producción institucional UCP)
-- Cómo desarrollar frontend y backend por separado
-- Roadmap de las próximas fases
-
-`backend/README.md`: cómo añadir endpoints, estructura del proyecto, convenciones.
-
-## Lo que NO se hace en esta fase (queda para fases siguientes)
-
-- **Fase 2 (Auth + Users)**: endpoints `POST /api/auth/login`, `POST /api/auth/forgot-password`, CRUD `/api/users`. JWT propio. Refactor de `AuthContext`, `LoginDialog`, `useAuth` para llamar al backend.
-- **Fase 3 (Dominios principales)**: endpoints CRUD para `agendas`, `agenda_views`, `agenda_comments`, `subjects`, `user_hierarchy`, `docente_semester_config`. Refactor de hooks `useAgenda`, `useDatabase`, `useDocenteConfig`.
-- **Fase 4 (Catálogos y actividades)**: endpoints para `roles`, `states`, `semester`, `faculties`, `professional_careers`, `education_levels` y las 8 tablas de actividades. Refactor de los formularios CRUD.
-- **Fase 5 (Audit log + recommendations + lineamientos)**: triggers SQL puros (sin Supabase), endpoints, refactor de `useRecommendationRules`, `useLineamientosImport`.
-- **Fase 6 (Subida + interpretación de documentos)**: endpoint `POST /api/upload`
-  con `multer` (volumen Docker `/var/app/uploads`, límite `MAX_UPLOAD_MB`) y endpoint
-  `POST /api/parse-document` que extrae texto con `pdf-parse` (PDF) o `mammoth` (DOCX)
-  y lo envía a una API LLM externa (OpenAI o Anthropic Claude vía `LLM_PROVIDER`).
-  Reemplaza Supabase Storage (`lineamientos`) y la edge function `parse-lineamientos`.
-- **Fase 7 (Emails transaccionales con nodemailer)**: servicio SMTP configurable
-  (Gmail, SendGrid, Mailgun o servidor SMTP institucional UCP) vía variables
-  `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`. Endpoints:
-  `POST /api/auth/forgot-password` (genera token, envía email de recuperación)
-  y `POST /api/auth/reset-password` (valida token, actualiza contraseña). Cola
-  simple en Postgres (`email_queue`) con worker en proceso. Reemplaza las edge
-  functions `send-transactional-email`, `process-email-queue`, `request-password-reset`
-  y `auth-email-hook`.
-- **Fase 8 (Limpieza final)**: eliminar `frontend/src/integrations/supabase/`, eliminar dependencia `@supabase/supabase-js`, eliminar `supabase/` del repo.
-
-## Resultado esperado al terminar la Fase 1
-
-- El repositorio queda organizado en `frontend/` y `backend/`.
-- `docker compose up -d` levanta tres contenedores: PostgreSQL con esquema cargado, backend Express respondiendo en `http://localhost:3001/api/health`, frontend en `http://localhost:8080`.
-- El frontend sigue funcionando exactamente como hoy (consume Supabase Cloud actual hasta que se migren los endpoints en fases siguientes).
-- La UCP ya tiene una base desplegable autónoma sin Supabase ni Lovable, y el camino de migración progresiva está documentado.
-
-## Detalles técnicos clave
-
-- **Driver**: `pg` (node-postgres) con `Pool`, `parseInt8: true`, `application_name: 'agenda-ucp-api'`.
-- **Validación**: `zod` para schemas de request body / query params en cada endpoint futuro.
-- **Errores**: clase `ApiError` con `status` y `code`; middleware central serializa a JSON.
-- **CORS**: configurable vía `CORS_ORIGIN` (lista separada por comas).
-- **Logs**: middleware simple que imprime `method url status duration`. En fase posterior se puede cambiar por `pino`.
-- **Migraciones**: por ahora archivos `.sql` numerados ejecutados por Postgres en el primer arranque. En Fase 2 se puede añadir `node-pg-migrate` o similar para migraciones incrementales.
-- **Healthcheck Docker**: el servicio backend incluye healthcheck que llama a `/api/health` para que `frontend` espere a que esté listo.
+- `JWT_SECRET` y `SMTP_PASS` en `.env` (no commitear). El `.env.example` solo trae placeholders.
+- SMTP de Gmail requiere "App Password" (no la contraseña normal). La UCP puede usar su propio servidor SMTP cambiando `SMTP_HOST`.
+- Los hashes SHA-256 actuales se mantienen para compatibilidad con el seed; migrar a bcrypt sería un paso posterior con script de re-hash.
