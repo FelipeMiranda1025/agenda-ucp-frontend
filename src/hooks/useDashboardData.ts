@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 
 export interface DashboardAgenda {
   id: string;
@@ -54,27 +54,14 @@ export function useDashboardData() {
   return useQuery<DashboardData>({
     queryKey: ["dashboard-data"],
     queryFn: async () => {
-      const [agendasRes, viewsRes, usersRes, facultiesRes, careersRes] = await Promise.all([
-        supabase.from("agendas").select("id,docente_cc,subfunction_id,data,total_horas,created_at").limit(10000),
-        supabase.from("agenda_views").select("id,user_cc,status,reviewer_cc,reviewed_at,created_at").limit(10000),
-        supabase.from("users").select("id,cc,first_name,second_name,first_last_name,second_last_name,id_faculty,id_professional_career,id_rol").in("id_rol", [1, 2, 3]),
-        supabase.from("faculties").select("id,name"),
-        supabase.from("professional_careers").select("id,name,id_faculty"),
+      const [agendas, views, users, faculties, careers] = await Promise.all([
+        api.get<DashboardAgenda[]>("/agendas?limit=10000"),
+        api.get<DashboardAgendaView[]>("/agenda-views?all=true&limit=10000"),
+        api.get<DashboardUser[]>("/users?rols=1,2,3"),
+        api.get<DashboardFaculty[]>("/faculties"),
+        api.get<DashboardCareer[]>("/professional-careers"),
       ]);
-
-      if (agendasRes.error) throw agendasRes.error;
-      if (viewsRes.error) throw viewsRes.error;
-      if (usersRes.error) throw usersRes.error;
-      if (facultiesRes.error) throw facultiesRes.error;
-      if (careersRes.error) throw careersRes.error;
-
-      return {
-        agendas: (agendasRes.data ?? []) as DashboardAgenda[],
-        views: (viewsRes.data ?? []) as DashboardAgendaView[],
-        users: (usersRes.data ?? []) as DashboardUser[],
-        faculties: (facultiesRes.data ?? []) as DashboardFaculty[],
-        careers: (careersRes.data ?? []) as DashboardCareer[],
-      };
+      return { agendas, views, users, faculties, careers };
     },
     staleTime: 60_000,
   });

@@ -8,7 +8,7 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { subfunctions } from "@/data/subfunctions";
 import { getDocenteFullName } from "@/types/docentePlanta";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useFaculties, useProfessionalCareers, useApprovedAgendaCcs } from "@/hooks/useDatabase";
 import ucpLogo from "@/assets/ucp-logo.png";
 
@@ -46,12 +46,10 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
     queryKey: ["dean_faculty_id", user?.id],
     queryFn: async () => {
       if (!user?.id) return null;
-      const { data } = await supabase
-        .from("users")
-        .select("id_faculty")
-        .eq("cc", user.id)
-        .maybeSingle();
-      return ((data as any)?.id_faculty as number | null) ?? null;
+      const data = await api
+        .get<{ id_faculty?: number | null } | null>(`/users/by-cc/${user.id}`)
+        .catch(() => null);
+      return data?.id_faculty ?? null;
     },
     enabled: isDecano && !!user?.id,
     staleTime: 1000 * 60 * 30,

@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Lock, User, Mail, Loader2, ArrowLeft } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { api } from '@/lib/api';
 import ucpLogoWhite from '@/assets/ucp-logo-white.png';
 
 const MAX_FAILED_ATTEMPTS = 3;
@@ -94,22 +94,11 @@ export const LoginDialog: React.FC = () => {
 
     setForgotSending(true);
     try {
-      const { data, error } = await supabase.functions.invoke(
-        'request-password-reset',
-        { body: { identifier: trimmed } }
-      );
-
-      if (error || (data && (data as any).error)) {
-        setForgotError(
-          ((data as any)?.error as string) ||
-            'Intenta nuevamente.'
-        );
-      } else {
-        setForgotOpen(false);
-        setForgotSuccess('Se envió la nueva contraseña al correo');
-      }
-    } catch {
-      setForgotError('Intenta nuevamente.');
+      await api.post('/auth/forgot-password', { identifier: trimmed });
+      setForgotOpen(false);
+      setForgotSuccess('Se envió la nueva contraseña al correo');
+    } catch (err) {
+      setForgotError(err instanceof Error ? err.message : 'Intenta nuevamente.');
     } finally {
       setForgotSending(false);
     }

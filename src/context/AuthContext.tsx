@@ -1,6 +1,6 @@
-import React, { createContext, useState, useCallback, type ReactNode } from 'react';
-import { User, AuthState, getRoleName } from '@/types/auth';
-import { findUserByCredentials } from '@/hooks/useDatabase';
+import React, { createContext, useState, useCallback } from "react";
+import { api } from "@/lib/api";
+import { User, AuthState, getRoleName } from "@/types/auth";
 
 interface AuthContextType extends AuthState {
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
@@ -9,15 +9,22 @@ interface AuthContextType extends AuthState {
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
+const SESSION_KEY = "ucp_session";
+const TOKEN_KEY = "ucp_token";
 
-const SESSION_KEY = 'ucp_session';
+interface BackendLoginResponse {
+  token: string;
+  user: {
+    cc: string;
+    email: string;
+    firstName: string;
+    secondName: string;
+    firstLastName: string;
+    secondLastName: string;
+    rolId: number;
+    statusId: number;
+  };
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthState>(() => {
@@ -31,45 +38,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           roleName: getRoleName(parsed.user.rolId),
         };
       }
-    } catch {}
+    } catch {
+      /* noop */
+    }
     return { user: null, isAuthenticated: false, roleName: null };
   });
 
   const login = useCallback(async (username: string, password: string) => {
     try {
-      const hashed = await hashPassword(password);
-      const dbUser = await findUserByCredentials(username, hashed);
+      const response = await api.post<BackendLoginResponse>("/auth/login", {
+        username,
+        password,
+      });
 
-      if (!dbUser) {
-        return { success: false, error: 'Credenciales inválidas. Intente nuevamente.' };
-      }
+      localStorage.setItem(TOKEN_KEY, response.token);
 
-      // Map DB user to app User format (without password)
-      const appUser: Omit<User, 'password'> = {
-        id: dbUser.cc,
-        email: dbUser.email,
-        firstName: dbUser.first_name,
-        secondName: dbUser.second_name,
-        firstLastName: dbUser.first_last_name,
-        secondLastName: dbUser.second_last_name,
-        rolId: dbUser.id_rol,
-        statusId: dbUser.id_state,
+      const appUser: Omit<User, "password"> = {
+        id: response.user.cc,
+        email: response.user.email,
+        firstName: response.user.firstName,
+        secondName: response.user.secondName,
+        firstLastName: response.user.firstLastName,
+        secondLastName: response.user.secondLastName,
+        rolId: response.user.rolId,
+        statusId: response.user.statusId,
       };
 
-      const roleName = getRoleName(dbUser.id_rol);
+      const roleName = getRoleName(response.user.rolId);
       setAuthState({ user: appUser, isAuthenticated: true, roleName });
       localStorage.setItem(SESSION_KEY, JSON.stringify({ user: appUser }));
 
       return { success: true };
     } catch (err) {
-      console.error('Login error:', err);
-      return { success: false, error: 'Error al conectar con el servidor. Intente de nuevo.' };
+      const message = err instanceof Error ? err.message : "Error al conectar con el servidor";
+      return { success: false, error: message };
     }
   }, []);
 
   const logout = useCallback(() => {
     setAuthState({ user: null, isAuthenticated: false, roleName: null });
     localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(TOKEN_KEY);
   }, []);
 
   return (
