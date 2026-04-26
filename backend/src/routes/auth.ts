@@ -171,4 +171,70 @@ router.post("/forgot-password", async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * POST /api/auth/verify-password
+ * Body: { currentPassword: string }
+ * Valida que la contraseña actual coincida con la del usuario autenticado.
+ */
+router.post("/verify-password", requireAuth, async (req: AuthRequest, res: Response) => {
+  const { currentPassword } = req.body ?? {};
+  if (!currentPassword || typeof currentPassword !== "string") {
+    return res.status(400).json({ message: "Contraseña requerida" });
+  }
+  try {
+    const hashed = sha256(currentPassword);
+    const user = await queryOne<any>(
+      `SELECT id FROM public.users WHERE id = $1 AND password = $2 AND id_state = 1`,
+      [req.user!.id, hashed]
+    );
+    if (!user) {
+      return res.status(401).json({ message: "Contraseña actual incorrecta" });
+    }
+    return res.json({ valid: true });
+  } catch (err) {
+    console.error("[verify-password] Error:", err);
+    return res.status(500).json({ message: "Error interno" });
+  }
+});
+
+/**
+ * POST /api/auth/change-password
+ * Body: { currentPassword: string, newPassword: string }
+ * Re-valida la contraseña actual y actualiza la nueva en BD.
+ */
+router.post("/change-password", requireAuth, async (req: AuthRequest, res: Response) => {
+  const { currentPassword, newPassword } = req.body ?? {};
+  if (!currentPassword || typeof currentPassword !== "string") {
+    return res.status(400).json({ message: "Contraseña actual requerida" });
+  }
+  if (!newPassword || typeof newPassword !== "string" || newPassword.length < 8) {
+    return res.status(400).json({ message: "La nueva contraseña debe tener mínimo 8 caracteres" });
+  }
+  if (newPassword === currentPassword) {
+    return res.status(400).json({ message: "La nueva contraseña debe ser distinta a la actual" });
+  }
+  if (newPassword.length > 128) {
+    return res.status(400).json({ message: "Contraseña demasiado larga" });
+  }
+  try {
+    const hashedCurrent = sha256(currentPassword);
+    const user = await queryOne<any>(
+      `SELECT id FROM public.users WHERE id = $1 AND password = $2 AND id_state = 1`,
+      [req.user!.id, hashedCurrent]
+    );
+    if (!user) {
+      return res.status(401).json({ message: "Contraseña actual incorrecta" });
+    }
+    const hashedNew = sha256(newPassword);
+    await query(`UPDATE public.users SET password = $1 WHERE id = $2`, [
+      hashedNew,
+      req.user!.id,
+    ]);
+    return res.json({ message: "Contraseña actualizada correctamente" });
+  } catch (err) {
+    console.error("[change-password] Error:", err);
+    return res.status(500).json({ message: "Error interno" });
+  }
+});
+
 export default router;
