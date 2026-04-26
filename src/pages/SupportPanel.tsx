@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -137,101 +137,64 @@ export default function SupportPanel() {
   // ----- Queries
   const { data: users = [], isLoading } = useQuery<UserRow[]>({
     queryKey: ["sp_users"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("users")
-        .select("*")
-        .order("id", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as UserRow[];
-    },
+    queryFn: () => api.get<UserRow[]>("/users?order=id.asc"),
   });
 
   const { data: roles = [] } = useQuery<RoleRow[]>({
     queryKey: ["sp_roles"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("roles").select("id,name").order("id");
-      if (error) throw error;
-      return (data ?? []) as RoleRow[];
-    },
+    queryFn: () => api.get<RoleRow[]>("/roles?order=id.asc"),
   });
 
   const { data: states = [] } = useQuery<StateRow[]>({
     queryKey: ["sp_states"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("states").select("id,name").order("id");
-      if (error) throw error;
-      return (data ?? []) as StateRow[];
-    },
+    queryFn: () => api.get<StateRow[]>("/states?order=id.asc"),
   });
 
   const { data: hierarchy = [] } = useQuery<HierarchyRow[]>({
     queryKey: ["sp_hierarchy"],
-    queryFn: async () => {
-      const { data, error } = await (supabase.from("user_hierarchy" as any) as any).select("*");
-      if (error) throw error;
-      return (data ?? []) as HierarchyRow[];
-    },
+    queryFn: () => api.get<HierarchyRow[]>("/user-hierarchy"),
   });
 
   const { data: faculties = [] } = useQuery<FacultyRow[]>({
     queryKey: ["sp_faculties"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("faculties").select("id,name").order("name");
-      if (error) throw error;
-      return (data ?? []) as FacultyRow[];
-    },
+    queryFn: () => api.get<FacultyRow[]>("/faculties?order=name.asc"),
   });
 
   const { data: careers = [] } = useQuery<CareerRow[]>({
     queryKey: ["sp_careers"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("professional_careers")
-        .select("id,name,id_faculty")
-        .order("name");
-      if (error) throw error;
-      return (data ?? []) as CareerRow[];
-    },
+    queryFn: () => api.get<CareerRow[]>("/professional-careers?order=name.asc"),
   });
 
   // ----- Mutations
   // Helper interno: aplica la jerarquía (borrar previa + insertar nueva si corresponde)
   const applyHierarchy = async (userId: number, supervisorId: number | null) => {
-    await (supabase.from("user_hierarchy" as any) as any).delete().eq("user_id", userId);
+    await api.delete(`/user-hierarchy/${userId}`).catch(() => undefined);
     if (supervisorId !== null) {
-      const { error } = await (supabase.from("user_hierarchy" as any) as any).insert({
+      await api.post("/user-hierarchy", {
         user_id: userId,
         supervisor_id: supervisorId,
       });
-      if (error) throw error;
     }
   };
 
   const createUser = useMutation({
     mutationFn: async (payload: typeof emptyForm) => {
       const hashed = await hashPassword(payload.password);
-      const { data, error } = await supabase
-        .from("users")
-        .insert({
-          cc: payload.cc.trim(),
-          email: payload.email.trim(),
-          first_name: payload.first_name.trim(),
-          second_name: payload.second_name.trim() || null,
-          first_last_name: payload.first_last_name.trim(),
-          second_last_name: payload.second_last_name.trim() || null,
-          id_rol: payload.id_rol,
-          id_state: payload.id_state,
-          password: hashed,
-          id_faculty: payload.id_faculty,
-          id_professional_career: payload.id_professional_career,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      // Asignar supervisor si el rol lo requiere (1, 2, 3)
+      const data = await api.post<{ id: number }>("/users", {
+        cc: payload.cc.trim(),
+        email: payload.email.trim(),
+        first_name: payload.first_name.trim(),
+        second_name: payload.second_name.trim() || null,
+        first_last_name: payload.first_last_name.trim(),
+        second_last_name: payload.second_last_name.trim() || null,
+        id_rol: payload.id_rol,
+        id_state: payload.id_state,
+        password: hashed,
+        id_faculty: payload.id_faculty,
+        id_professional_career: payload.id_professional_career,
+      });
       if ([1, 2, 3].includes(payload.id_rol) && payload.supervisor_id !== null) {
-        await applyHierarchy((data as any).id, payload.supervisor_id);
+        await applyHierarchy(data.id, payload.supervisor_id);
       }
       return data;
     },
@@ -261,18 +224,10 @@ export default function SupportPanel() {
       if (payload.password && payload.password.length > 0) {
         updates.password = await hashPassword(payload.password);
       }
-      const { data, error } = await supabase
-        .from("users")
-        .update(updates)
-        .eq("id", payload.id)
-        .select()
-        .single();
-      if (error) throw error;
-      // Reaplicar jerarquía según rol
+      const data = await api.put<{ id: number }>(`/users/${payload.id}`, updates);
       if ([1, 2, 3].includes(payload.id_rol)) {
         await applyHierarchy(payload.id, payload.supervisor_id);
       } else {
-        // Roles sin jerarquía (4, 5): limpiar
         await applyHierarchy(payload.id, null);
       }
       return data;
@@ -288,12 +243,8 @@ export default function SupportPanel() {
 
   const deleteUser = useMutation({
     mutationFn: async (id: number) => {
-      // Limpia jerarquía vinculada
-      await (supabase.from("user_hierarchy" as any) as any)
-        .delete()
-        .or(`user_id.eq.${id},supervisor_id.eq.${id}`);
-      const { error } = await supabase.from("users").delete().eq("id", id);
-      if (error) throw error;
+      // El backend limpia la jerarquía vinculada al borrar el usuario
+      await api.delete(`/users/${id}`);
     },
     onSuccess: () => {
       toast.success("Usuario eliminado");
@@ -312,15 +263,7 @@ export default function SupportPanel() {
       userId: number;
       supervisorId: number | null;
     }) => {
-      // Borra existente
-      await (supabase.from("user_hierarchy" as any) as any).delete().eq("user_id", userId);
-      if (supervisorId !== null) {
-        const { error } = await (supabase.from("user_hierarchy" as any) as any).insert({
-          user_id: userId,
-          supervisor_id: supervisorId,
-        });
-        if (error) throw error;
-      }
+      await applyHierarchy(userId, supervisorId);
     },
     onSuccess: () => {
       toast.success("Jerarquía actualizada");
