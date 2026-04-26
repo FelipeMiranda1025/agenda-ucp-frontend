@@ -1,136 +1,111 @@
 # Sistema de Agenda Docente — UCP
 
-Aplicación web para la gestión de agendas y distribución horaria de docentes de planta de la Universidad Católica de Pereira.
+Aplicación web para la gestión de agendas y distribución horaria de docentes
+de planta de la Universidad Católica de Pereira.
 
-## Stack Tecnológico
+## Arquitectura
 
-- **Frontend:** React 18 + TypeScript + Vite
-- **UI:** Tailwind CSS + shadcn/ui
-- **Backend:** Supabase Self-Hosted (Docker)
-- **Routing:** React Router v6
-- **State:** React Context + TanStack Query
+Monorepo dividido en dos aplicaciones independientes y desplegables por separado:
 
-## Requisitos Previos
-
-- [Node.js](https://nodejs.org/) v18 o superior
-- npm (incluido con Node.js)
-
-## Instalación
-
-```bash
-# 1. Clonar el repositorio
-git clone <URL_DEL_REPOSITORIO>
-cd <NOMBRE_DEL_PROYECTO>
-
-# 2. Instalar dependencias
-npm install
-
-# 3. Configurar variables de entorno
-cp .env.example .env
-# Completa los valores con las claves generadas (ver sección Docker abajo).
-
-# 4. Iniciar el servidor de desarrollo
-npm run dev
+```
+/
+├── frontend/       React + Vite + TypeScript (UI)
+├── backend/        Node.js + Express + pg (API REST)
+├── docker-compose.yml
+└── .env.example
 ```
 
-La aplicación estará disponible en `http://localhost:5173`.
+- **Frontend**: aplicación SPA construida con React, servida por Nginx en producción.
+- **Backend**: API REST en Node.js que se conecta directamente a PostgreSQL
+  mediante el driver `pg`, sin Supabase, sin Firebase y sin servicios externos.
+- **Base de datos**: PostgreSQL 16 dockerizado, con esquema y datos iniciales
+  cargados automáticamente desde `backend/migrations/` en el primer arranque.
 
-## Despliegue con Docker (Self-Hosted)
+## Despliegue rápido (todo con Docker)
 
-Este proyecto está configurado para correr con una instancia propia de Supabase
-en Docker, sin depender de Supabase Cloud.
+Es la forma recomendada para producción institucional UCP.
 
-### Requisitos
-- Docker y Docker Compose instalados
-- Puertos disponibles: `8000` (API), `5432` (PostgreSQL), `3000` (Supabase Studio)
+```bash
+# 1. Clona el repositorio
+git clone <URL_DEL_REPO>
+cd <NOMBRE_DEL_PROYECTO>
 
-### Pasos para levantar el backend
+# 2. Configura variables de entorno
+cp .env.example .env
+# Edita .env y cambia POSTGRES_PASSWORD, JWT_SECRET, CORS_ORIGIN, etc.
 
-1. Copia las variables de entorno:
-   ```bash
-   cp .env.example .env
-   ```
+# 3. Levanta todo (postgres + backend + frontend)
+docker compose up -d
 
-2. Genera un JWT secret seguro:
-   ```bash
-   openssl rand -base64 32
-   ```
-
-3. Genera las claves `ANON_KEY` y `SERVICE_ROLE_KEY` con Node.js:
-   ```bash
-   node -e "
-   const jwt = require('jsonwebtoken');
-   const secret = 'TU_JWT_SECRET_AQUI';
-   const anon = jwt.sign({ role: 'anon', iss: 'supabase', iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + (10*365*24*60*60) }, secret);
-   const service = jwt.sign({ role: 'service_role', iss: 'supabase', iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + (10*365*24*60*60) }, secret);
-   console.log('ANON_KEY:', anon);
-   console.log('SERVICE_ROLE_KEY:', service);
-   "
-   ```
-
-4. Completa el archivo `.env` con los valores generados.
-
-5. Levanta los contenedores:
-   ```bash
-   docker compose up -d
-   ```
-
-6. Inicia el frontend:
-   ```bash
-   npm run dev
-   ```
-
-### Accesos
-| Servicio | URL |
-|---|---|
-| Aplicación React | http://localhost:5173 |
-| Supabase Studio (panel admin) | http://localhost:3000 |
-| API Supabase | http://localhost:8000 |
-| PostgreSQL | localhost:5432 |
-
-### Base de datos
-El archivo `init.sql` en la raíz del proyecto contiene el schema completo
-y los datos iniciales. Docker lo ejecuta automáticamente la primera vez
-que se levanta el contenedor de PostgreSQL.
+# 4. Verifica
+curl http://localhost:3001/api/health
+# El frontend queda en http://localhost:8080
+```
 
 Para reinicializar la base de datos desde cero:
+
 ```bash
-docker compose down -v   # elimina volúmenes
+docker compose down -v   # destruye el volumen
 docker compose up -d     # recrea todo
 ```
 
-## Scripts Disponibles
+## Desarrollo local (sin Docker)
 
-| Script           | Descripción                              |
-| ---------------- | ---------------------------------------- |
-| `npm run dev`    | Servidor de desarrollo con hot-reload    |
-| `npm run build`  | Build de producción                      |
-| `npm run preview`| Vista previa del build de producción     |
-| `npm run test`   | Ejecutar tests con Vitest                |
-| `npm run lint`   | Linter con ESLint                        |
+Backend y frontend pueden desarrollarse de forma independiente.
 
-## Estructura del Proyecto
+### Backend
 
-```
-src/
-├── components/    # Componentes reutilizables y UI (shadcn)
-├── context/       # Contextos de React (Auth, Agenda)
-├── data/          # Datos estáticos y constantes
-├── hooks/         # Custom hooks
-├── integrations/  # Cliente de Supabase (auto-generado)
-├── pages/         # Páginas/rutas principales
-├── types/         # Tipos TypeScript
-└── assets/        # Imágenes y recursos estáticos
+```bash
+cd backend
+cp .env.example .env
+# Asegúrate de tener un PostgreSQL corriendo (puede ser el contenedor docker)
+npm install
+npm run dev    # http://localhost:3001/api
 ```
 
-## Datos Iniciales (Seed)
+### Frontend
 
-El archivo `init.sql` contiene todos los registros iniciales del sistema (roles, estados, semestres, facultades, niveles de educación, carreras, asignaturas, actividades, y el usuario de prueba). Los datos se insertan con `ON CONFLICT DO NOTHING` para ser idempotentes.
+```bash
+cd frontend
+npm install
+npm run dev    # http://localhost:5173
+```
 
-## Variables de Entorno
+## Stack técnico
 
-Ver `.env.example` para referencia. Las variables requeridas son:
+| Capa       | Tecnologías                                              |
+| ---------- | -------------------------------------------------------- |
+| Frontend   | React 18, Vite 5, TypeScript, Tailwind CSS, shadcn/ui    |
+| Backend    | Node.js 20, Express 4, TypeScript, pg, zod               |
+| Base de datos | PostgreSQL 16                                         |
+| Contenedores | Docker + Docker Compose                                |
 
-- `VITE_SUPABASE_URL` — URL de la instancia Supabase (ej: `http://localhost:8000`)
-- `VITE_SUPABASE_PUBLISHABLE_KEY` — Clave pública (anon key)
-- `VITE_SUPABASE_PROJECT_ID` — ID del proyecto (`local` para self-hosted)
+## Estado actual y roadmap
+
+Este proyecto está en proceso de migración progresiva desde una arquitectura
+basada en Supabase hacia una arquitectura 100% autónoma con Docker.
+
+**Fase 1 (actual — completada)**:
+- ✅ Reorganización del repositorio en `frontend/` + `backend/`
+- ✅ Backend Express + pg con endpoint `/api/health`
+- ✅ Dockerización completa (postgres + backend + frontend)
+- ✅ Esquema de BD migrado a `backend/migrations/`
+
+**Fases siguientes** (ver `backend/README.md` para detalle):
+- Fase 2: Auth + Users
+- Fase 3: Agendas y dominios principales
+- Fase 4: Catálogos y actividades
+- Fase 5: Audit log + recommendations + lineamientos
+- Fase 6: Storage de archivos
+- Fase 7: Emails transaccionales
+- Fase 8: Limpieza final (eliminar dependencia de Supabase del frontend)
+
+Mientras se completan las fases, el frontend sigue funcionando con su
+integración actual a Supabase. Cada fase migra un dominio del frontend al
+nuevo backend de forma incremental.
+
+## Documentación adicional
+
+- `backend/README.md` — detalles de la API, estructura y endpoints
+- `frontend/` — código fuente del cliente React
+- `.env.example` — variables de entorno requeridas
