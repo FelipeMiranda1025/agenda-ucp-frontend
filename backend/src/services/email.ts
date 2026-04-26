@@ -20,12 +20,28 @@ function getTransporter(): Transporter {
 const FROM =
   process.env.SMTP_FROM ?? '"Agenda Docente UCP" <no-reply@ucp.edu.co>';
 
-/** Envía el correo de recuperación de contraseña con plantilla institucional UCP */
-export async function sendPasswordResetEmail(
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * Envía la nueva contraseña temporal al docente en TEXTO PLANO dentro de un
+ * correo HTML institucional UCP. La contraseña ya quedó actualizada (hasheada)
+ * en la base de datos antes de invocar esta función.
+ */
+export async function sendTemporaryPasswordEmail(
   to: string,
   firstName: string,
-  resetUrl: string
+  tempPassword: string
 ): Promise<void> {
+  const safeName = escapeHtml(firstName?.trim() || "Docente");
+  const safePwd = escapeHtml(tempPassword);
+
   const html = `
   <!doctype html>
   <html lang="es">
@@ -41,24 +57,33 @@ export async function sendPasswordResetEmail(
               </tr>
               <tr>
                 <td style="padding:32px;">
-                  <h2 style="margin:0 0 16px;font-size:20px;color:#0a4d8c;">Hola, ${firstName}</h2>
+                  <h2 style="margin:0 0 16px;font-size:20px;color:#0a4d8c;">Hola, ${safeName}</h2>
                   <p style="margin:0 0 16px;line-height:1.5;">
-                    Recibimos una solicitud para restablecer tu contraseña en el Sistema de Agenda Docente.
+                    Recibimos una solicitud para restablecer tu contraseña en el
+                    Sistema de Agenda Docente. A continuación encontrarás tu
+                    <strong>nueva contraseña temporal</strong>.
                   </p>
-                  <p style="margin:0 0 24px;line-height:1.5;">
-                    Haz clic en el botón para crear una nueva contraseña.
-                    El enlace es válido por <strong>30 minutos</strong>.
+
+                  <div style="margin:24px 0;padding:18px 20px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:8px;text-align:center;">
+                    <p style="margin:0 0 8px;font-size:13px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">
+                      Tu nueva contraseña
+                    </p>
+                    <p style="margin:0;font-family:'Courier New',Consolas,monospace;font-size:22px;font-weight:bold;color:#0a4d8c;letter-spacing:2px;word-break:break-all;">
+                      ${safePwd}
+                    </p>
+                  </div>
+
+                  <p style="margin:0 0 16px;line-height:1.5;">
+                    Inicia sesión con esta contraseña usando tu cédula o correo
+                    institucional. Por seguridad, te recomendamos
+                    <strong>cambiarla</strong> tan pronto ingreses al sistema.
                   </p>
-                  <p style="text-align:center;margin:32px 0;">
-                    <a href="${resetUrl}"
-                       style="background:#0a4d8c;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:6px;font-weight:bold;display:inline-block;">
-                      Restablecer contraseña
-                    </a>
-                  </p>
+
                   <p style="margin:24px 0 0;font-size:13px;color:#6b7280;line-height:1.5;">
-                    Si no solicitaste este cambio, puedes ignorar este correo.
-                    Tu contraseña actual permanecerá sin cambios.
+                    Si tú no solicitaste este cambio, comunícate de inmediato con
+                    el área de soporte académico para asegurar tu cuenta.
                   </p>
+
                   <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0;" />
                   <p style="margin:0;font-size:12px;color:#9ca3af;text-align:center;">
                     Sistema de Agenda Docente · Universidad Católica de Pereira
@@ -72,10 +97,20 @@ export async function sendPasswordResetEmail(
     </body>
   </html>`;
 
+  const text =
+    `Hola ${firstName || "Docente"},\n\n` +
+    `Recibimos una solicitud para restablecer tu contraseña en el Sistema ` +
+    `de Agenda Docente UCP.\n\n` +
+    `Tu nueva contraseña temporal es: ${tempPassword}\n\n` +
+    `Inicia sesión con esta contraseña y, por seguridad, cámbiala apenas ` +
+    `ingreses al sistema.\n\n` +
+    `Si tú no solicitaste este cambio, contacta al soporte académico de la UCP.`;
+
   await getTransporter().sendMail({
     from: FROM,
     to,
-    subject: "Recuperación de contraseña — Agenda Docente UCP",
+    subject: "Nueva contraseña temporal — Agenda Docente UCP",
+    text,
     html,
   });
 }
