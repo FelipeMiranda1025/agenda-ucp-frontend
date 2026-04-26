@@ -1,0 +1,24 @@
+{
+  "name": "agenda-ucp-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo de Agenda UCP — frontend (React) + backend (Express) dockerizado",
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "build:dev": "cd frontend && npm run build:dev",
+    "preview": "cd frontend && npm run preview",
+    "test": "cd frontend && npm run test",
+    "lint": "cd frontend && npm run lint",
+    "backend:dev": "cd backend && npm run dev",
+    "backend:build": "cd backend && npm run build",
+    "backend:start": "cd backend && npm run start",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:reset": "docker compose down -v && docker compose up -d"
+  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ]
+}
