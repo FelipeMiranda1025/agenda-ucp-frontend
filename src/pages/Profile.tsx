@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Pencil, Save, X } from "lucide-react";
+import { ArrowLeft, Pencil, Save, X, KeyRound } from "lucide-react";
+import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import { ROLES, STATUSES } from "@/types/auth";
 import { toast } from "sonner";
 
@@ -17,6 +18,7 @@ const Profile = () => {
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ ...user });
+  const [pwdOpen, setPwdOpen] = useState(false);
 
   if (!user) return null;
 
@@ -74,6 +76,14 @@ const Profile = () => {
                     {initials}
                   </AvatarFallback>
                 </Avatar>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPwdOpen(true)}
+                  className="gap-1.5 w-full"
+                >
+                  <KeyRound className="h-4 w-4" /> {t("profilePage.changePassword")}
+                </Button>
                 <div className="text-center">
                   <p className="font-semibold text-lg">{user.firstName} {user.firstLastName}</p>
                   <p className="text-sm text-muted-foreground capitalize">{roleLabel}</p>
@@ -110,6 +120,7 @@ const Profile = () => {
           </CardContent>
         </Card>
       </div>
+      <ChangePasswordDialog open={pwdOpen} onOpenChange={setPwdOpen} />
     </div>
   );
 };
