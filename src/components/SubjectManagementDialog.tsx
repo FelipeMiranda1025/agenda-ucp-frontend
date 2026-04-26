@@ -154,8 +154,12 @@ export function SubjectManagementDialog({ open, onOpenChange }: Props) {
       toast.success(t("subject.deleted"));
       queryClient.invalidateQueries({ queryKey: ["subjects"] });
       setMode("list");
-    setForm(emptyForm);
-    setEditingId(null);
+      setForm(emptyForm);
+      setEditingId(null);
+    } catch (e) {
+      setLoading(false);
+      toast.error(e instanceof Error ? e.message : "Error");
+    }
   };
 
   const filteredSubjects = subjects?.filter((s) =>
