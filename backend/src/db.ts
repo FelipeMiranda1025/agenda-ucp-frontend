@@ -1,26 +1,46 @@
 import pg from "pg";
-import { config } from "./config.js";
 
-// Asegura que BIGINT (int8) se devuelva como number cuando sea seguro.
-pg.types.setTypeParser(20, (val: string) => parseInt(val, 10));
+const { Pool, types } = pg;
 
-export const pool = new pg.Pool({
-  connectionString: config.databaseUrl,
+// BIGINT (oid 20) → number cuando sea seguro
+types.setTypeParser(20, (val: string) => parseInt(val, 10));
+
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
   application_name: "agenda-ucp-api",
-  max: 10,
+  max: 20,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 10_000,
 });
 
 pool.on("error", (err) => {
-  // Errores en clientes inactivos del pool
   console.error("[db] Error inesperado en cliente del pool:", err);
 });
 
+/** Ejecuta una query y devuelve todas las filas */
+export async function query<T = any>(text: string, params?: any[]): Promise<T[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(text, params);
+    return result.rows as T[];
+  } finally {
+    client.release();
+  }
+}
+
+/** Devuelve la primera fila o null */
+export async function queryOne<T = any>(
+  text: string,
+  params?: any[]
+): Promise<T | null> {
+  const rows = await query<T>(text, params);
+  return rows[0] ?? null;
+}
+
 export async function pingDb(): Promise<boolean> {
   try {
-    const result = await pool.query("SELECT 1 AS ok");
-    return result.rows[0]?.ok === 1;
+    const result = await query<{ ok: number }>("SELECT 1 AS ok");
+    return result[0]?.ok === 1;
   } catch (err) {
     console.error("[db] ping falló:", err);
     return false;

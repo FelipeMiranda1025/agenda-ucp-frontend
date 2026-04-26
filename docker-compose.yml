@@ -1,86 +1,98 @@
-# =============================================
-# Sistema de Agenda Docente — UCP
-# Despliegue: PostgreSQL + Backend API + Frontend
-# =============================================
+# =====================================================================
+# SISTEMA DE AGENDA DOCENTE — UCP
+# Orquesta: PostgreSQL + Backend Express + Frontend React (Nginx)
 #
-# Estructura del repositorio:
-#   /            → Frontend (React + Vite)
-#   /backend     → API REST (Node.js + Express)
+# PRIMER USO:   docker compose up --build -d
+# USOS POSTERIORES: docker compose up -d
 #
-# Uso:
-#   1. cp .env.example .env
-#   2. Edita .env (al menos POSTGRES_PASSWORD y JWT_SECRET)
-#   3. docker compose up -d
+# Servicios expuestos en el host:
+#   - Postgres   localhost:5432    (DBeaver)
+#   - Backend    http://localhost:4000/api
+#   - Frontend   http://localhost:5173
 #
-# Servicios expuestos:
-#   - postgres  → localhost:5432
-#   - backend   → http://localhost:3001/api
-#   - frontend  → http://localhost:8080
-#
-# Reinicializar BD:
-#   docker compose down -v && docker compose up -d
+# Reinicializar BD desde cero:
+#   docker compose down -v && docker compose up --build -d
+# =====================================================================
 
 services:
-  # ─── PostgreSQL ───────────────────────────────
-  postgres:
-    image: postgres:16-alpine
-    container_name: ucp-postgres
+
+  # ─── Base de datos PostgreSQL ────────────────────────────────────
+  db:
+    image: postgres:15-alpine
+    container_name: agendadocente-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-agenda_ucp}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-1234Ucp*}
+      POSTGRES_DB: ${POSTGRES_DB:-agendadocentedb}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./backend/migrations:/docker-entrypoint-initdb.d:ro
+      - db-data:/var/lib/postgresql/data
+      # Script de inicialización (solo se ejecuta si la BD está vacía)
+      - ./backend/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-agenda_ucp}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-agendadocentedb}"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 15
 
-  # ─── Backend API ──────────────────────────────
+  # ─── Backend Express + pg ────────────────────────────────────────
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: ucp-backend
+    container_name: agendadocente-backend
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-4000}:4000"
     environment:
       NODE_ENV: production
-      PORT: 3001
-      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-agenda_ucp}
-      JWT_SECRET: ${JWT_SECRET:-cambia-esto-en-produccion}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080,http://localhost:5173}
-    ports:
-      - "${BACKEND_PORT:-3001}:3001"
+      PORT: 4000
+      # Importante: el "*" en la contraseña va URL-encoded como %2A
+      DATABASE_URL: ${DATABASE_URL:-postgres://admin:1234Ucp%2A@db:5432/agendadocentedb}
+      JWT_SECRET: ${JWT_SECRET:-UCP_JWT_Secret_2025_CambiarEnProduccion}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173,http://localhost:8080}
+      # ── SMTP (recuperación de contraseña) ───────────────────────
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-Agenda Docente UCP <no-reply@ucp.edu.co>}
+      # ── Uploads ─────────────────────────────────────────────────
+      UPLOADS_DIR: /var/app/uploads
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-20}
+    volumes:
+      - uploads-data:/var/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/health"]
       interval: 15s
       timeout: 5s
       retries: 5
       start_period: 20s
 
-  # ─── Frontend (React + Nginx) ─────────────────
+  # ─── Frontend React + Nginx ──────────────────────────────────────
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.frontend
+      dockerfile: frontend/Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001/api}
-    container_name: ucp-frontend
+        VITE_API_URL: ${VITE_API_URL:-/api}
+    container_name: agendadocente-frontend
     restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
     depends_on:
       backend:
         condition: service_healthy
-    ports:
-      - "${FRONTEND_PORT:-8080}:80"
 
 volumes:
-  pgdata:
-    name: ucp-pgdata
+  db-data:
+    name: agendadocente-db-data
+  uploads-data:
+    name: agendadocente-uploads
