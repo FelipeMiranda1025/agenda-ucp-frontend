@@ -1,60 +1,160 @@
-## Análisis
+# Separación del proyecto en Frontend + Backend (Fase 1)
 
-El flujo actual de "Olvidé mi contraseña" en `LoginDialog.tsx` muestra un mensaje fijo ("Debes escribir a soporte@ucp.edu.co") con cuenta regresiva de 5s y redirección a Gmail. Se reemplaza completamente por un flujo funcional:
+## Objetivo
 
-1. El usuario hace clic en "Olvidé mi contraseña" → se abre un sub-modal pidiendo **cédula o correo institucional**.
-2. El usuario ingresa el dato y hace clic en "Enviar".
-3. El backend (edge function `request-password-reset`) busca el usuario en la tabla `users` (por `cc` o por `email`), obtiene su `email` institucional registrado, genera una contraseña temporal aleatoria (12 chars, mayúsc + minúsc + número + especial), la guarda hasheada (SHA-256, mismo algoritmo que `AuthContext.hashPassword`) en `users.password`, y envía un correo a ese `email` con la contraseña en texto plano.
-4. Tras el envío exitoso, se muestra el mensaje **"Se envió la nueva contraseña al correo"** (sin cuenta regresiva, sin redirección a Gmail).
-5. El usuario inicia sesión con la contraseña temporal y puede luego cambiarla desde su perfil (esa parte ya estaba planeada por separado).
+Resolver la falencia de despliegue separando el código en una estructura de monorepo con dos carpetas independientes, eliminando toda dependencia de Supabase (cloud, self-hosted) y Lovable Cloud. La nueva arquitectura será:
 
-## Infraestructura de email
+- **Frontend**: React + Vite (lo que ya existe), consume un API REST por HTTPS.
+- **Backend**: Node.js + Express + driver `pg` puro contra PostgreSQL, todo dockerizado.
 
-Aún no hay dominio de email configurado en el proyecto. El usuario ya había aprobado configurar `notify.ucp.edu.co`. Pasos:
+Esta entrega es la **Fase 1 (esqueleto)**. El frontend seguirá funcionando con su cliente Supabase actual mientras avanzamos por fases posteriores. Esto evita romper la aplicación mientras se construye el reemplazo.
 
-1. Mostrar el diálogo de configuración de dominio para `notify.ucp.edu.co` (delegación NS al servicio de Lovable).
-2. Provisionar la infraestructura de email (cola pgmq, tablas, cron, etc.).
-3. Hacer scaffold de transactional email (crea `send-transactional-email`, `handle-email-unsubscribe`, `handle-email-suppression`).
-4. Crear plantilla `password-reset-temporary.tsx` con marca UCP (logo blanco, color institucional, tipografía sobria) que muestre saludo personalizado, contraseña temporal en bloque destacado monoespaciado, instrucción "Inicia sesión y cámbiala desde tu perfil", aviso de seguridad.
-5. Crear edge function `request-password-reset` que:
-   - Recibe `{ identifier }` (cédula o correo).
-   - Valida con Zod (no vacío, longitud razonable).
-   - Detecta si es cédula (sólo dígitos) o correo (`@ucp.edu.co`); busca por `cc` o por `email` en `users`.
-   - Si no existe → devuelve un mensaje neutro de éxito (para evitar enumeración de cuentas) pero no envía nada.
-   - Si existe: genera contraseña temporal, hashea con SHA-256, hace `UPDATE users SET password=... WHERE id=...`.
-   - Invoca `send-transactional-email` con `templateName: 'password-reset-temporary'`, `recipientEmail: user.email`, `templateData: { name: user.first_name, tempPassword }`.
+## Nueva estructura del repositorio
 
-> Nota: el envío real funcionará una vez DNS verifique `notify.ucp.edu.co` (puede tardar hasta 72h). Hasta entonces los correos quedan en cola.
+```text
+/  (raíz del repo)
+├── frontend/                  ← React + Vite (todo lo que hoy está en raíz)
+│   ├── src/
+│   ├── public/
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── tailwind.config.ts
+│   ├── tsconfig*.json
+│   ├── components.json
+│   ├── postcss.config.js
+│   ├── eslint.config.js
+│   ├── vitest.config.ts
+│   ├── .env.example
+│   └── Dockerfile             ← nuevo: build estático servido por nginx
+│
+├── backend/                   ← API Node.js + Express
+│   ├── src/
+│   │   ├── server.ts          ← entry point Express
+│   │   ├── db.ts              ← pool de conexión pg
+│   │   ├── config.ts          ← lectura de variables de entorno
+│   │   ├── middleware/
+│   │   │   ├── error-handler.ts
+│   │   │   └── logger.ts
+│   │   ├── routes/
+│   │   │   ├── health.ts      ← GET /api/health (prueba)
+│   │   │   └── index.ts       ← agregador de rutas
+│   │   └── types/
+│   │       └── api.ts
+│   ├── migrations/
+│   │   └── 001_initial_schema.sql   ← copia consolidada de init.sql
+│   ├── package.json
+│   ├── tsconfig.json
+│   ├── Dockerfile             ← nuevo
+│   ├── .env.example
+│   └── README.md
+│
+├── docker-compose.yml         ← orquesta postgres + backend + frontend
+├── .gitignore
+└── README.md                  ← documentación raíz del monorepo
+```
 
-## Cambios en el frontend (`LoginDialog.tsx`)
+## Qué se hace en esta fase
 
-- **Eliminar**: estado `countdown`, `redirected`, el `useEffect` de redirección a Gmail (líneas 71–93), la creación del `<a href="https://www.gmail.com">`, y el texto "Debes escribir a soporte@ucp.edu.co".
-- **Reemplazar `handleForgotPassword`**: en vez de activar `showMessage` con cuenta regresiva, abre un sub-modal (estado `forgotOpen`).
-- **Nuevo sub-modal** (overlay sobre el modal de login, o sección colapsable en el mismo card):
-  - Título: "Recuperar contraseña".
-  - Input "Cédula o correo institucional" con la misma validación de `getUsernameError`.
-  - Botón "Enviar contraseña temporal" (estado `sending` con spinner).
-  - Botón "Cancelar" para cerrar.
-  - Al enviar: `supabase.functions.invoke('request-password-reset', { body: { identifier } })`.
-  - Tras éxito: cerrar el sub-modal y mostrar el mensaje **"Se envió la nueva contraseña al correo"** en el modal principal de login (toast o texto debajo del enlace, sin cuenta regresiva).
-  - Errores de red: mensaje genérico "Intenta nuevamente".
+### 1. Reorganización física de carpetas
 
-## Archivos
+Mover **todo el código del frontend actual** a la subcarpeta `frontend/`:
 
-| Archivo | Cambio |
-|---|---|
-| `src/components/LoginDialog.tsx` | Eliminar lógica de redirect/countdown. Añadir estado `forgotOpen`, `forgotIdentifier`, `forgotSending`, `forgotSuccess`. Renderizar sub-modal de recuperación. Mostrar el nuevo mensaje "Se envió la nueva contraseña al correo" tras éxito. |
-| `supabase/functions/request-password-reset/index.ts` | **Nuevo**. CORS, Zod, busca usuario por `cc` o `email`, genera contraseña temporal, actualiza hash, invoca `send-transactional-email`. |
-| `supabase/functions/_shared/transactional-email-templates/password-reset-temporary.tsx` | **Nuevo**. Plantilla React Email con marca UCP. Muestra contraseña temporal destacada. |
-| `supabase/functions/_shared/transactional-email-templates/registry.ts` | Registrar la nueva plantilla. |
-| `src/i18n/translations.ts` | Claves: `forgotPassword.title`, `forgotPassword.identifierLabel`, `forgotPassword.identifierPlaceholder`, `forgotPassword.send`, `forgotPassword.cancel`, `forgotPassword.sending`, `forgotPassword.success` (= "Se envió la nueva contraseña al correo"), `forgotPassword.networkError`. |
+- `src/`, `public/`, `index.html` → `frontend/`
+- `package.json`, `bun.lock`, `vite.config.ts`, `tailwind.config.ts`, `postcss.config.js`, `eslint.config.js`, `vitest.config.ts`, `components.json` → `frontend/`
+- `tsconfig.json`, `tsconfig.app.json`, `tsconfig.node.json` → `frontend/`
+- `.env.example` (la versión de Vite) → `frontend/.env.example`
 
-## Pasos de implementación (orden)
+El frontend NO se refactoriza en esta fase: sigue importando desde `@/integrations/supabase/client` y consumiendo Supabase tal cual. Esto se reemplazará en fases siguientes.
 
-1. Configurar el dominio de email `notify.ucp.edu.co` (diálogo de setup).
-2. Provisionar infraestructura de email + scaffold de transactional emails.
-3. Crear la plantilla `password-reset-temporary.tsx` y registrarla.
-4. Crear la edge function `request-password-reset`.
-5. Refactorizar `LoginDialog.tsx`: eliminar el flujo viejo y añadir el sub-modal con el nuevo mensaje.
-6. Añadir traducciones ES/EN.
-7. Desplegar las edge functions.
+### 2. Crear backend nuevo desde cero
+
+Stack: **Node.js 20 + TypeScript + Express + pg + zod + cors + dotenv**.
+
+Archivos creados:
+
+- `backend/package.json` con scripts `dev`, `build`, `start`, `migrate`.
+- `backend/tsconfig.json` (target ES2022, module NodeNext).
+- `backend/src/config.ts`: lee `DATABASE_URL`, `PORT`, `JWT_SECRET`, `CORS_ORIGIN` desde el entorno.
+- `backend/src/db.ts`: pool global de `pg` con manejo de errores y graceful shutdown.
+- `backend/src/server.ts`: Express con middlewares (cors, json body parser, logger, error handler). Monta `/api`.
+- `backend/src/middleware/error-handler.ts`: convierte excepciones a respuestas JSON consistentes `{ error, code }`.
+- `backend/src/middleware/logger.ts`: log request/response básico.
+- `backend/src/routes/index.ts`: router agregador.
+- `backend/src/routes/health.ts`: endpoint `**GET /api/health**` que devuelve `{ status: 'ok', db: 'ok'|'error', version, uptime }`. Hace `SELECT 1` contra Postgres para validar conexión.
+- `backend/migrations/001_initial_schema.sql`: copia del `init.sql` actual (tablas, índices, datos iniciales). En fases posteriores se irá ajustando (quitar políticas RLS de Supabase, adaptar a auth propia, etc.).
+
+### 3. Dockerización completa
+
+#### `backend/Dockerfile`
+
+Multi-stage build: `node:20-alpine` para build TypeScript → imagen final ligera ejecutando `node dist/server.js`. Expone puerto `3001`.
+
+#### `frontend/Dockerfile`
+
+Multi-stage: `node:20-alpine` para `npm run build` → `nginx:alpine` sirviendo `dist/` con configuración SPA (fallback a `index.html`). Expone puerto `80`.
+
+#### `docker-compose.yml` (raíz, reemplaza el actual)
+
+Tres servicios:
+
+- **postgres**: `postgres:16-alpine`, volumen persistente `pgdata`, ejecuta `backend/migrations/*.sql` al primer arranque vía `/docker-entrypoint-initdb.d/`.
+- **backend**: build desde `./backend`, depende de postgres healthy, expone `3001`, lee env vars del archivo `.env` raíz.
+- **frontend**: build desde `./frontend`, expone `8080`, configurado para apuntar al backend en build time vía `VITE_API_URL`.
+
+El `docker-compose.yml` actual (con servicios de Supabase: gotrue, postgrest, realtime, kong, studio, meta) se elimina por completo. La carpeta `docker/` y `init.sql` raíz también se eliminan (su contenido se traslada a `backend/migrations/`).
+
+### 4. Variables de entorno
+
+Tres archivos `.env.example`:
+
+- **Raíz** (`./.env.example`): valores compartidos por docker-compose
+  - `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`
+  - `JWT_SECRET`
+  - `BACKEND_PORT=3001`, `FRONTEND_PORT=8080`
+- `**backend/.env.example**`: para correr backend fuera de Docker
+  - `DATABASE_URL=postgres://...`
+  - `PORT=3001`
+  - `JWT_SECRET=...`
+  - `CORS_ORIGIN=http://localhost:5173`
+- `**frontend/.env.example**`: para correr frontend fuera de Docker
+  - `VITE_API_URL=http://localhost:3001/api` (será usado en futuras fases)
+  - Variables Vite/Supabase actuales se conservan temporalmente
+
+### 5. Documentación
+
+`README.md` raíz reescrito explicando:
+
+- Arquitectura del monorepo
+- Cómo levantar todo con `docker compose up -d` (un solo comando, listo para producción institucional UCP)
+- Cómo desarrollar frontend y backend por separado
+- Roadmap de las próximas fases
+
+`backend/README.md`: cómo añadir endpoints, estructura del proyecto, convenciones.
+
+## Lo que NO se hace en esta fase (queda para fases siguientes)
+
+- **Fase 2 (Auth + Users)**: endpoints `POST /api/auth/login`, `POST /api/auth/forgot-password`, CRUD `/api/users`. JWT propio. Refactor de `AuthContext`, `LoginDialog`, `useAuth` para llamar al backend.
+- **Fase 3 (Dominios principales)**: endpoints CRUD para `agendas`, `agenda_views`, `agenda_comments`, `subjects`, `user_hierarchy`, `docente_semester_config`. Refactor de hooks `useAgenda`, `useDatabase`, `useDocenteConfig`.
+- **Fase 4 (Catálogos y actividades)**: endpoints para `roles`, `states`, `semester`, `faculties`, `professional_careers`, `education_levels` y las 8 tablas de actividades. Refactor de los formularios CRUD.
+- **Fase 5 (Audit log + recommendations + lineamientos)**: triggers SQL puros (sin Supabase), endpoints, refactor de `useRecommendationRules`, `useLineamientosImport`.
+- **Fase 6 (Storage de archivos)**: endpoint de upload + volumen Docker para reemplazar Supabase Storage del bucket `lineamientos`.
+- **Fase 7 (Emails transaccionales)**: servicio SMTP propio (nodemailer) con cola en Postgres, plantillas React Email server-side rendered.
+- **Fase 8 (Limpieza final)**: eliminar `frontend/src/integrations/supabase/`, eliminar dependencia `@supabase/supabase-js`, eliminar `supabase/` del repo.
+
+## Resultado esperado al terminar la Fase 1
+
+- El repositorio queda organizado en `frontend/` y `backend/`.
+- `docker compose up -d` levanta tres contenedores: PostgreSQL con esquema cargado, backend Express respondiendo en `http://localhost:3001/api/health`, frontend en `http://localhost:8080`.
+- El frontend sigue funcionando exactamente como hoy (consume Supabase Cloud actual hasta que se migren los endpoints en fases siguientes).
+- La UCP ya tiene una base desplegable autónoma sin Supabase ni Lovable, y el camino de migración progresiva está documentado.
+
+## Detalles técnicos clave
+
+- **Driver**: `pg` (node-postgres) con `Pool`, `parseInt8: true`, `application_name: 'agenda-ucp-api'`.
+- **Validación**: `zod` para schemas de request body / query params en cada endpoint futuro.
+- **Errores**: clase `ApiError` con `status` y `code`; middleware central serializa a JSON.
+- **CORS**: configurable vía `CORS_ORIGIN` (lista separada por comas).
+- **Logs**: middleware simple que imprime `method url status duration`. En fase posterior se puede cambiar por `pino`.
+- **Migraciones**: por ahora archivos `.sql` numerados ejecutados por Postgres en el primer arranque. En Fase 2 se puede añadir `node-pg-migrate` o similar para migraciones incrementales.
+- **Healthcheck Docker**: el servicio backend incluye healthcheck que llama a `/api/health` para que `frontend` espere a que esté listo.
