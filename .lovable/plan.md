@@ -138,8 +138,19 @@ Tres archivos `.env.example`:
 - **Fase 3 (Dominios principales)**: endpoints CRUD para `agendas`, `agenda_views`, `agenda_comments`, `subjects`, `user_hierarchy`, `docente_semester_config`. Refactor de hooks `useAgenda`, `useDatabase`, `useDocenteConfig`.
 - **Fase 4 (Catálogos y actividades)**: endpoints para `roles`, `states`, `semester`, `faculties`, `professional_careers`, `education_levels` y las 8 tablas de actividades. Refactor de los formularios CRUD.
 - **Fase 5 (Audit log + recommendations + lineamientos)**: triggers SQL puros (sin Supabase), endpoints, refactor de `useRecommendationRules`, `useLineamientosImport`.
-- **Fase 6 (Storage de archivos)**: endpoint de upload + volumen Docker para reemplazar Supabase Storage del bucket `lineamientos`.
-- **Fase 7 (Emails transaccionales)**: servicio SMTP propio (nodemailer) con cola en Postgres, plantillas React Email server-side rendered.
+- **Fase 6 (Subida + interpretación de documentos)**: endpoint `POST /api/upload`
+  con `multer` (volumen Docker `/var/app/uploads`, límite `MAX_UPLOAD_MB`) y endpoint
+  `POST /api/parse-document` que extrae texto con `pdf-parse` (PDF) o `mammoth` (DOCX)
+  y lo envía a una API LLM externa (OpenAI o Anthropic Claude vía `LLM_PROVIDER`).
+  Reemplaza Supabase Storage (`lineamientos`) y la edge function `parse-lineamientos`.
+- **Fase 7 (Emails transaccionales con nodemailer)**: servicio SMTP configurable
+  (Gmail, SendGrid, Mailgun o servidor SMTP institucional UCP) vía variables
+  `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`. Endpoints:
+  `POST /api/auth/forgot-password` (genera token, envía email de recuperación)
+  y `POST /api/auth/reset-password` (valida token, actualiza contraseña). Cola
+  simple en Postgres (`email_queue`) con worker en proceso. Reemplaza las edge
+  functions `send-transactional-email`, `process-email-queue`, `request-password-reset`
+  y `auth-email-hook`.
 - **Fase 8 (Limpieza final)**: eliminar `frontend/src/integrations/supabase/`, eliminar dependencia `@supabase/supabase-js`, eliminar `supabase/` del repo.
 
 ## Resultado esperado al terminar la Fase 1
