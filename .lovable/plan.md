@@ -1,115 +1,97 @@
+# Plan — Desconectar Supabase del frontend y conectar al backend Express
+
 ## Objetivo
 
-Implementar el backend Express completo con todas las rutas (auth, catálogos, agendas, comentarios, jerarquía, audit, subjects, users, docente-config, upload+parse documentos), correos SMTP con nodemailer y empaquetado Docker (backend + frontend Nginx + Postgres) según las sugerencias de Claude. El script SQL ya tiene todas las tablas necesarias (`password_reset_tokens`, `uploaded_documents`, `agenda_views`, etc.), así que no hay cambios de base de datos.
+Reemplazar `@supabase/supabase-js` por `fetch()` nativo apuntando al backend Express en `:4000/api`, manteniendo intactos componentes, páginas, tipos, i18n, estilos y tests. La autenticación pasa a JWT (Bearer token en `localStorage`).
 
-## Ajustes sobre la propuesta de Claude
+## Alcance real (verificado contra el código)
 
-Las sugerencias son viables, con estos ajustes para que **funcione realmente**:
-
-1. **Contraseña de DB con `*`**: `1234Ucp*` debe ir URL-encoded en `DATABASE_URL` → `1234Ucp%2A`. Si no, `pg` interpreta mal la cadena.
-2. **`docker-compose.yml`**: quitar `version: "3.8"` (obsoleto en Compose v2) y añadir `healthcheck` al backend para que el frontend espere a que esté arriba.
-3. **Frontend en monorepo**: el código React vive en la raíz (Lovable lo necesita así para el preview). El `Dockerfile` y `nginx.conf` del frontend van en `/frontend/`, y el `build.context` apunta a la raíz (`..`) usando `dockerfile: frontend/Dockerfile`. Así no rompemos el preview de Lovable.
-4. **`init.sql`**: usar el script ya existente `backend/migrations/001_initial_schema.sql` montándolo directamente en `/docker-entrypoint-initdb.d/` (no duplicar archivo).
-5. **bcrypt vs SHA-256**: la BD actual usa SHA-256 (compatible con el seed). Mantengo SHA-256 en login para no romper los usuarios existentes; `bcryptjs` queda en dependencias para uso futuro.
-6. **Auth opcional en upload**: `requireAuth` en `/api/upload` está bien, pero el endpoint actual de "parse-lineamientos" en el frontend no envía JWT todavía. Lo dejo con `requireAuth` y luego se conecta con el login.
-7. **Email HTML**: la plantilla del ejemplo de Claude llegó con HTML mal pegado (líneas vacías). La reescribo limpia.
-8. **Volumen de uploads**: persistido en `uploads-data` y servido estáticamente en `/uploads`.
-9. **Reemplazo de `server.ts` por `index.ts`**: para alinear con el `package.json` propuesto. Se elimina el viejo.
-10. **Puerto backend a 4000** (según propuesta de Claude). El frontend hace proxy vía Nginx a `backend:4000`.
-
-## Estructura final
+El prompt menciona 3 archivos a tocar (`AuthContext`, `useDatabase`, `package.json`). En realidad **14 archivos del frontend** importan o usan `supabase`. Todos deben migrarse para que la build no rompa al borrar `src/integrations/supabase/`.
 
 ```text
-ucp-agenda-manager/
-├── docker-compose.yml          (REEMPLAZADO)
-├── .env.example                (raíz, vars compartidas)
-├── src/                        (React, sin cambios — preview Lovable)
-├── frontend/
-│   ├── Dockerfile              (NUEVO)
-│   └── nginx.conf              (NUEVO)
-├── backend/
-│   ├── Dockerfile              (ACTUALIZADO: pdf-parse deps)
-│   ├── package.json            (ACTUALIZADO: +bcryptjs, jwt, multer, nodemailer, pdf-parse, mammoth, uuid)
-│   ├── migrations/
-│   │   └── 001_initial_schema.sql  (sin cambios — ya tiene todas las tablas)
-│   └── src/
-│       ├── index.ts            (NUEVO — reemplaza server.ts)
-│       ├── db.ts               (ACTUALIZADO: añade query/queryOne helpers)
-│       ├── config.ts           (sin cambios)
-│       ├── middleware/
-│       │   ├── auth.ts         (NUEVO — JWT requireAuth)
-│       │   ├── error-handler.ts
-│       │   └── logger.ts
-│       ├── services/
-│       │   └── email.ts        (NUEVO — nodemailer)
-│       └── routes/
-│           ├── index.ts        (ACTUALIZADO — registra todos los routers)
-│           ├── health.ts
-│           ├── auth.ts         (NUEVO — login, me, forgot/reset password)
-│           ├── catalogs.ts     (NUEVO — 13 endpoints GET de catálogos)
-│           ├── subjects.ts     (NUEVO — CRUD)
-│           ├── users.ts        (NUEVO — list, by-cc)
-│           ├── agendas.ts      (NUEVO — CRUD)
-│           ├── agendaViews.ts  (NUEVO — upsert + revisión)
-│           ├── agendaComments.ts (NUEVO — CRUD)
-│           ├── userHierarchy.ts  (NUEVO)
-│           ├── auditLog.ts       (NUEVO — read-only)
-│           ├── docenteConfig.ts  (NUEVO — upsert)
-│           └── upload.ts         (NUEVO — multer + pdf-parse + mammoth)
-└── (server.ts ELIMINADO)
+src/context/AuthContext.tsx              ← login con JWT
+src/hooks/useDatabase.ts                 ← ~40 queries CRUD
+src/hooks/useSystemEnabled.ts            ← system_settings + realtime
+src/hooks/useDocenteConfig.ts            ← docente_config
+src/hooks/useDashboardData.ts            ← dashboard
+src/hooks/useSemesterArchive.ts          ← semester_archive
+src/hooks/useRecommendationRules.ts      ← recommendation_rules
+src/hooks/useLineamientosImport.ts       ← storage + edge function
+src/context/AgendaContext.tsx            ← agenda persistence
+src/components/ActivityManagementDialog.tsx
+src/components/SubjectManagementDialog.tsx
+src/components/AppSidebar.tsx
+src/components/LoginDialog.tsx           ← request-password-reset
+src/pages/SupportPanel.tsx               ← user CRUD + jerarquía
 ```
 
-## Pasos de implementación
+## Cambios
 
-### 1. Backend — dependencias y entrada
-- Reescribir `backend/package.json` con todas las dependencias sugeridas (express, pg, jsonwebtoken, bcryptjs, multer, nodemailer, pdf-parse, mammoth, uuid, dotenv, cors) y devDeps de tipos.
-- Eliminar `backend/src/server.ts` y crear `backend/src/index.ts` que monta CORS, JSON parser, estáticos `/uploads`, todos los routers bajo `/api/...` y `health`.
-- Actualizar `backend/src/db.ts` añadiendo helpers `query()` y `queryOne()` reutilizables (manteniendo el pool actual).
+### 1. Cliente HTTP central — `src/lib/api.ts` (nuevo)
 
-### 2. Middleware
-- `backend/src/middleware/auth.ts`: `requireAuth` que verifica `Authorization: Bearer <jwt>` y popula `req.user = { id, cc, rolId }`.
+Wrapper sobre `fetch()` con inyección automática de `Authorization: Bearer <token>` desde `localStorage` (clave `ucp_token`). Expone `api.get / post / put / patch / delete` y `uploadFile()` para `multipart/form-data`. Lee `VITE_API_URL` (default `http://localhost:4000/api`).
 
-### 3. Servicio de email
-- `backend/src/services/email.ts`: transporter SMTP nodemailer + función `sendPasswordResetEmail(to, firstName, resetUrl)` con plantilla HTML institucional UCP limpia.
+### 2. `src/context/AuthContext.tsx` (reemplazar)
 
-### 4. Routers (todos en `backend/src/routes/`)
-- `auth.ts`: `POST /login` (SHA-256, JWT 8h), `GET /me` (protegido), `POST /forgot-password` (genera token UUID, expira en 30min, manda correo), `POST /reset-password` (valida token, actualiza hash).
-- `catalogs.ts`: 13 endpoints GET de solo lectura.
-- `subjects.ts`, `users.ts`, `agendas.ts`, `agendaViews.ts`, `agendaComments.ts`, `userHierarchy.ts`, `auditLog.ts`, `docenteConfig.ts`: CRUD/read protegidos con `requireAuth`.
-- `upload.ts`: `POST /parse-document` con multer (20MB, .pdf/.docx/.doc/.txt), extracción con `pdf-parse` o `mammoth`, persistencia en `uploaded_documents`.
-- `routes/index.ts` (existente): registrar todos los routers anteriores.
+- `login()` llama a `POST /auth/login` con `{ username, password }`.
+- Guarda `token` en `localStorage[ucp_token]` y `user` en `localStorage[ucp_session]`.
+- `logout()` limpia ambas claves.
+- Mantiene la misma forma `AuthState` y `getRoleName()` para no afectar a la UI.
 
-### 5. Backend Dockerfile
-- Actualizar `backend/Dockerfile` para incluir `python3 make g++` (deps nativas de pdf-parse), crear `/var/app/uploads`, exponer `4000`.
+### 3. `src/hooks/useDatabase.ts` (reescribir 1:1)
 
-### 6. Frontend Docker
-- Crear `frontend/Dockerfile` (build con Vite usando `VITE_API_URL` como ARG, runtime Nginx alpine).
-- Crear `frontend/nginx.conf` con SPA fallback y proxy `/api/` → `http://backend:4000/api/`, `client_max_body_size 25M`.
+Cada `supabase.from('X').select/insert/update/delete()` se traduce a `api.get/post/put/delete('/X', ...)`. Se conservan todos los hooks y sus firmas (`useRoles`, `useAgendas`, `useUserHierarchy`, `useApprovedAgendaCcs`, `useFullyApprovedCareers`, etc.) para no tocar componentes.
 
-### 7. Compose y env raíz
-- Reescribir `docker-compose.yml` raíz: 3 servicios (db, backend, frontend), volúmenes nombrados (`db-data`, `uploads-data`), montaje de `./backend/migrations/001_initial_schema.sql` como `/docker-entrypoint-initdb.d/01_init.sql`, `DATABASE_URL` con `*` URL-encoded, healthchecks.
-- Crear `.env.example` en raíz con `POSTGRES_PASSWORD`, `JWT_SECRET`, `SMTP_*`, `FRONTEND_URL`, `VITE_API_URL`.
+Las queries compuestas (`useApprovedAgendaCcs`, `useFullyApprovedCareers`, `usePendingAgendaViewsForSupervisor`) seguirán componiendo varias llamadas en el `queryFn`, igual que ahora, pero contra los endpoints REST. Ejemplo: `supabase.from('users').select().in('id', ids)` → `api.get('/users?ids=1,2,3')` (el backend ya soporta filtros básicos por query string).
 
-### 8. Documentación
-- Actualizar `README.md` y `backend/README.md` con instrucciones de arranque (`docker compose up --build -d`), ruta DBeaver (localhost:5432), URLs (frontend 5173, backend 4000), notas de SMTP de Gmail (App Password).
+`findUserByCredentials()` se elimina — el login ya no hashea en cliente; lo hace el backend.
+
+### 4. Hooks y componentes colaterales (migrar a `api`)
+
+- `useSystemEnabled.ts`: `GET/PUT /system-settings/system_enabled`. **Se elimina realtime** (no hay WebSocket en el backend Express); se usa `refetchInterval: 15000` como en otros hooks de polling.
+- `useDocenteConfig.ts`: `GET/POST /docente-config`.
+- `useDashboardData.ts`, `useSemesterArchive.ts`, `useRecommendationRules.ts`: traducción directa a `api.get/post/...`.
+- `AgendaContext.tsx`, `ActivityManagementDialog.tsx`, `SubjectManagementDialog.tsx`, `AppSidebar.tsx`, `SupportPanel.tsx`: reemplazar todos los `supabase.from(...)` por las llamadas equivalentes en `api`.
+
+### 5. Subida de lineamientos — `useLineamientosImport.ts`
+
+Hoy usa `supabase.storage.from('lineamientos').upload()` + `supabase.functions.invoke('parse-lineamientos')`. Migrar a:
+
+- `POST /upload/parse-document` con `FormData` (campo `file`) usando `uploadFile()`. El backend ya integra `pdf-parse`/`mammoth` y devuelve el texto extraído, por lo que un único endpoint reemplaza storage + edge function.
+
+### 6. Recuperación de contraseña — `LoginDialog.tsx`
+
+`supabase.functions.invoke('request-password-reset')` → `api.post('/auth/forgot-password', { email })`. El flujo de reset ya existe en `backend/src/routes/auth.ts`.
+
+### 7. `package.json`
+
+Eliminar:
+- `@supabase/supabase-js`
+
+No se añade nada nuevo (se usa `fetch` + TanStack Query ya instalado).
+
+### 8. Variables de entorno
+
+- `.env` → `VITE_API_URL=http://localhost:4000/api`
+- `.env.example` → mismo valor con comentario para producción UCP.
+- Se eliminan las variables `VITE_SUPABASE_*`.
+
+### 9. Borrar carpetas obsoletas
+
+- `src/integrations/supabase/` (incluye `client.ts` y `types.ts`).
+- `supabase/` (config, edge functions, seed) — el backend Express ya cubre su funcionalidad.
+- `.lovable/` si existe.
+
+### 10. Verificación
+
+`npx tsc --noEmit` y `bunx vitest run` para asegurar que la migración no rompe tipos ni tests existentes.
 
 ## Lo que NO se toca
 
-- `src/` (frontend React) — sin cambios; el preview de Lovable sigue funcionando.
-- `backend/migrations/001_initial_schema.sql` — ya está completo.
-- `supabase/` — sigue presente para el preview pero el deploy real no lo usa.
+`src/components/ui/**`, `src/pages/**` (excepto `SupportPanel.tsx`), `src/types/**`, `src/i18n/**`, `src/data/**`, estilos, `vite.config.ts`, `tailwind.config.ts`, `tsconfig*.json`, `src/test/**`.
 
-## Pruebas tras la implementación
+## Riesgos y notas
 
-1. `docker compose up --build -d` arranca los 3 contenedores.
-2. DBeaver conecta a `localhost:5432` con `admin` / `1234Ucp*` / `agendadocentedb` y ve todas las tablas seedeadas.
-3. `curl http://localhost:4000/api/health` → `{status:"ok"}`.
-4. `curl http://localhost:5173` → frontend React.
-5. Login con CC `12345678` / `1234Ucp*` devuelve JWT.
-6. Upload de un PDF a `/api/upload/parse-document` con el JWT devuelve el texto extraído.
-
-## Notas de seguridad
-
-- `JWT_SECRET` y `SMTP_PASS` en `.env` (no commitear). El `.env.example` solo trae placeholders.
-- SMTP de Gmail requiere "App Password" (no la contraseña normal). La UCP puede usar su propio servidor SMTP cambiando `SMTP_HOST`.
-- Los hashes SHA-256 actuales se mantienen para compatibilidad con el seed; migrar a bcrypt sería un paso posterior con script de re-hash.
+- **Realtime perdido**: `useSystemEnabled` y `useAllAgendaComments` ya no recibirán eventos push. Mitigación: polling (`refetchInterval`) — coherente con el resto de la app.
+- **Endpoints faltantes**: el backend Express ya expone todos los endpoints listados (verificado en `backend/src/routes/`). Si alguno responde distinto a lo esperado durante la integración, se ajustará el `queryFn` correspondiente.
+- **Tras desplegar**: el preview de Lovable seguirá funcionando para la UI, pero las llamadas API fallarán hasta que el contenedor `backend` esté corriendo en `localhost:4000` (o se ajuste `VITE_API_URL`).
