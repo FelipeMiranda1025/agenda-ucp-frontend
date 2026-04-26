@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Pencil, Trash2, Plus, X } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSemesters, useFaculties, useEducationLevels, useProfessionalCareers, useSubjects } from "@/hooks/useDatabase";
 import { useLanguage } from "@/i18n/LanguageContext";
@@ -127,37 +127,33 @@ export function SubjectManagementDialog({ open, onOpenChange }: Props) {
       return;
     }
 
-    let error;
-    if (mode === "edit" && editingId) {
-      ({ error } = await supabase.from("subjects").update(payload).eq("id", editingId));
-    } else {
-      ({ error } = await supabase.from("subjects").insert(payload));
+    try {
+      if (mode === "edit" && editingId) {
+        await api.put(`/subjects/${editingId}`, payload);
+      } else {
+        await api.post("/subjects", payload);
+      }
+      setLoading(false);
+      toast.success(mode === "edit" ? t("subject.updated") : t("subject.added"));
+      queryClient.invalidateQueries({ queryKey: ["subjects"] });
+      setMode("list");
+      setForm(emptyForm);
+      setEditingId(null);
+    } catch (e) {
+      setLoading(false);
+      toast.error(e instanceof Error ? e.message : "Error");
     }
-
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success(mode === "edit" ? t("subject.updated") : t("subject.added"));
-    queryClient.invalidateQueries({ queryKey: ["subjects"] });
-    setMode("list");
-    setForm(emptyForm);
-    setEditingId(null);
   };
 
   const handleDelete = async () => {
     if (!editingId) return;
     setLoading(true);
-    const { error } = await supabase.from("subjects").delete().eq("id", editingId);
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success(t("subject.deleted"));
-    queryClient.invalidateQueries({ queryKey: ["subjects"] });
-    setMode("list");
+    try {
+      await api.delete(`/subjects/${editingId}`);
+      setLoading(false);
+      toast.success(t("subject.deleted"));
+      queryClient.invalidateQueries({ queryKey: ["subjects"] });
+      setMode("list");
     setForm(emptyForm);
     setEditingId(null);
   };

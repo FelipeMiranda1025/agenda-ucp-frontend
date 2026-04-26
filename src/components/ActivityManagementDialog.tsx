@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Pencil, Trash2, Plus } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { api } from "@/lib/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { translateOption } from "@/i18n/optionTranslations";
@@ -176,39 +176,39 @@ export function ActivityManagementDialog({ open, onOpenChange, tableType, items 
       payload[config.field1Key] = Number(form.field1);
     }
 
-    let error;
-    if (mode === "edit" && editingId) {
-      ({ error } = await supabase.from(tableType as any).update(payload).eq("id", editingId));
-    } else {
-      ({ error } = await supabase.from(tableType as any).insert(payload));
+    try {
+      if (mode === "edit" && editingId) {
+        await api.put(`/${tableType}/${editingId}`, payload);
+      } else {
+        await api.post(`/${tableType}`, payload);
+      }
+      setLoading(false);
+      toast.success(mode === "edit" ? t("activity.updated") : t("activity.added"));
+      queryClient.invalidateQueries({ queryKey: [config.queryKey] });
+      setMode("list");
+      setForm(emptyForm);
+      setEditingId(null);
+    } catch (e) {
+      setLoading(false);
+      toast.error(e instanceof Error ? e.message : "Error");
     }
-
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    toast.success(mode === "edit" ? t("activity.updated") : t("activity.added"));
-    queryClient.invalidateQueries({ queryKey: [config.queryKey] });
-    setMode("list");
-    setForm(emptyForm);
-    setEditingId(null);
   };
 
   const handleDelete = async () => {
     if (!editingId) return;
     setLoading(true);
-    const { error } = await supabase.from(tableType as any).delete().eq("id", editingId);
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+    try {
+      await api.delete(`/${tableType}/${editingId}`);
+      setLoading(false);
+      toast.success(t("activity.deleted"));
+      queryClient.invalidateQueries({ queryKey: [config.queryKey] });
+      setMode("list");
+      setForm(emptyForm);
+      setEditingId(null);
+    } catch (e) {
+      setLoading(false);
+      toast.error(e instanceof Error ? e.message : "Error");
     }
-    toast.success(t("activity.deleted"));
-    queryClient.invalidateQueries({ queryKey: [config.queryKey] });
-    setMode("list");
-    setForm(emptyForm);
-    setEditingId(null);
   };
 
   const filteredItems = items?.filter((item: any) =>
