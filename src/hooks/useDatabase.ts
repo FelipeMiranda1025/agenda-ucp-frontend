@@ -284,8 +284,8 @@ export function useUpsertAgendaView() {
       return api.post<DbAgendaView>("/agenda-views", {
         user_cc: userCc,
         records,
-        status: status || "pending",
-      } satisfies Partial<DbAgendaViewInsert>);
+        status: (status || "pending") as DbAgendaViewInsert["status"],
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agenda_views"] });
