@@ -77,10 +77,9 @@ const Profile = () => {
                   </AvatarFallback>
                 </Avatar>
                 <Button
-                  variant="outline"
                   size="sm"
                   onClick={() => setPwdOpen(true)}
-                  className="gap-1.5 w-full"
+                  className="gap-1.5 min-w-[180px]"
                 >
                   <KeyRound className="h-4 w-4" /> {t("profilePage.changePassword")}
                 </Button>

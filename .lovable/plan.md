@@ -1,100 +1,58 @@
-## Objetivo
+## Problema
 
-Agregar la funcionalidad de cambio de contraseña dentro de la pantalla **Mi perfil**, con un diálogo modal de dos pasos:
+En la pantalla **Mi perfil**, el botón "Cambiar contraseña" debe aparecer debajo del avatar y la insignia de estado ("activo"), tal como muestra el rectángulo naranja en la captura. Actualmente no es visible para ningún rol en el preview que ve el usuario.
 
-1. **Paso 1 — Validar contraseña actual**: el usuario ingresa su contraseña actual; si coincide con la guardada en BD, se habilita el paso 2.
-2. **Paso 2 — Nueva contraseña**: el usuario ingresa "Nueva contraseña" y "Confirmar contraseña". Al guardar, se actualiza el hash en la base de datos.
+Tras revisar el código (`src/pages/Profile.tsx`), el botón ya está implementado **sin restricción de rol** (no hay condicional `if (rolId === ...)`). El problema es uno de los siguientes:
 
-El botón se ubicará **debajo del avatar y por encima del nombre del usuario** (en el bloque vertical izquierdo de la tarjeta "Información del usuario"), tal como se aprecia en el rectángulo naranja de la imagen de referencia.
+1. El contenedor del frontend en Docker no se reconstruyó tras los últimos cambios, por lo que el preview muestra una build antigua sin el botón.
+2. El botón se renderiza pero su estilo (`variant="outline"` + `w-full` dentro de una columna estrecha) lo hace poco visible o se "pierde" visualmente.
 
----
+## Solución
 
-## Cambios en el Backend (Express)
+### 1. Rediseñar el botón para que sea inequívocamente visible
 
-### `backend/src/routes/auth.ts` — agregar dos endpoints protegidos con JWT:
+En `src/pages/Profile.tsx`, dentro de la columna izquierda del card "Información del usuario":
 
-**`POST /api/auth/verify-password`**
-- Body: `{ currentPassword: string }`
-- Toma `req.user.id` del JWT, hashea la contraseña con SHA-256 y compara contra `users.password` para ese usuario.
-- Devuelve `{ valid: true }` o `401 { message: "Contraseña incorrecta" }`.
+- Usar `variant="default"` (fondo primary verde UCP, texto blanco) en lugar de `outline`, para que destaque como acción principal.
+- Forzar un ancho mínimo (`min-w-[180px]`) para que no se colapse.
+- Mantener la ubicación: **debajo del avatar y por encima del nombre**, exactamente donde el usuario marcó el rectángulo naranja.
+- Garantizar que NO exista ningún condicional de rol: el botón se renderiza para todo `user` autenticado (DocentePlanta, Decano, VicerrectorAcadémico, Soporte).
 
-**`POST /api/auth/change-password`**
-- Body: `{ currentPassword: string, newPassword: string }`
-- Re-valida la contraseña actual contra BD (no se confía en el flag del cliente).
-- Valida que `newPassword` tenga mínimo 8 caracteres y no sea igual a la actual.
-- Actualiza `users.password` con el SHA-256 del nuevo valor.
-- Devuelve `{ message: "Contraseña actualizada correctamente" }`.
+```tsx
+<Button
+  size="sm"
+  onClick={() => setPwdOpen(true)}
+  className="gap-1.5 min-w-[180px] bg-primary text-primary-foreground hover:bg-primary/90"
+>
+  <KeyRound className="h-4 w-4" /> {t("profilePage.changePassword")}
+</Button>
+```
 
-Ambos endpoints usan el middleware `requireAuth` ya existente.
+### 2. Asegurar que el componente y traducciones estén intactos
 
----
+- `ChangePasswordDialog` ya existe y funciona con flujo de 2 pasos (validar contraseña actual → ingresar nueva + confirmar).
+- Las claves i18n (`profilePage.changePassword`, `currentPassword`, `newPassword`, `confirmPassword`, `passwordMismatch`, `passwordTooShort`, `passwordSame`, `currentPasswordInvalid`, `validate`, `step`) ya están definidas en `src/i18n/translations.ts`. No requieren cambios.
 
-## Cambios en el Frontend
+### 3. Reconstruir el contenedor del frontend
 
-### Nuevo archivo: `src/components/ChangePasswordDialog.tsx`
+Para que el botón aparezca en el preview, **es indispensable** ejecutar después del cambio:
 
-Componente diálogo (basado en `Dialog` de shadcn) con estado interno de pasos:
+```bash
+docker compose up -d --build frontend
+```
 
-- **Estado**: `step: 1 | 2`, `currentPassword`, `newPassword`, `confirmPassword`, `loading`, `errors`.
-- **Paso 1**:
-  - Input tipo password "Contraseña actual" + botón ojo (mostrar/ocultar).
-  - Botón "Validar" → llama `api.post('/auth/verify-password', { currentPassword })`.
-  - Si OK → avanza a paso 2. Si falla → muestra error inline.
-- **Paso 2**:
-  - Inputs "Nueva contraseña" y "Confirmar contraseña" (con botón ojo).
-  - Validaciones cliente: mínimo 8 caracteres, ambas iguales, distinta a la actual.
-  - Botón "Guardar" → `api.post('/auth/change-password', { currentPassword, newPassword })`.
-  - Al éxito: toast verde, cierra el diálogo y resetea estado.
-- **Botón "Atrás"** en paso 2 para volver al paso 1 (limpiando newPassword/confirmPassword).
-- Indicadores visuales de progreso (paso 1 de 2, paso 2 de 2).
-- Manejo de cierre: al cerrar el diálogo se resetea todo el estado.
+El backend (endpoints `/api/auth/verify-password` y `/api/auth/change-password`) ya está desplegado y funciona; no requiere rebuild adicional.
 
-### Modificar: `src/pages/Profile.tsx`
+## Detalles técnicos
 
-- Importar `ChangePasswordDialog` y `KeyRound` de lucide-react.
-- Agregar estado `const [pwdOpen, setPwdOpen] = useState(false)`.
-- En la columna izquierda del card (donde está el `Avatar`), **debajo del avatar y antes del bloque del nombre/rol/estado**, insertar:
-  ```
-  <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setPwdOpen(true)}>
-    <KeyRound className="h-4 w-4" /> {t("profilePage.changePassword")}
-  </Button>
-  ```
-- Renderizar `<ChangePasswordDialog open={pwdOpen} onOpenChange={setPwdOpen} />`.
+**Archivos modificados:**
+- `src/pages/Profile.tsx` — único cambio: ajustar el `Button` "Cambiar contraseña" a variante primaria con ancho mínimo, sin condicionales de rol.
 
-### Modificar: `src/i18n/translations.ts`
+**Archivos sin cambios (ya correctos):**
+- `src/components/ChangePasswordDialog.tsx`
+- `src/i18n/translations.ts`
+- `backend/src/routes/auth.ts`
 
-Agregar claves en español/inglés:
-- `profilePage.changePassword` → "Cambiar contraseña" / "Change password"
-- `profilePage.currentPassword` → "Contraseña actual" / "Current password"
-- `profilePage.newPassword` → "Nueva contraseña" / "New password"
-- `profilePage.confirmPassword` → "Confirmar contraseña" / "Confirm password"
-- `profilePage.passwordChanged` → "Contraseña actualizada correctamente" / "Password updated successfully"
-- `profilePage.passwordMismatch` → "Las contraseñas no coinciden" / "Passwords do not match"
-- `profilePage.passwordTooShort` → "Mínimo 8 caracteres" / "At least 8 characters"
-- `profilePage.passwordSame` → "La nueva contraseña debe ser distinta a la actual" / "New password must be different from current"
-- `profilePage.currentPasswordInvalid` → "Contraseña actual incorrecta" / "Current password is incorrect"
-- `profilePage.validate` → "Validar" / "Validate"
-- `profilePage.step` → "Paso {n} de 2" / "Step {n} of 2"
+## Resultado esperado
 
----
-
-## Validaciones de seguridad
-
-- El backend SIEMPRE re-valida la contraseña actual en `/change-password` (no confía en validación previa del cliente).
-- El nuevo password debe ser distinto al actual (tanto en cliente como en servidor).
-- La contraseña nunca se loggea.
-- El JWT identifica al usuario; nunca se acepta `userId` desde el body.
-
----
-
-## Archivos afectados
-
-**Backend:**
-- `backend/src/routes/auth.ts` — agregar 2 endpoints
-
-**Frontend:**
-- `src/components/ChangePasswordDialog.tsx` — nuevo
-- `src/pages/Profile.tsx` — agregar botón + diálogo
-- `src/i18n/translations.ts` — agregar claves i18n
-
-No se modifica ningún otro archivo de UI, estilos ni configuración.
+Al abrir **Mi perfil** con cualquier rol (incluyendo Soporte, Vicerrector, Decano, DocentePlanta), debajo del avatar y la insignia "activo" aparecerá un botón verde primario "🔑 Cambiar contraseña". Al hacer clic abre el diálogo modal con el flujo de validación en dos pasos ya existente.
