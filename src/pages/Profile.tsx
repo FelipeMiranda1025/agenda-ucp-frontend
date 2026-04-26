@@ -120,6 +120,7 @@ const Profile = () => {
           </CardContent>
         </Card>
       </div>
+      <ChangePasswordDialog open={pwdOpen} onOpenChange={setPwdOpen} />
     </div>
   );
 };
