@@ -156,6 +156,9 @@ const Index = () => {
 
   const handleMenuClose = useCallback(() => setMenuOpen(false), []);
 
+  // Prefetch common routes in idle time so navigation feels instant.
+  useEffect(() => { warmupCommonRoutes(); }, []);
+
   // Auto-redirect to /schedule when the owner's agenda has been approved by the Decano.
   // Supervisors (Decano, Vicerrector) are excluded so their review flow stays intact.
   // Escape hatch: visit "/?view=agenda" to bypass the redirect and inspect the agenda form.
