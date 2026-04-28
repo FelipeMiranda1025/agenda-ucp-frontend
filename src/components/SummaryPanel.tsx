@@ -346,6 +346,12 @@ export function SummaryPanel() {
         onClose={handleDialogClose}
         variant={dialogVariant}
       />
+      <DownloadAgendasDialog
+        open={downloadOpen}
+        onOpenChange={setDownloadOpen}
+        ownRecords={records}
+        ownSchedule={getSchedule()}
+      />
     </div>
   );
 }
