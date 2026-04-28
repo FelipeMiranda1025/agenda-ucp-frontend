@@ -8,12 +8,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle, ClipboardList, Trash2, RotateCcw, ThumbsUp } from "lucide-react";
+import { CheckCircle, ClipboardList, Trash2, RotateCcw, ThumbsUp, Download } from "lucide-react";
 import { useInsertAgendaComment, useAgendaView, useUpsertAgendaView, useUpdateAgendaViewStatus } from "@/hooks/useDatabase";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { translateOption } from "@/i18n/optionTranslations";
 import { ConfirmSuccessDialog } from "@/components/ConfirmSuccessDialog";
+import { DownloadAgendasDialog } from "@/components/DownloadAgendasDialog";
 import { getDocenteFullName } from "@/types/docentePlanta";
 
 export function SummaryPanel() {
