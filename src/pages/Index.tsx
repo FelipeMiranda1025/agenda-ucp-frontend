@@ -155,6 +155,18 @@ const Index = () => {
 
   const handleMenuClose = useCallback(() => setMenuOpen(false), []);
 
+  // Auto-redirect to /schedule when the owner's agenda has been approved by the Decano.
+  // Supervisors (Decano, Vicerrector) are excluded so their review flow stays intact.
+  // Escape hatch: visit "/?view=agenda" to bypass the redirect and inspect the agenda form.
+  const isOwnerRole = roleName === "DocentePlanta" || roleName === "DirectorPrograma";
+  useEffect(() => {
+    if (!isOwnerRole) return;
+    if (agendaView?.status !== "approved") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("view") === "agenda") return;
+    navigate("/schedule", { replace: true });
+  }, [isOwnerRole, agendaView?.status, navigate]);
+
   const currentFlag = language === "es" ? flagCol : flagUsa;
 
   return (
