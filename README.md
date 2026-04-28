@@ -1,120 +1,89 @@
-# Sistema de Agenda Docente — UCP
+# Sistema de Agenda Docente — UCP (Frontend)
 
-Aplicación web para la gestión de agendas y distribución horaria de docentes
-de planta de la Universidad Católica de Pereira.
+Aplicación web React + Vite + TypeScript para la gestión de agendas y
+distribución horaria de docentes de planta de la Universidad Católica de
+Pereira.
 
-## Arquitectura
+> ⚠️ Este repositorio contiene **únicamente el frontend**.
+> El backend Express + PostgreSQL vive en un repositorio independiente:
+> **`agenda-ucp-backend`**.
 
-Monorepo con tres servicios desplegados por Docker Compose:
+## Stack
 
-```
-ucp-agenda-manager/
-├── src/                    Frontend React + Vite + TS (preview Lovable)
-├── public/
-├── index.html
-├── package.json            Deps del frontend
-├── vite.config.ts
-├── tailwind.config.ts
-│
-├── frontend/
-│   ├── Dockerfile          Build Vite + Nginx (sirve /dist)
-│   └── nginx.conf          SPA fallback + proxy /api → backend:4000
-│
-├── backend/
-│   ├── src/                Express + pg + JWT + multer + nodemailer
-│   │   ├── index.ts        Punto de entrada
-│   │   ├── db.ts           Pool pg + helpers query/queryOne
-│   │   ├── middleware/auth.ts
-│   │   ├── services/email.ts
-│   │   └── routes/         auth, catalogs, subjects, users, agendas,
-│   │                       agendaViews, agendaComments, userHierarchy,
-│   │                       auditLog, docenteConfig, upload, health
-│   ├── migrations/001_initial_schema.sql
-│   ├── Dockerfile
-│   └── package.json
-│
-├── docker-compose.yml      Postgres + backend + frontend
-├── .env.example            Variables compartidas
-└── README.md
-```
+- React 18 + Vite 5 + TypeScript 5
+- Tailwind CSS v3 + shadcn/ui
+- React Router + React Query
+- Cliente HTTP propio (`src/lib/api.ts`) que apunta a `VITE_API_URL`
 
-## Arranque rápido (Docker)
+## Requisitos
+
+- Node.js 20+
+- npm 10+
+- Backend `agenda-ucp-backend` corriendo (por defecto en `http://localhost:4000`)
+
+## Puesta en marcha (desarrollo)
 
 ```bash
-# 1. Copia las variables de entorno y ajústalas (mínimo: SMTP_USER/SMTP_PASS y JWT_SECRET)
+# 1. Instalar dependencias
+npm install
+
+# 2. Configurar variables
 cp .env.example .env
+# Edita .env y ajusta VITE_API_URL si tu backend no está en localhost:4000
 
-# 2. Si tenías un contenedor antiguo "agendadocente-postgres" levántalo abajo
-docker stop agendadocente-postgres 2>/dev/null
-docker rm   agendadocente-postgres 2>/dev/null
-
-# 3. Build + arranque
-docker compose up --build -d
-
-# 4. Verifica
-curl http://localhost:4000/api/health
-open http://localhost:5173
+# 3. Levantar Vite
+npm run dev
 ```
 
-### Servicios
+La aplicación queda disponible en `http://localhost:5173`.
 
-| Servicio  | Puerto host           | Notas                                    |
-|-----------|-----------------------|------------------------------------------|
-| Postgres  | `localhost:5432`      | Conectar con DBeaver (admin / 1234Ucp\*) |
-| Backend   | `http://localhost:4000/api` | Express + JWT                      |
-| Frontend  | `http://localhost:5173`     | React + Nginx (proxy `/api`)       |
-
-### Reinicializar la base de datos
+## Build de producción
 
 ```bash
-docker compose down -v && docker compose up --build -d
+npm run build      # genera /dist
+npm run preview    # sirve /dist localmente para probar
 ```
 
-El script `backend/migrations/001_initial_schema.sql` se ejecuta automáticamente
-en el primer arranque (cuando el volumen está vacío).
+El bundle resultante (`dist/`) se sirve con cualquier servidor estático
+(Nginx, Caddy, S3, etc.). Si usas Nginx, recuerda:
 
-## Endpoints principales del backend
+1. Habilitar SPA fallback (`try_files $uri /index.html;`).
+2. Configurar proxy de `/api/` hacia el backend Express.
 
-- `POST /api/auth/login` — login con `cc` o `email` + password
-- `GET  /api/auth/me`    — usuario autenticado (JWT)
-- `POST /api/auth/forgot-password` — envía correo de recuperación
-- `POST /api/auth/reset-password`  — restablece contraseña con token
-- `GET  /api/{roles,states,faculties,...}` — catálogos
-- `GET/POST/PUT/DELETE /api/subjects` — CRUD asignaturas
-- `GET/POST/PUT/DELETE /api/agendas`
-- `GET/POST/PUT /api/agenda-views` — confirmación + flujo de revisión
-- `POST /api/upload/parse-document` — sube PDF/DOCX/TXT y devuelve texto
+Ver `frontend/Dockerfile` y `frontend/nginx.conf` como referencia.
 
-Todos los endpoints (excepto login y forgot/reset password) requieren
-header `Authorization: Bearer <jwt>`.
-
-## SMTP
-
-El correo de recuperación usa `nodemailer`. Por defecto está configurado
-para Gmail (puerto 587, STARTTLS):
-
-- En Gmail necesitas un **App Password** (no la contraseña normal).
-- Para el SMTP institucional UCP, ajustar en `.env`:
-  `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
-
-## Subida e interpretación de documentos
-
-`POST /api/upload/parse-document` recibe un archivo (`multipart/form-data`,
-campo `file`) de hasta 20 MB. Soporta `.pdf`, `.docx`, `.doc`, `.txt`.
-Extrae el texto con `pdf-parse` o `mammoth` y lo guarda en
-`uploaded_documents` junto con el archivo original (volumen `uploads-data`).
-
-## Desarrollo local sin Docker
+## Despliegue con Docker
 
 ```bash
-# Backend
-cd backend
-cp .env.example .env       # ajustar DATABASE_URL a tu Postgres local
-npm install
-npm run dev                # http://localhost:4000
+docker build -f frontend/Dockerfile \
+  --build-arg VITE_API_URL=http://<IP-BACKEND>:4000/api \
+  -t agenda-ucp-frontend .
 
-# Frontend
-cd ..
-npm install
-VITE_API_URL=http://localhost:4000/api npm run dev   # http://localhost:8080
+docker run -d -p 80:80 --name agenda-frontend agenda-ucp-frontend
 ```
+
+## Pruebas
+
+```bash
+npm run test       # vitest
+```
+
+## Estructura
+
+```
+src/
+├── components/      Componentes UI (incluye shadcn en components/ui)
+├── context/         AuthContext, AgendaContext
+├── hooks/           Hooks de dominio (agenda, recomendaciones, etc.)
+├── i18n/            Sistema ES/EN
+├── lib/api.ts       Cliente HTTP central → VITE_API_URL
+├── pages/           Rutas
+└── types/           Tipados de dominio
+```
+
+## Backend asociado
+
+Repositorio: `agenda-ucp-backend`
+Endpoints expuestos bajo `/api`: `auth`, `catalogs`, `subjects`, `users`,
+`agendas`, `agendaViews`, `agendaComments`, `userHierarchy`, `auditLog`,
+`docenteConfig`, `recommendationRules`, `systemSettings`, `upload`, `health`.
