@@ -30,10 +30,9 @@ export const warmupCommonRoutes = () => {
     prefetchRoute("schedule");
   };
   if (typeof window === "undefined") return;
-  // @ts-expect-error — requestIdleCallback not in lib.dom for older TS targets
-  if (typeof window.requestIdleCallback === "function") {
-    // @ts-expect-error
-    window.requestIdleCallback(run, { timeout: 2000 });
+  const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => void }).requestIdleCallback;
+  if (typeof ric === "function") {
+    ric(run, { timeout: 2000 });
   } else {
     setTimeout(run, 1500);
   }
