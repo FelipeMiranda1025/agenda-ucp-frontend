@@ -668,3 +668,45 @@ export function useFullyApprovedCareers(
     refetchInterval: 15000,
   });
 }
+
+// =============================================
+// Descarga de agendas — selectores por rol
+// =============================================
+
+/** Docentes (rol 1, 2, 3) activos pertenecientes a una facultad. */
+export function useDocentesByFaculty(facultyId?: number | null) {
+  return useQuery<SubordinateDocente[]>({
+    queryKey: ["docentes_by_faculty", facultyId],
+    queryFn: async () => {
+      if (!facultyId) return [];
+      const data = await api.get<RawUserRow[]>(
+        `/users${qs({ id_faculty: facultyId, rols: "1,2,3", id_state: 1 })}`
+      );
+      return data.map(mapUserRowToSubordinate);
+    },
+    enabled: !!facultyId,
+    staleTime: 1000 * 60 * 10,
+  });
+}
+
+/** Última agenda_view por cada CC (mapeada por user_cc). */
+export function useAgendaViewsByCcs(ccs: string[]) {
+  const key = [...ccs].sort().join(",");
+  return useQuery<Record<string, DbAgendaView>>({
+    queryKey: ["agenda_views_by_ccs", key],
+    queryFn: async () => {
+      if (ccs.length === 0) return {};
+      const list = await api.get<DbAgendaView[]>(
+        `/agenda-views${qs({ user_ccs: ccs.join(",") })}`
+      );
+      // list arrives ordered desc by created_at — keep the most recent per cc
+      const map: Record<string, DbAgendaView> = {};
+      for (const v of list) {
+        if (!map[v.user_cc]) map[v.user_cc] = v;
+      }
+      return map;
+    },
+    enabled: ccs.length > 0,
+    staleTime: 1000 * 30,
+  });
+}
