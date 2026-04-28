@@ -8,16 +8,17 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckCircle, ClipboardList, Trash2, RotateCcw, ThumbsUp } from "lucide-react";
+import { CheckCircle, ClipboardList, Trash2, RotateCcw, ThumbsUp, Download } from "lucide-react";
 import { useInsertAgendaComment, useAgendaView, useUpsertAgendaView, useUpdateAgendaViewStatus } from "@/hooks/useDatabase";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { translateOption } from "@/i18n/optionTranslations";
 import { ConfirmSuccessDialog } from "@/components/ConfirmSuccessDialog";
+import { DownloadAgendasDialog } from "@/components/DownloadAgendasDialog";
 import { getDocenteFullName } from "@/types/docentePlanta";
 
 export function SummaryPanel() {
-  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView, isAgendaReadOnly } = useAgenda();
+  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView, isAgendaReadOnly, getSchedule } = useAgenda();
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
@@ -34,6 +35,7 @@ export function SummaryPanel() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogVariant, setDialogVariant] = useState<"success" | "pending">("success");
   const [returnObservation, setReturnObservation] = useState("");
+  const [downloadOpen, setDownloadOpen] = useState(false);
 
   const grouped = subfunctions
     .filter((sf) => sf.sectionId !== "horario")
@@ -136,14 +138,25 @@ export function SummaryPanel() {
 
   return (
     <div className="w-[420px] shrink-0 flex flex-col bg-background border-l pt-6">
-      <div className="px-4 py-3 border-b bg-ucp-red">
-        <h2 className="text-sm font-bold text-primary-foreground">{t("summary.title")}</h2>
-        {(() => {
-          const dn = selectedDocente && selectedDocente.firstName !== "Yo"
-            ? [selectedDocente.firstName, selectedDocente.secondName, selectedDocente.firstLastName].filter(Boolean).join(' ')
-            : user ? [user.firstName, user.firstLastName].filter(Boolean).join(' ') : '';
-          return dn ? <p className="text-xs text-primary-foreground/80 mt-0.5">{dn}</p> : null;
-        })()}
+      <div className="px-4 py-3 border-b bg-ucp-red flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-sm font-bold text-primary-foreground">{t("summary.title")}</h2>
+          {(() => {
+            const dn = selectedDocente && selectedDocente.firstName !== "Yo"
+              ? [selectedDocente.firstName, selectedDocente.secondName, selectedDocente.firstLastName].filter(Boolean).join(' ')
+              : user ? [user.firstName, user.firstLastName].filter(Boolean).join(' ') : '';
+            return dn ? <p className="text-xs text-primary-foreground/80 mt-0.5">{dn}</p> : null;
+          })()}
+        </div>
+        <button
+          type="button"
+          onClick={() => setDownloadOpen(true)}
+          className="shrink-0 p-1.5 rounded-md text-primary-foreground hover:bg-white/15 transition-colors"
+          title="Descargar agendas"
+          aria-label="Descargar agendas"
+        >
+          <Download className="h-4 w-4" />
+        </button>
       </div>
 
       {docentesList.length > 1 && (
@@ -332,6 +345,12 @@ export function SummaryPanel() {
         open={dialogOpen}
         onClose={handleDialogClose}
         variant={dialogVariant}
+      />
+      <DownloadAgendasDialog
+        open={downloadOpen}
+        onOpenChange={setDownloadOpen}
+        ownRecords={records}
+        ownSchedule={getSchedule()}
       />
     </div>
   );

@@ -568,3 +568,97 @@ export async function exportAgendaToExcel({
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+// =====================================================================
+// Batch export: builds one workbook per docente and bundles them in a ZIP
+// when there are 2+. Single docente → falls through to standard download.
+// =====================================================================
+import JSZip from "jszip";
+
+export interface BatchAgendaItem {
+  user: AuthUser;
+  selectedDocente?: DocentePlanta | null;
+  records: AgendaRecord[];
+  schedule: ScheduleData | null;
+  programa?: string;
+}
+
+/**
+ * Download one or many agendas. With 1 item it produces a single .xlsx;
+ * with 2+ items it bundles them into a .zip. Reuses exportAgendaToExcel by
+ * intercepting its anchor-based download to capture the produced Blob.
+ */
+export async function exportAgendasBatch(
+  items: BatchAgendaItem[],
+  opts: { zipName?: string; semesterLabel?: string } = {}
+): Promise<void> {
+  if (items.length === 0) return;
+  const semesterLabel = opts.semesterLabel ?? "2026-1";
+
+  if (items.length === 1) {
+    await exportAgendaToExcel({
+      user: items[0].user,
+      selectedDocente: items[0].selectedDocente ?? null,
+      records: items[0].records,
+      schedule: items[0].schedule,
+      semesterLabel,
+      programa: items[0].programa,
+    });
+    return;
+  }
+
+  async function captureWorkbook(item: BatchAgendaItem) {
+    let captured: { blob: Blob; filename: string } | null = null;
+    const origCreate = URL.createObjectURL;
+    const origRevoke = URL.revokeObjectURL;
+    const origAppend = document.body.appendChild.bind(document.body);
+
+    URL.createObjectURL = ((blob: Blob) => {
+      captured = { blob, filename: "" };
+      return "blob:capture";
+    }) as typeof URL.createObjectURL;
+    URL.revokeObjectURL = (() => {}) as typeof URL.revokeObjectURL;
+
+    document.body.appendChild = ((node: any) => {
+      if (node && node.tagName === "A" && captured) {
+        captured.filename = node.download || "agenda.xlsx";
+        node.click = () => {};
+        return node;
+      }
+      return origAppend(node);
+    }) as typeof document.body.appendChild;
+
+    try {
+      await exportAgendaToExcel({
+        user: item.user,
+        selectedDocente: item.selectedDocente ?? null,
+        records: item.records,
+        schedule: item.schedule,
+        semesterLabel,
+        programa: item.programa,
+      });
+    } finally {
+      URL.createObjectURL = origCreate;
+      URL.revokeObjectURL = origRevoke;
+      document.body.appendChild = origAppend;
+    }
+
+    if (!captured) throw new Error("No se pudo capturar el archivo de agenda");
+    return captured as { blob: Blob; filename: string };
+  }
+
+  const zip = new JSZip();
+  for (const item of items) {
+    const { blob, filename } = await captureWorkbook(item);
+    zip.file(filename, await blob.arrayBuffer());
+  }
+  const zipBlob = await zip.generateAsync({ type: "blob" });
+  const url = URL.createObjectURL(zipBlob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${opts.zipName ?? "Agendas"}_${semesterLabel}.zip`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
