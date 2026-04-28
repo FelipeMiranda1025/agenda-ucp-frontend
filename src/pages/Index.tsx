@@ -35,6 +35,7 @@ import {
 import { useSystemEnabled, useToggleSystemEnabled } from "@/hooks/useSystemEnabled";
 import { useArchiveAndResetSemester } from "@/hooks/useSemesterArchive";
 import { toast } from "sonner";
+import { prefetchRoute, warmupCommonRoutes } from "@/lib/routePrefetch";
 
 // Roles that can see the audit log — currently all roles; restrict later as needed
 const AUDIT_VISIBLE_ROLES = [1, 2, 3, 4];
@@ -154,6 +155,9 @@ const Index = () => {
   }, []);
 
   const handleMenuClose = useCallback(() => setMenuOpen(false), []);
+
+  // Prefetch common routes in idle time so navigation feels instant.
+  useEffect(() => { warmupCommonRoutes(); }, []);
 
   // Auto-redirect to /schedule when the owner's agenda has been approved by the Decano.
   // Supervisors (Decano, Vicerrector) are excluded so their review flow stays intact.
@@ -408,11 +412,11 @@ const Index = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={() => navigate("/profile")} className="gap-2 cursor-pointer">
+                <DropdownMenuItem onMouseEnter={() => prefetchRoute("profile")} onFocus={() => prefetchRoute("profile")} onClick={() => navigate("/profile")} className="gap-2 cursor-pointer">
                   <User className="h-4 w-4" /> {t("profile.view")}
                 </DropdownMenuItem>
                 {user && AUDIT_VISIBLE_ROLES.includes(user.rolId) && (
-                  <DropdownMenuItem onClick={() => navigate("/audit")} className="gap-2 cursor-pointer">
+                  <DropdownMenuItem onMouseEnter={() => prefetchRoute("audit")} onFocus={() => prefetchRoute("audit")} onClick={() => navigate("/audit")} className="gap-2 cursor-pointer">
                     <ClipboardList className="h-4 w-4" /> {t("audit.viewAudit")}
                   </DropdownMenuItem>
                 )}
@@ -422,12 +426,12 @@ const Index = () => {
                   </DropdownMenuItem>
                 )}
                 {user && user.rolId !== 5 && (
-                  <DropdownMenuItem onClick={() => navigate("/history")} className="gap-2 cursor-pointer">
+                  <DropdownMenuItem onMouseEnter={() => prefetchRoute("history")} onFocus={() => prefetchRoute("history")} onClick={() => navigate("/history")} className="gap-2 cursor-pointer">
                     <History className="h-4 w-4" /> {t("profile.history")}
                   </DropdownMenuItem>
                 )}
                 {user?.rolId === 4 && (
-                  <DropdownMenuItem onClick={() => navigate("/dashboard")} className="gap-2 cursor-pointer">
+                  <DropdownMenuItem onMouseEnter={() => prefetchRoute("dashboard")} onFocus={() => prefetchRoute("dashboard")} onClick={() => navigate("/dashboard")} className="gap-2 cursor-pointer">
                     <BarChart3 className="h-4 w-4" /> {t("profile.dashboard")}
                   </DropdownMenuItem>
                 )}
