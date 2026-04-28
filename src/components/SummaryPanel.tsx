@@ -18,7 +18,7 @@ import { DownloadAgendasDialog } from "@/components/DownloadAgendasDialog";
 import { getDocenteFullName } from "@/types/docentePlanta";
 
 export function SummaryPanel() {
-  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView, isAgendaReadOnly } = useAgenda();
+  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView, isAgendaReadOnly, getSchedule } = useAgenda();
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
@@ -35,6 +35,7 @@ export function SummaryPanel() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogVariant, setDialogVariant] = useState<"success" | "pending">("success");
   const [returnObservation, setReturnObservation] = useState("");
+  const [downloadOpen, setDownloadOpen] = useState(false);
 
   const grouped = subfunctions
     .filter((sf) => sf.sectionId !== "horario")
