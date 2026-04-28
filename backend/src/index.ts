@@ -14,6 +14,8 @@ import userHierarchyRouter from "./routes/userHierarchy";
 import auditLogRouter from "./routes/auditLog";
 import docenteConfigRouter from "./routes/docenteConfig";
 import uploadRouter from "./routes/upload";
+import recommendationRulesRouter from "./routes/recommendationRules";
+import systemSettingsRouter from "./routes/systemSettings";
 
 import { requestLogger } from "./middleware/logger";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler";
@@ -63,6 +65,8 @@ app.use("/api/user-hierarchy", userHierarchyRouter);
 app.use("/api/audit-log", auditLogRouter);
 app.use("/api/docente-config", docenteConfigRouter);
 app.use("/api/upload", uploadRouter);
+app.use("/api/recommendation-rules", recommendationRulesRouter);
+app.use("/api/system-settings", systemSettingsRouter);
 
 app.get("/api", (_req, res) => {
   res.json({

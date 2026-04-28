@@ -1,90 +1,142 @@
-# Agenda UCP — Backend API
+# Agenda Docente UCP — Backend
 
 API REST para el Sistema de Agenda Docente de la Universidad Católica de Pereira.
 
-## Stack
+**Stack:** Node.js 20 · Express 4 · TypeScript 5 · PostgreSQL 15 · JWT · Multer · Nodemailer
 
-- **Node.js 20** + **TypeScript**
-- **Express 4** como framework HTTP
-- **pg** (node-postgres) — driver PostgreSQL puro, sin ORM
-- **zod** — validación de entrada
-- **cors** + **dotenv**
+> El frontend vive en un repositorio separado: `agenda-ucp-frontend`.
 
-Sin Supabase, sin Lovable Cloud, sin Firebase. Solo Node + Postgres en Docker.
+---
+
+## Quick start (Docker — recomendado)
+
+```bash
+git clone <url-de-este-repo>
+cd agenda-ucp-backend
+cp .env.example .env       # editar con tus credenciales reales
+docker compose up --build -d
+curl http://localhost:4000/api/health
+```
+
+Esto levanta:
+- **Postgres 15** en `localhost:5432` (usuario `admin`, bd `agendadocentedb`).
+- **API Express** en `http://localhost:4000/api`.
+
+La primera vez que arranca, el contenedor de Postgres ejecuta automáticamente
+`migrations/001_initial_schema.sql` y carga datos semilla.
+
+Para reinicializar desde cero:
+```bash
+docker compose down -v && docker compose up --build -d
+```
+
+---
+
+## Quick start (sin Docker — desarrollo local)
+
+Requisitos: Node.js 20+ y un Postgres 15 corriendo.
+
+```bash
+cp .env.example .env
+npm install
+npm run dev      # ts-node-dev con autoreload
+# build de producción:
+npm run build
+npm start
+```
+
+---
+
+## Variables de entorno
+
+Ver `.env.example` para la lista completa. Las críticas:
+
+| Variable        | Descripción                                          |
+| --------------- | ---------------------------------------------------- |
+| `PORT`          | Puerto del API (default 4000)                        |
+| `DATABASE_URL`  | Cadena de conexión a Postgres                        |
+| `JWT_SECRET`    | Secreto para firmar tokens — **cambiar en prod**     |
+| `CORS_ORIGIN`   | Orígenes permitidos (separados por coma)             |
+| `FRONTEND_URL`  | URL pública del frontend (links de recuperación)     |
+| `UPLOADS_DIR`   | Carpeta de uploads de multer                         |
+| `SMTP_*`        | Credenciales SMTP para correos transaccionales       |
+
+---
+
+## Endpoints principales
+
+```
+GET    /api/health
+POST   /api/auth/login
+POST   /api/auth/forgot-password
+POST   /api/auth/verify-password         (auth)
+POST   /api/auth/change-password         (auth)
+GET    /api/auth/me                      (auth)
+
+# Catálogos (read-only)
+GET    /api/roles | /api/states | /api/semester | /api/faculties
+GET    /api/education-levels | /api/professional-careers
+GET    /api/indirect-teaching | /api/investigations | /api/social-projects
+GET    /api/teacher-training | /api/degree-works
+GET    /api/complementary-activities | /api/administrative-activities
+GET    /api/academic-practices
+
+# CRUD (auth)
+GET|POST|PUT|DELETE  /api/subjects
+GET|POST|PUT|DELETE  /api/agendas
+GET|POST|PUT         /api/agenda-views
+GET|POST|DELETE      /api/agenda-comments
+GET|POST|DELETE      /api/user-hierarchy
+GET|POST             /api/docente-config
+GET|PUT              /api/system-settings/:key
+GET|POST|PUT|DELETE  /api/recommendation-rules
+POST                 /api/recommendation-rules/reset
+GET                  /api/users | /api/users/by-cc/:cc
+GET                  /api/audit-log
+
+# Subida de archivos (auth)
+POST   /api/upload/parse-document
+```
+
+Todas las rutas (excepto `/health`, `/auth/login`, `/auth/forgot-password`)
+requieren el header `Authorization: Bearer <jwt>`.
+
+---
 
 ## Estructura
 
 ```
 backend/
 ├── src/
-│   ├── server.ts          Entry point Express
-│   ├── config.ts          Lectura de variables de entorno
-│   ├── db.ts              Pool de conexión PostgreSQL
-│   ├── middleware/
-│   │   ├── logger.ts
-│   │   └── error-handler.ts
-│   ├── routes/
-│   │   ├── index.ts       Agregador de rutas /api
-│   │   └── health.ts      GET /api/health
+│   ├── index.ts              # Entry point Express
+│   ├── db.ts                 # Pool de pg
+│   ├── middleware/           # auth, logger, error-handler
+│   ├── routes/               # endpoints por dominio
+│   ├── services/             # email
 │   └── types/
-│       └── api.ts         ApiError, HttpStatus
 ├── migrations/
-│   └── 001_initial_schema.sql   Esquema y datos iniciales
+│   └── 001_initial_schema.sql
 ├── Dockerfile
+├── docker-compose.yml
 ├── package.json
 └── tsconfig.json
 ```
 
-## Desarrollo local (sin Docker)
+---
 
-```bash
-cp .env.example .env
-# Edita .env con tu DATABASE_URL
-npm install
-npm run dev
-```
+## Despliegue
 
-El API queda en `http://localhost:3001/api`.
+1. Copiar el repo al servidor.
+2. Configurar `.env` con credenciales reales (Postgres, JWT, SMTP).
+3. `docker compose up --build -d`.
+4. Verificar `curl http://localhost:4000/api/health`.
+5. Configurar el frontend con `VITE_API_URL=http://<IP-SERVIDOR>:4000/api`.
 
-## Endpoints actuales (Fase 1)
+Para reverse proxy (nginx/Apache) delante del backend, ver
+`FRONTEND_URL` y `CORS_ORIGIN`.
 
-| Método | Ruta              | Descripción                          |
-| ------ | ----------------- | ------------------------------------ |
-| GET    | `/api`            | Información del API                  |
-| GET    | `/api/health`     | Estado del servicio y conexión a BD  |
+---
 
-## Roadmap (próximas fases)
+## Licencia
 
-- **Fase 2**: Auth (`/api/auth/login`, `/api/auth/forgot-password`) y Users CRUD
-  - JWT firmado con `JWT_SECRET` (sin Supabase Auth)
-  - Hashing de password con `bcrypt`
-- **Fase 3**: Agendas, agenda-views, agenda-comments, subjects, user-hierarchy
-- **Fase 4**: Catálogos y actividades (8 tablas CRUD)
-- **Fase 5**: Audit log (triggers SQL puros), recommendations, lineamientos
-- **Fase 6**: Subida de archivos + interpretación de texto
-  - **Upload**: `multer` en Express → volumen Docker (`/var/app/uploads`)
-  - **Extracción**: `pdf-parse` para PDF, `mammoth` para DOCX
-  - **Interpretación**: endpoint `POST /api/parse-document` que extrae el texto y lo
-    envía a una API LLM externa (OpenAI o Anthropic Claude) configurada por
-    `OPENAI_API_KEY` o `ANTHROPIC_API_KEY` en `.env`
-  - Reemplaza la edge function `parse-lineamientos` y el storage de Supabase
-- **Fase 7**: Emails transaccionales con `nodemailer`
-  - SMTP configurable por `.env` (Gmail, SendGrid, servidor SMTP de la UCP, Mailgun, etc.)
-  - Variables: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
-  - Endpoints:
-    - `POST /api/auth/forgot-password` → genera token y envía correo de recuperación
-    - `POST /api/auth/reset-password` → valida token y actualiza contraseña
-  - Cola simple en Postgres (`email_queue` table) + worker en proceso (sin pgmq)
-  - Reemplaza las edge functions `send-transactional-email`, `process-email-queue`,
-    `request-password-reset` y `auth-email-hook`
-
-## Migraciones
-
-Por ahora, los archivos `migrations/*.sql` se ejecutan automáticamente por
-PostgreSQL en el primer arranque del contenedor (vía `/docker-entrypoint-initdb.d/`).
-Para reinicializar:
-
-```bash
-docker compose down -v   # destruye el volumen
-docker compose up -d     # recrea todo
-```
+Uso interno UCP.
