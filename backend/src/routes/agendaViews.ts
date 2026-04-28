@@ -6,13 +6,24 @@ const router = Router();
 router.use(requireAuth);
 
 router.get("/", async (req: AuthRequest, res: Response) => {
-  const { user_cc, status } = req.query;
+  const { user_cc, user_ccs, status } = req.query;
   try {
     let sql = `SELECT * FROM public.agenda_views WHERE 1=1`;
     const params: any[] = [];
     if (user_cc) {
       params.push(user_cc);
       sql += ` AND user_cc=$${params.length}`;
+    }
+    if (user_ccs) {
+      const list = String(user_ccs)
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+      if (list.length > 0) {
+        const placeholders = list.map((_, i) => `$${params.length + i + 1}`).join(",");
+        params.push(...list);
+        sql += ` AND user_cc IN (${placeholders})`;
+      }
     }
     if (status) {
       params.push(status);
