@@ -35,6 +35,7 @@ import {
 import { useSystemEnabled, useToggleSystemEnabled } from "@/hooks/useSystemEnabled";
 import { useArchiveAndResetSemester } from "@/hooks/useSemesterArchive";
 import { toast } from "sonner";
+import { prefetchRoute, warmupCommonRoutes } from "@/lib/routePrefetch";
 
 // Roles that can see the audit log — currently all roles; restrict later as needed
 const AUDIT_VISIBLE_ROLES = [1, 2, 3, 4];
