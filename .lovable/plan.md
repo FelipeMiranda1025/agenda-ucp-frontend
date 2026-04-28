@@ -1,58 +1,44 @@
-## Problema
+## Objetivo
 
-En la pantalla **Mi perfil**, el botón "Cambiar contraseña" debe aparecer debajo del avatar y la insignia de estado ("activo"), tal como muestra el rectángulo naranja en la captura. Actualmente no es visible para ningún rol en el preview que ve el usuario.
+Cuando el Decano de Facultad aprueba una agenda (sea del DocentePlanta o del DirectorPrograma), el dueño de esa agenda debe ver, al iniciar sesión o al recargar, la **Distribución Horaria** (`/schedule`) como primera interfaz, en lugar del formulario de Agenda (`/`).
 
-Tras revisar el código (`src/pages/Profile.tsx`), el botón ya está implementado **sin restricción de rol** (no hay condicional `if (rolId === ...)`). El problema es uno de los siguientes:
+## Estado actual
 
-1. El contenedor del frontend en Docker no se reconstruyó tras los últimos cambios, por lo que el preview muestra una build antigua sin el botón.
-2. El botón se renderiza pero su estilo (`variant="outline"` + `w-full` dentro de una columna estrecha) lo hace poco visible o se "pierde" visualmente.
+- La aprobación del Decano ya marca `agenda_views.status = "approved"` (vía `useUpdateAgendaViewStatus`).
+- `ScheduleBuilder` (`/schedule`) ya valida que `agendaView.status === "approved"` y bloquea el acceso si no lo está.
+- Hoy, al entrar, el usuario siempre cae en `/` (Index) aunque su agenda esté aprobada. Debe entrar manualmente al horario.
 
-## Solución
+## Cambios
 
-### 1. Rediseñar el botón para que sea inequívocamente visible
+### 1. Auto-redirección en `src/pages/Index.tsx`
 
-En `src/pages/Profile.tsx`, dentro de la columna izquierda del card "Información del usuario":
+Agregar un `useEffect` que, cuando `agendaView?.status === "approved"`, navegue automáticamente a `/schedule` con `replace: true`. Solo aplica para roles que diligencian agenda propia (`DocentePlanta`, `DirectorPrograma`); supervisores (`DecanoFacultad`, `VicerrectorAcadémico`) no se redirigen para no interferir con su panel de revisión.
 
-- Usar `variant="default"` (fondo primary verde UCP, texto blanco) en lugar de `outline`, para que destaque como acción principal.
-- Forzar un ancho mínimo (`min-w-[180px]`) para que no se colapse.
-- Mantener la ubicación: **debajo del avatar y por encima del nombre**, exactamente donde el usuario marcó el rectángulo naranja.
-- Garantizar que NO exista ningún condicional de rol: el botón se renderiza para todo `user` autenticado (DocentePlanta, Decano, VicerrectorAcadémico, Soporte).
+Para permitir que el usuario aprobado vuelva a consultar su agenda en modo lectura si lo desea, se respetará un flag opcional en la URL (`/?view=agenda`) que omite la redirección. No se añade UI nueva en este paso; basta con que el horario sea la vista por defecto post-aprobación.
+
+### 2. Sin cambios de backend ni esquema
+
+- No se requieren migraciones.
+- No se modifica `ScheduleBuilder` (su guardia ya es correcta).
+- No se modifica el flujo de aprobación del Decano.
+
+## Detalle técnico
 
 ```tsx
-<Button
-  size="sm"
-  onClick={() => setPwdOpen(true)}
-  className="gap-1.5 min-w-[180px] bg-primary text-primary-foreground hover:bg-primary/90"
->
-  <KeyRound className="h-4 w-4" /> {t("profilePage.changePassword")}
-</Button>
+// src/pages/Index.tsx (cerca de los otros useEffect)
+const isOwnerRole = roleName === "DocentePlanta" || roleName === "DirectorPrograma";
+
+useEffect(() => {
+  if (!isOwnerRole) return;
+  if (agendaView?.status !== "approved") return;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("view") === "agenda") return; // escape hatch
+  navigate("/schedule", { replace: true });
+}, [isOwnerRole, agendaView?.status, navigate]);
 ```
-
-### 2. Asegurar que el componente y traducciones estén intactos
-
-- `ChangePasswordDialog` ya existe y funciona con flujo de 2 pasos (validar contraseña actual → ingresar nueva + confirmar).
-- Las claves i18n (`profilePage.changePassword`, `currentPassword`, `newPassword`, `confirmPassword`, `passwordMismatch`, `passwordTooShort`, `passwordSame`, `currentPasswordInvalid`, `validate`, `step`) ya están definidas en `src/i18n/translations.ts`. No requieren cambios.
-
-### 3. Reconstruir el contenedor del frontend
-
-Para que el botón aparezca en el preview, **es indispensable** ejecutar después del cambio:
-
-```bash
-docker compose up -d --build frontend
-```
-
-El backend (endpoints `/api/auth/verify-password` y `/api/auth/change-password`) ya está desplegado y funciona; no requiere rebuild adicional.
-
-## Detalles técnicos
-
-**Archivos modificados:**
-- `src/pages/Profile.tsx` — único cambio: ajustar el `Button` "Cambiar contraseña" a variante primaria con ancho mínimo, sin condicionales de rol.
-
-**Archivos sin cambios (ya correctos):**
-- `src/components/ChangePasswordDialog.tsx`
-- `src/i18n/translations.ts`
-- `backend/src/routes/auth.ts`
 
 ## Resultado esperado
 
-Al abrir **Mi perfil** con cualquier rol (incluyendo Soporte, Vicerrector, Decano, DocentePlanta), debajo del avatar y la insignia "activo" aparecerá un botón verde primario "🔑 Cambiar contraseña". Al hacer clic abre el diálogo modal con el flujo de validación en dos pasos ya existente.
+- DocentePlanta / DirectorPrograma con agenda aprobada → al iniciar sesión ven directamente la Distribución Horaria.
+- Si la agenda está `pending` o `returned` → siguen viendo el formulario de Agenda como hoy.
+- Decano y Vicerrector → flujo intacto.
