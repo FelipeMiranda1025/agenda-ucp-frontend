@@ -26,18 +26,8 @@ interface BackendLoginResponse {
   };
 }
 
-// DEV ONLY: auto-login bypass while the backend (localhost:4000) is unreachable
-// from the Lovable preview. Set to null to restore normal login flow.
-const DEV_AUTOLOGIN_USER: Omit<User, "password"> | null = {
-  id: "12345678900",
-  email: "vicerrectoracademico.pruebas@ucp.edu.co",
-  firstName: "Vicerrector",
-  secondName: "",
-  firstLastName: "Académico",
-  secondLastName: "Pruebas",
-  rolId: 4,
-  statusId: 1,
-};
+// Only restore stored sessions from localStorage; no auto-login bypass.
+// All authentication must go through the real login endpoint.
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [authState, setAuthState] = useState<AuthState>(() => {
@@ -45,24 +35,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const stored = localStorage.getItem(SESSION_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        return {
-          user: parsed.user,
-          isAuthenticated: true,
-          roleName: getRoleName(parsed.user.rolId),
-        };
+        // Verify that a token exists before restoring session
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (token) {
+          return {
+            user: parsed.user,
+            isAuthenticated: true,
+            roleName: getRoleName(parsed.user.rolId),
+          };
+        }
       }
     } catch {
       /* noop */
-    }
-    if (DEV_AUTOLOGIN_USER) {
-      try {
-        localStorage.setItem(SESSION_KEY, JSON.stringify({ user: DEV_AUTOLOGIN_USER }));
-      } catch { /* noop */ }
-      return {
-        user: DEV_AUTOLOGIN_USER,
-        isAuthenticated: true,
-        roleName: getRoleName(DEV_AUTOLOGIN_USER.rolId),
-      };
     }
     return { user: null, isAuthenticated: false, roleName: null };
   });
