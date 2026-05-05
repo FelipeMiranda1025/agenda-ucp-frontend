@@ -288,9 +288,9 @@ const Index = () => {
                   const read = isCareerRead(c.careerId);
                   const description = isVicerrector
                     ? t("notifications.programReadyWithCareerAndFaculty", {
-                        career: c.careerName,
-                        faculty: c.facultyName ?? "—",
-                      })
+                      career: c.careerName,
+                      faculty: c.facultyName ?? "—",
+                    })
                     : t("notifications.programReadyWithCareer", { career: c.careerName });
                   return (
                     <button
@@ -320,7 +320,7 @@ const Index = () => {
                   const visibleComments = showNotifHistory
                     ? userComments
                     : userComments.filter((c) => !(c.read_by || []).includes(user?.id || ""));
-                  
+
                   const visiblePendingCount = (showNotifHistory
                     ? pendingSubordinateAgendas
                     : pendingSubordinateAgendas.filter((pa) => !isPendingRead(pa.agendaView.id))
@@ -470,9 +470,8 @@ const Index = () => {
                     <Power className="h-4 w-4" />
                     <span className="flex-1">{t("profile.systemSwitch")}</span>
                     <span
-                      className={`h-2 w-2 rounded-full ${
-                        systemEnabled ? "bg-primary" : "bg-destructive"
-                      }`}
+                      className={`h-2 w-2 rounded-full ${systemEnabled ? "bg-primary" : "bg-destructive"
+                        }`}
                       aria-hidden
                     />
                   </DropdownMenuItem>
@@ -528,9 +527,13 @@ const Index = () => {
       </header>
 
       {/* Main content area */}
-      <div className="flex-1 flex min-h-0">
-        <main ref={mainRef} className="flex-1 overflow-auto">
-          <div className="max-w-4xl mx-auto px-8 py-6 space-y-6">
+      {/*<div className="flex-1 flex min-h-0">*/}
+      {/* Añadimos 'flex-col' para que en móvil se apilen y 'lg:flex-row' para que en PC sigan a los lados */}
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+        {/*<main ref={mainRef} className="flex-1 overflow-auto">*/}
+        <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50/50 dark:bg-transparent">
+          {/*<div className="max-w-4xl mx-auto px-8 py-6 space-y-6">*/}
+          <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 space-y-6">
             {subfunctions
               .filter((s) => s.id !== "distribucion-horaria")
               .map((s) => (
@@ -540,7 +543,10 @@ const Index = () => {
               ))}
           </div>
         </main>
-        <SummaryPanel />
+        {/* En móvil ocupa todo el ancho (w-full), en PC vuelve a su tamaño normal (lg:w-80) */}
+        <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f1f1f]">
+          <SummaryPanel />
+        </div>
       </div>
 
       {/* Floating hamburger button */}
@@ -566,6 +572,7 @@ const Index = () => {
           </div>
         </div>
       )}
+
 
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 

@@ -137,7 +137,7 @@ export function SummaryPanel() {
   };
 
   return (
-    <div className="w-[420px] shrink-0 flex flex-col bg-background border-l pt-6">
+    <div className="w-full shrink-0 flex flex-col bg-background lg:border-l pt-6">
       <div className="px-4 py-3 border-b bg-ucp-red flex items-start gap-2">
         <div className="flex-1 min-w-0">
           <h2 className="text-sm font-bold text-primary-foreground">{t("summary.title")}</h2>
