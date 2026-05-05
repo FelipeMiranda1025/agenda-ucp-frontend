@@ -55,6 +55,7 @@ const Index = () => {
   const [visibleSection, setVisibleSection] = useState<string>("header.production");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [systemSwitchOpen, setSystemSwitchOpen] = useState(false);
+  const [showSummaryMobile, setShowSummaryMobile] = useState(false);
   const { enabled: systemEnabled } = useSystemEnabled();
   const toggleSystem = useToggleSystemEnabled();
   const archiveAndReset = useArchiveAndResetSemester();
@@ -177,17 +178,16 @@ const Index = () => {
     <div className="h-screen flex flex-col">
       {/* Sticky header - white */}
       <header className="sticky top-0 z-40 bg-white dark:bg-[#1f1f1f] border-b border-gray-200 dark:border-gray-700 shrink-0">
-        <div className="h-14 flex items-center gap-6 px-4">
-          <img src={ucpLogo} alt="UCP" className="h-9 w-auto" />
-          <div className="flex-1 min-w-0">
-            <h1 className="text-gray-800 dark:text-gray-100 font-semibold text-lg leading-tight">
+        <div className="flex items-center gap-2 md:gap-4 px-2 md:px-4 py-1.5">
+          <img src={ucpLogo} alt="UCP" className="h-8 md:h-10 w-auto shrink-0" />
+          <div className="flex-1 min-w-0 hidden md:block">
+            <h1 className="text-gray-800 dark:text-gray-100 font-semibold text-sm md:text-lg leading-tight truncate">
               {t("header.title")}
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 text-sm leading-tight">{t(visibleSection)}</p>
+            <p className="text-gray-500 dark:text-gray-400 text-xs leading-tight">{t(visibleSection)}</p>
           </div>
-
           {/* Right-side toolbar */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 md:gap-1 shrink-0">
             {/* Notifications */}
             <DropdownMenu open={notifOpen} onOpenChange={(open) => { setNotifOpen(open); if (open) handleOpenNotifications(); }}>
               <DropdownMenuTrigger asChild>
@@ -524,6 +524,7 @@ const Index = () => {
             </DropdownMenu>
           </div>
         </div>
+        <p className="md:hidden text-gray-800 dark:text-gray-200 font-medium text-sm leading-tight px-2 pb-1 text-center">{t("header.title")}</p>
       </header>
 
       {/* Main content area */}
@@ -544,10 +545,17 @@ const Index = () => {
           </div>
         </main>
         {/* En móvil ocupa todo el ancho (w-full), en PC vuelve a su tamaño normal (lg:w-80) */}
-        <div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f1f1f]">
+        {/*<div className="w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f1f1f]">
+          <SummaryPanel />
+        </div>*/}
+
+        {/* En móvil oculta/muestra con toggle, en PC siempre visible */}
+        <div className={`${showSummaryMobile ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f1f1f]`}>
           <SummaryPanel />
         </div>
       </div>
+
+
 
       {/* Floating hamburger button */}
       <button
@@ -556,6 +564,15 @@ const Index = () => {
         aria-label={t("menu.open")}
       >
         <Menu className="h-6 w-6" />
+      </button>
+
+      {/* Botón toggle SummaryPanel (solo móvil) */}
+      <button
+        onClick={() => setShowSummaryMobile(!showSummaryMobile)}
+        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg flex items-center justify-center transition-colors lg:hidden"
+        aria-label="Resumen"
+      >
+        <ClipboardList className="h-6 w-6" />
       </button>
 
       {/* Menu overlay */}
