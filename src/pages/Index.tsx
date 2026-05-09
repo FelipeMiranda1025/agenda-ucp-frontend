@@ -69,7 +69,7 @@ const Index = () => {
   const mainRef = useRef<HTMLDivElement>(null);
 
   // Global comments & notifications
-  const { setSelectedDocente, docentesList, loadFromAgendaView, hasSchedule, records, getSchedule, selectedDocente } = useAgenda();
+  const { setSelectedDocente, docentesList, loadFromAgendaView, hasSchedule, records, getSchedule, selectedDocente, activeSubfunction, setActiveSubfunction } = useAgenda();
   const { data: allComments = [] } = useAllAgendaComments();
   const markRead = useMarkCommentsRead();
   const { data: agendaView } = useAgendaView(user?.id);
@@ -533,15 +533,39 @@ const Index = () => {
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         {/*<main ref={mainRef} className="flex-1 overflow-auto">*/}
         <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50/50 dark:bg-transparent">
-          {/*<div className="max-w-4xl mx-auto px-8 py-6 space-y-6">*/}
           <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 space-y-6">
-            {subfunctions
-              .filter((s) => s.id !== "distribucion-horaria")
-              .map((s) => (
-                <section key={s.id} id={`section-${s.id}`} data-section-id={s.id}>
-                  <SubfunctionForm subfunctionId={s.id} />
-                </section>
-              ))}
+            {/* Selector de formulario */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Seleccionar formulario</label>
+              <select
+                className="w-full rounded-md border px-3 py-2 text-sm bg-white dark:bg-[#1f1f1f]"
+                value={activeSubfunction || ""}
+                onChange={(e) => setActiveSubfunction(e.target.value)}
+              >
+                <option value="">Seleccionar...</option>
+                {subfunctions
+                  .filter((s) => s.id !== "distribucion-horaria")
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {t(s.shortTitleKey || s.shortTitle)}
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            {/* Formulario seleccionado */}
+            {activeSubfunction && (
+              <section id={`section-${activeSubfunction}`} data-section-id={activeSubfunction}>
+                <SubfunctionForm subfunctionId={activeSubfunction} />
+              </section>
+            )}
+
+            {/* Placeholder */}
+            {!activeSubfunction && (
+              <div className="text-center py-12 text-muted-foreground">
+                <p className="text-lg">Selecciona un formulario para comenzar</p>
+              </div>
+            )}
           </div>
         </main>
         {/* En móvil ocupa todo el ancho (w-full), en PC vuelve a su tamaño normal (lg:w-80) */}
@@ -549,8 +573,8 @@ const Index = () => {
           <SummaryPanel />
         </div>*/}
 
-        {/* En móvil oculta/muestra con toggle, en PC siempre visible */}
-        <div className={`${showSummaryMobile ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f1f1f]`}>
+        {/* SummaryPanel siempre visible */}
+        <div className="flex flex-col w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f1f1f]">
           <SummaryPanel />
         </div>
       </div>
