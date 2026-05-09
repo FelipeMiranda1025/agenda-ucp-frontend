@@ -536,13 +536,15 @@ const Index = () => {
           <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 space-y-6">
             {/* Selector de formulario */}
             {/* Selector de formulario */}
-            <div className="bg-white dark:bg-[#1f1f1f] rounded-lg border shadow-sm p-4">
-              <div className="flex items-center gap-3">
-                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+            <div className="rounded-lg shadow-sm overflow-hidden">
+              <div className="bg-[#8B0000] px-4 py-3">
+                <label className="text-sm font-bold text-white">
                   Seleccionar formulario
                 </label>
+              </div>
+              <div className="bg-white dark:bg-[#1f1f1f] border border-gray-200 dark:border-gray-700 border-t-0 rounded-b-lg p-4">
                 <select
-                  className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[#2a2a2a] px-3 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[#2a2a2a] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B0000]"
                   value={activeSubfunction || ""}
                   onChange={(e) => setActiveSubfunction(e.target.value)}
                 >
@@ -555,14 +557,6 @@ const Index = () => {
                       </option>
                     ))}
                 </select>
-                {activeSubfunction && (
-                  <button
-                    onClick={() => setActiveSubfunction("")}
-                    className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md whitespace-nowrap"
-                  >
-                    Limpiar
-                  </button>
-                )}
               </div>
             </div>
 
