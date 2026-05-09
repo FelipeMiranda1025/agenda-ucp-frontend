@@ -538,7 +538,7 @@ const Index = () => {
             {/* Selector de formulario */}
             <div className="rounded-lg shadow-sm overflow-hidden">
               <div className="bg-[#8B0000] px-4 py-3">
-                <label className="text-lg font-semibold leading-tight text-white">
+                <label className="text-xl font-bold text-white">
                   Seleccionar formulario
                 </label>
               </div>
