@@ -189,7 +189,7 @@ export default function SupportPanel() {
         second_last_name: payload.second_last_name.trim() || null,
         id_rol: payload.id_rol,
         id_state: payload.id_state,
-        password: hashed,
+        password: payload.password,
         id_faculty: payload.id_faculty,
         id_professional_career: payload.id_professional_career,
       });
@@ -222,7 +222,7 @@ export default function SupportPanel() {
         id_professional_career: payload.id_professional_career,
       };
       if (payload.password && payload.password.length > 0) {
-        updates.password = await hashPassword(payload.password);
+        updates.password = payload.password;
       }
       const data = await api.put<{ id: number }>(`/users/${payload.id}`, updates);
       if ([1, 2, 3].includes(payload.id_rol)) {

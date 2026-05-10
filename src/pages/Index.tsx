@@ -164,6 +164,13 @@ const Index = () => {
   // Supervisors (Decano, Vicerrector) are excluded so their review flow stays intact.
   // Escape hatch: visit "/?view=agenda" to bypass the redirect and inspect the agenda form.
   const isOwnerRole = roleName === "DocentePlanta" || roleName === "DirectorPrograma";
+  // Redirigir Admin (rolId === 1) al panel de soporte
+  const isAdmin = user?.rolId === 1;
+  useEffect(() => {
+    if (isAdmin) {
+      navigate("/support", { replace: true });
+    }
+  }, [isAdmin, navigate]);
   useEffect(() => {
     if (!isOwnerRole) return;
     if (agendaView?.status !== "approved") return;
