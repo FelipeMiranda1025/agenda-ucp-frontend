@@ -69,14 +69,17 @@ const AppContent = () => {
     return <LoginDialog />;
   }
 
+  /*
   // Soporte: dedicated user-management panel.
   if (roleName === "Soporte") {
-    return (
+  return (
+    <BrowserRouter>
       <Suspense fallback={<RouteFallback />}>
         <SupportPanel />
       </Suspense>
-    );
-  }
+    </BrowserRouter>
+  );
+}*/
 
   // System paused by Vicerrector: blocks everyone except Soporte and Vicerrector.
   if (!systemEnabled && roleName !== "VicerrectorAcadémico") {
@@ -113,6 +116,7 @@ const AppContent = () => {
           <Route path="/audit" element={<AuditLog />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/history" element={<HistoryPanel />} />
+          <Route path="/support" element={<SupportPanel />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

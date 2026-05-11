@@ -165,12 +165,12 @@ const Index = () => {
   // Escape hatch: visit "/?view=agenda" to bypass the redirect and inspect the agenda form.
   const isOwnerRole = roleName === "DocentePlanta" || roleName === "DirectorPrograma";
   // Redirigir Admin (rolId === 1) al panel de soporte
-  const isAdmin = user?.rolId === 1;
+  const isSupport = user?.rolId === 5;
   useEffect(() => {
-    if (isAdmin) {
+    if (isSupport) {
       navigate("/support", { replace: true });
     }
-  }, [isAdmin, navigate]);
+  }, [isSupport, navigate]);
   useEffect(() => {
     if (!isOwnerRole) return;
     if (agendaView?.status !== "approved") return;
