@@ -330,6 +330,9 @@ useEffect(() => {
   const rolChanged = prevRolRef.current !== form.id_rol;
   prevRolRef.current = form.id_rol;
 
+   // No interferir si estamos editando
+  if (editing) return;
+
   if (![1, 2, 3].includes(form.id_rol)) {
     if (form.supervisor_id !== null) setForm((f) => ({ ...f, supervisor_id: null }));
     return;
