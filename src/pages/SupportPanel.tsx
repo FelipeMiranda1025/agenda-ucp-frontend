@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { api } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
@@ -325,11 +325,18 @@ export default function SupportPanel() {
   }, [users, form.id_rol, form.id_faculty, form.id_professional_career]);
 
   // Auto-seleccionar el supervisor cuando solo hay un candidato y aún no se ha elegido uno válido
-  useEffect(() => {
-    if (![1, 2, 3].includes(form.id_rol)) {
-      if (form.supervisor_id !== null) setForm((f) => ({ ...f, supervisor_id: null }));
-      return;
-    }
+ const prevRolRef = useRef(form.id_rol);
+useEffect(() => {
+  const rolChanged = prevRolRef.current !== form.id_rol;
+  prevRolRef.current = form.id_rol;
+
+  if (![1, 2, 3].includes(form.id_rol)) {
+    if (form.supervisor_id !== null) setForm((f) => ({ ...f, supervisor_id: null }));
+    return;
+  }
+
+  // Solo auto-seleccionar si cambió el rol o no hay supervisor
+  if (rolChanged || form.supervisor_id === null) {
     const validIds = supervisorCandidates.map((s) => s.id);
     if (form.supervisor_id !== null && !validIds.includes(form.supervisor_id)) {
       setForm((f) => ({ ...f, supervisor_id: null }));
@@ -337,7 +344,8 @@ export default function SupportPanel() {
     if (form.supervisor_id === null && supervisorCandidates.length === 1) {
       setForm((f) => ({ ...f, supervisor_id: supervisorCandidates[0].id }));
     }
-  }, [supervisorCandidates, form.id_rol, form.supervisor_id]);
+  }
+}, [supervisorCandidates, form.id_rol, form.supervisor_id]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
