@@ -200,7 +200,7 @@ export const LoginDialog: React.FC = () => {
       // Éxito: cerrar modal y mostrar mensaje en el formulario principal
       setForgotOpen(false);
       setForgotSuccess(
-        'Si el identificador está registrado, recibirás la contraseña temporal en tu correo institucional.'
+        'ÉXITO!\n\nSe ha enviado la contraseña al correo institucional registrado.'
       );
 
     } catch (err: unknown) {

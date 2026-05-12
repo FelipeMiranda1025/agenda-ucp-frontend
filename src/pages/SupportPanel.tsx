@@ -381,6 +381,7 @@ useEffect(() => {
   const openEdit = (u: UserRow) => {
     setEditing(u);
     const currentSup = supervisorOf(u.id);
+    console.log("Editando usuario:", u.id, "Supervisor encontrado:", currentSup);
     setForm({
       cc: u.cc,
       email: u.email,
