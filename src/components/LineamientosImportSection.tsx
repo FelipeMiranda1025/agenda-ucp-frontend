@@ -21,6 +21,7 @@ type Phase = "idle" | "selected" | "processing" | "preview" | "applied";
 const categoryLabel = (c: ExtractedRule["category"], t: (k: string) => string) => {
   if (c === "investigacion") return t("settings.investigacion");
   if (c === "administrativas") return t("settings.administrativas");
+  if (c === "visual") return "Cambios Visuales / Diseño";
   return t("settings.formacion");
 };
 
@@ -262,8 +263,22 @@ export function LineamientosImportSection() {
                             />
                           </TableCell>
                           <TableCell className="py-2 text-sm">{rule.label}</TableCell>
-                          <TableCell className="py-2 text-right text-sm">{rule.hours}</TableCell>
-                          <TableCell className="py-2 text-right text-sm">{rule.subjects}</TableCell>
+                          <TableCell className="py-2 text-right text-sm">
+                            {rule.category === "visual" ? (
+                              <div className="flex items-center justify-end gap-2">
+                                <span className="text-xs font-mono">{String(rule.value)}</span>
+                                <div 
+                                  className="h-4 w-4 rounded border" 
+                                  style={{ backgroundColor: String(rule.value) }}
+                                />
+                              </div>
+                            ) : (
+                              rule.hours
+                            )}
+                          </TableCell>
+                          <TableCell className="py-2 text-right text-sm">
+                            {rule.category === "visual" ? "—" : rule.subjects}
+                          </TableCell>
                           <TableCell className="py-2 text-xs text-muted-foreground">{rule.source_article}</TableCell>
                         </TableRow>
                       ))}

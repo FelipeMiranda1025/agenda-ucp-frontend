@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useSystemEnabled, useToggleSystemEnabled } from "@/hooks/useSystemEnabled";
+import { useFormBgColor } from "@/hooks/useFormBgColor";
 import { useArchiveAndResetSemester } from "@/hooks/useSemesterArchive";
 import { toast } from "sonner";
 import { prefetchRoute, warmupCommonRoutes } from "@/lib/routePrefetch";
@@ -59,6 +60,7 @@ const Index = () => {
   const { enabled: systemEnabled } = useSystemEnabled();
   const toggleSystem = useToggleSystemEnabled();
   const archiveAndReset = useArchiveAndResetSemester();
+  const { color: formBgColor } = useFormBgColor();
 
   const isVicerrector = roleName === "VicerrectorAcadémico";
   const isDecano = roleName === "DecanoFacultad";
@@ -549,7 +551,10 @@ const Index = () => {
                   Seleccionar formulario
                 </label>
               </div>
-              <div className="bg-white dark:bg-[#1f1f1f] border border-gray-200 dark:border-gray-700 border-t-0 rounded-b-lg p-4">
+              <div 
+                className="bg-white dark:bg-[#1f1f1f] border border-gray-200 dark:border-gray-700 border-t-0 rounded-b-lg p-4 transition-colors duration-500"
+                style={formBgColor ? { backgroundColor: formBgColor } : {}}
+              >
                 <select
                   className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[#2a2a2a] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B0000]"
                   value={activeSubfunction || ""}

@@ -2,11 +2,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, uploadFile } from "@/lib/api";
 
 export interface ExtractedRule {
-  category: "investigacion" | "administrativas" | "formacion";
+  category: "investigacion" | "administrativas" | "formacion" | "visual";
   rule_key: string;
   label: string;
-  hours: number;
-  subjects: number;
+  hours?: number;
+  subjects?: number;
+  value?: any;
   source_article: string;
 }
 
@@ -93,6 +94,15 @@ export function useApplyExtractedRules() {
       existing.forEach((r) => existingByKey.set(r.rule_key, r.id));
 
       for (const rule of input.rules) {
+        if (rule.category === "visual") {
+          // Guardar configuración visual en system-settings
+          await api.put(`/system-settings/${rule.rule_key}`, {
+            value: rule.value,
+            updated_by: input.appliedBy
+          });
+          continue;
+        }
+
         const existingId = existingByKey.get(rule.rule_key);
         if (existingId) {
           await api.put(`/recommendation-rules/${existingId}`, {
