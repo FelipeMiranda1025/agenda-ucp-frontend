@@ -31,7 +31,9 @@ export function useFormBgColor() {
       
       return null;
     },
-    staleTime: 60_000,
+    staleTime: 0, // Sin cache para que siempre lea el valor actual
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   return { color: query.data, isLoading: query.isLoading };
