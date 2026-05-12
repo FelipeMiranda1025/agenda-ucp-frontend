@@ -140,7 +140,7 @@ export const LoginDialog: React.FC = () => {
 
     try {
       await api.post('/auth/forgot-password', { identifier: trimmed });
-      setForgotSuccess('ÉXITO!\n\nSe ha enviado la contraseña al correo institucional registrado.');
+      setForgotSuccess('✅ ¡ÉXITO!\n\nTe enviamos una contraseña temporal a tu correo institucional.\nÚsala para ingresar y cámbiala desde tu perfil.');
     } catch (err: unknown) {
       if (err instanceof Error && err.message.includes('429')) {
         setServerError('Demasiados intentos. Espera unos minutos.');
