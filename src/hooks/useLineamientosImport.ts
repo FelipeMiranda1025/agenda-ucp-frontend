@@ -57,7 +57,12 @@ export function useUploadLineamientos() {
       const filePath = `${input.semesterLabel}/${input.file.name}`;
       
       // Simular extracción de reglas básicas del nombre del archivo
-      if (input.file.name.toLowerCase().includes('color') || input.file.name.toLowerCase().includes('visual')) {
+      const fileName = input.file.name.toLowerCase();
+      const fileContent = fileName; // En un caso real, aquí iría el contenido del PDF
+      
+      // Detectar cambios visuales
+      if (fileName.includes('color') || fileName.includes('visual') || fileName.includes('fondo') || 
+          fileContent.includes('form_bg_color') || fileContent.includes('color de fondo')) {
         rules.push({
           category: "visual",
           rule_key: "form_bg_color",
@@ -67,12 +72,40 @@ export function useUploadLineamientos() {
         });
       }
       
-      if (input.file.name.toLowerCase().includes('horas') || input.file.name.toLowerCase().includes('investigacion')) {
+      // Detectar cambios de investigación
+      if (fileName.includes('horas') || fileName.includes('investigacion') || fileName.includes('investigación') ||
+          fileContent.includes('investigador principal') || fileContent.includes('11 horas')) {
         rules.push({
           category: "investigacion",
           rule_key: "investigacion_principal",
           label: "Investigador principal - horas semanales",
           hours: 11,
+          subjects: 1,
+          source_article: "ARTÍCULO 6º"
+        });
+      }
+      
+      // Detectar cambios de docencia directa
+      if (fileName.includes('docencia') || fileName.includes('directa') || 
+          fileContent.includes('docencia directa') || fileContent.includes('16 horas')) {
+        rules.push({
+          category: "formacion",
+          rule_key: "docencia_directa_max",
+          label: "Docencia directa - horas máximas",
+          hours: 16,
+          subjects: 4,
+          source_article: "ARTÍCULO 6º"
+        });
+      }
+      
+      // Detectar cambios administrativos
+      if (fileName.includes('administrativas') || fileName.includes('gestion') || 
+          fileContent.includes('actividades académico-administrativas')) {
+        rules.push({
+          category: "administrativas",
+          rule_key: "actividades_administrativas",
+          label: "Actividades académico-administrativas",
+          hours: 6,
           subjects: 1,
           source_article: "ARTÍCULO 6º"
         });
