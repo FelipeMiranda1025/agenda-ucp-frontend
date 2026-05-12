@@ -546,15 +546,19 @@ const Index = () => {
             {/* Selector de formulario */}
             {/* Selector de formulario */}
             <div className="rounded-lg shadow-sm overflow-hidden">
-              <div className="bg-[#8B0000] px-4 py-3">
-                <label className="text-xl font-bold text-white">
-                  Seleccionar formulario
-                </label>
-              </div>
-              <div 
-                className="bg-white dark:bg-[#1f1f1f] border border-gray-200 dark:border-gray-700 border-t-0 rounded-b-lg p-4 transition-colors duration-500"
-                style={formBgColor ? { backgroundColor: formBgColor } : {}}
+              <div
+                className="px-4 py-3 rounded-t-lg"
+                style={{
+                  backgroundColor:
+                    JSON.parse(localStorage.getItem("system_setting_color_header_formulario") || '{}').value || "#8B0000"
+                }}
               >
+                <h1 className="text-xl font-bold text-white">
+                  Seleccionar formulario
+                </h1>
+              </div>
+
+              <div className="bg-white dark:bg-[#1f1f1f] border border-gray-200 dark:border-gray-700 border-t-0 rounded-b-lg p-4">
                 <select
                   className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[#2a2a2a] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B0000]"
                   value={activeSubfunction || ""}

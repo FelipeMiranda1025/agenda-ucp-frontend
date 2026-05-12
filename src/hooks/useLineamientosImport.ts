@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api, uploadFile } from "@/lib/api";
+import { api } from "@/lib/api";
 
 export interface ExtractedRule {
   category: "investigacion" | "administrativas" | "formacion" | "visual";
@@ -27,16 +27,6 @@ export interface LineamientosDocument {
 
 const HISTORY_KEY = ["lineamientos_documents"];
 
-interface ParseResponse {
-  rules?: ExtractedRule[];
-  summary?: string;
-  filePath?: string;
-  error?: string;
-}
-
-/**
- * Sube un PDF al backend, lo parsea (pdf-parse + IA del backend) y persiste el documento.
- */
 export function useUploadLineamientos() {
   const qc = useQueryClient();
   return useMutation({
@@ -45,76 +35,46 @@ export function useUploadLineamientos() {
       semesterLabel: string;
       uploadedBy: string;
     }): Promise<LineamientosDocument> => {
-      // 1. Subir + parsear en un solo endpoint del backend
+      // 1. Subir PDF al endpoint real del backend
       const formData = new FormData();
-      formData.append("file", input.file);
-      formData.append("semester_label", input.semesterLabel);
-      formData.append("uploaded_by", input.uploadedBy);
+      formData.append("pdf", input.file);
 
-      // Fallback simple para procesamiento sin IA real
-      const rules: ExtractedRule[] = [];
-      const summary = "Procesamiento simple (sin IA)";
-      const filePath = `${input.semesterLabel}/${input.file.name}`;
-      
-      // Simular extracción de reglas básicas del nombre del archivo
-      const fileName = input.file.name.toLowerCase();
-      const fileContent = fileName; // En un caso real, aquí iría el contenido del PDF
-      
-      // Detectar cambios visuales
-      if (fileName.includes('color') || fileName.includes('visual') || fileName.includes('fondo') || 
-          fileContent.includes('form_bg_color') || fileContent.includes('color de fondo')) {
-        rules.push({
-          category: "visual",
-          rule_key: "form_bg_color",
-          label: "Color de fondo del formulario",
-          value: "#E3F2FD",
-          source_article: "ARTÍCULO 1º"
-        });
-      }
-      
-      // Detectar cambios de investigación
-      if (fileName.includes('horas') || fileName.includes('investigacion') || fileName.includes('investigación') ||
-          fileContent.includes('investigador principal') || fileContent.includes('11 horas')) {
-        rules.push({
-          category: "investigacion",
-          rule_key: "investigacion_principal",
-          label: "Investigador principal - horas semanales",
-          hours: 11,
-          subjects: 1,
-          source_article: "ARTÍCULO 6º"
-        });
-      }
-      
-      // Detectar cambios de docencia directa
-      if (fileName.includes('docencia') || fileName.includes('directa') || 
-          fileContent.includes('docencia directa') || fileContent.includes('16 horas')) {
-        rules.push({
-          category: "formacion",
-          rule_key: "docencia_directa_max",
-          label: "Docencia directa - horas máximas",
-          hours: 16,
-          subjects: 4,
-          source_article: "ARTÍCULO 6º"
-        });
-      }
-      
-      // Detectar cambios administrativos
-      if (fileName.includes('administrativas') || fileName.includes('gestion') || 
-          fileContent.includes('actividades académico-administrativas')) {
-        rules.push({
-          category: "administrativas",
-          rule_key: "actividades_administrativas",
-          label: "Actividades académico-administrativas",
-          hours: 6,
-          subjects: 1,
-          source_article: "ARTÍCULO 6º"
-        });
+      const token = localStorage.getItem("ucp_token");
+      const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+      const res = await fetch(`${baseUrl}/lineamientos-documents/upload`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error((err as any).message || "Error al procesar el PDF");
       }
 
-      // 2. Persistir registro del documento
+      const data = await res.json();
+
+      // 2. Convertir reglas del backend al formato del frontend
+      const rules: ExtractedRule[] = (data.reglas || []).map((r: any) => ({
+        category: r.key?.includes("investigacion") ? "investigacion" :
+          r.key?.includes("administrativas") ? "administrativas" :
+            r.key?.includes("docencia") || r.key?.includes("horas") ? "formacion" :
+              "visual",
+        rule_key: r.key || "desconocido",
+        label: r.description || "Regla detectada",
+        hours: typeof r.value === "number" ? r.value : undefined,
+        value: typeof r.value === "string" ? r.value : undefined,
+        source_article: "Extraído del PDF",
+      }));
+
+      const summary = data.reglas?.length
+        ? `Se detectaron ${data.reglas.length} reglas del PDF.`
+        : "No se detectaron reglas en el PDF.";
+
+      // 3. Guardar documento en BD
       const docRow = await api.post<LineamientosDocument>("/lineamientos-documents", {
         semester_label: input.semesterLabel,
-        file_path: filePath,
+        file_path: data.archivo || input.file.name,
         file_name: input.file.name,
         uploaded_by: input.uploadedBy,
         rules_extracted: rules,
@@ -128,9 +88,6 @@ export function useUploadLineamientos() {
   });
 }
 
-/**
- * Aplica las reglas seleccionadas al catálogo recommendation_rules (upsert por rule_key).
- */
 export function useApplyExtractedRules() {
   const qc = useQueryClient();
   return useMutation({
@@ -139,23 +96,7 @@ export function useApplyExtractedRules() {
       rules: ExtractedRule[];
       appliedBy: string;
     }) => {
-      // Fallback: Simular guardado exitoso sin backend real
-      console.log("Aplicando reglas:", input.rules);
-      
-      // Simular delay de procesamiento
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Guardar en localStorage para persistencia temporal
-      const appliedRules = JSON.parse(localStorage.getItem('applied_lineamientos_rules') || '[]');
-      const newRules = [...appliedRules, ...input.rules.map(r => ({
-        ...r,
-        applied_at: new Date().toISOString(),
-        applied_by: input.appliedBy,
-        document_id: input.documentId
-      }))];
-      localStorage.setItem('applied_lineamientos_rules', JSON.stringify(newRules));
-      
-      // Para cambios visuales, guardar en localStorage específico
+      // Guardar en localStorage para cambios visuales
       input.rules.forEach(rule => {
         if (rule.category === "visual") {
           localStorage.setItem(`system_setting_${rule.rule_key}`, JSON.stringify({
@@ -166,15 +107,19 @@ export function useApplyExtractedRules() {
         }
       });
 
+      // Marcar documento como aplicado en el backend
+      await api.put(`/lineamientos-documents/${input.documentId}`, {
+        applied: true,
+        applied_at: new Date().toISOString(),
+        applied_by: input.appliedBy,
+      });
+
       return { success: true, applied_count: input.rules.length };
     },
     onSuccess: (data) => {
       console.log(`Se aplicaron ${data.applied_count} reglas exitosamente`);
       qc.invalidateQueries({ queryKey: HISTORY_KEY });
-      // Forzar recarga de la página para aplicar cambios visuales
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      setTimeout(() => window.location.reload(), 1500);
     },
   });
 }
