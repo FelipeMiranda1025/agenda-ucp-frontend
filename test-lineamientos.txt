@@ -1,0 +1,27 @@
+UNIVERSIDAD CATÓLICA DE PEREIRA
+VICERRECTORÍA ACADÉMICA
+AGENDA DOCENTE
+(Lineamientos 2025-2 - Prueba Visual)
+
+ARTÍCULO 1º. CAMBIOS VISUALES
+
+Se establece que el color de fondo del formulario "Seleccionar formulario" 
+debe cambiar a un color azul claro para mejorar la experiencia visual 
+del usuario.
+
+Configuración visual:
+- form_bg_color: #E3F2FD
+
+ARTÍCULO 2º. MANTENIMIENTO DE FUNCIONALIDAD
+
+Todos los cambios visuales deben mantener la funcionalidad existente
+del sistema sin afectar la operación de los formularios.
+
+ARTÍCULO 3º. APLICACIÓN
+
+El cambio de color debe aplicarse inmediatamente después de la 
+carga y aprobación de los lineamientos mediante el sistema de 
+importación de PDF.
+
+Este es un documento de prueba para demostrar la funcionalidad 
+de cambios visuales del sistema.

@@ -7,8 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Pencil, Save, X, KeyRound } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Pencil, Save, X, KeyRound, Settings } from "lucide-react";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
+import { LineamientosImportSection } from "@/components/LineamientosImportSection";
 import { ROLES, STATUSES } from "@/types/auth";
 import { toast } from "sonner";
 
@@ -50,74 +52,92 @@ const Profile = () => {
       </header>
 
       <div className="max-w-4xl mx-auto p-6">
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between">
-            <CardTitle className="text-xl">{t("profilePage.userInfo")}</CardTitle>
-            {!editing ? (
-              <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="gap-1.5">
-                <Pencil className="h-4 w-4" /> {t("profilePage.edit")}
-              </Button>
-            ) : (
-              <div className="flex gap-2">
-                <Button size="sm" onClick={handleSave} className="gap-1.5">
-                  <Save className="h-4 w-4" /> {t("profilePage.save")}
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => { setEditing(false); setForm({ ...user }); }}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
+        <Tabs defaultValue="info" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="info">Información Personal</TabsTrigger>
+            {user?.rolId === 4 && (
+              <TabsTrigger value="settings" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" />
+                Ajustes
+              </TabsTrigger>
             )}
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-8">
-              <div className="flex flex-col items-center gap-3">
-                <Avatar className="h-32 w-32 text-4xl">
-                  <AvatarFallback className="bg-primary text-primary-foreground text-4xl font-bold">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-                <Button
-                  size="sm"
-                  onClick={() => setPwdOpen(true)}
-                  className="gap-1.5 min-w-[180px]"
-                >
-                  <KeyRound className="h-4 w-4" /> {t("profilePage.changePassword")}
-                </Button>
-                <div className="text-center">
-                  <p className="font-semibold text-lg">{user.firstName} {user.firstLastName}</p>
-                  <p className="text-sm text-muted-foreground capitalize">{roleLabel}</p>
-                  <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${user.statusId === 1 ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary' : 'bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive'}`}>
-                    {statusLabel}
-                  </span>
-                </div>
-              </div>
+          </TabsList>
 
-              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {fields.map((f) => (
-                  <div key={f.key} className="space-y-1.5">
-                    <Label className="text-sm font-medium text-muted-foreground">{f.label}</Label>
-                    {editing && !f.disabled ? (
-                      <Input
-                        value={(form as any)[f.key] || ""}
-                        onChange={(e) => setForm((p: any) => ({ ...p, [f.key]: e.target.value }))}
-                      />
-                    ) : (
-                      <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted">{(user as any)[f.key] || "—"}</p>
-                    )}
+          <TabsContent value="info">
+            <Card>
+              <CardHeader className="flex flex-row items-start justify-between">
+                <CardTitle className="text-xl">{t("profilePage.userInfo")}</CardTitle>
+                {!editing ? (
+                  <Button variant="outline" size="sm" onClick={() => setEditing(true)} className="gap-1.5">
+                    <Pencil className="h-4 w-4" /> {t("profilePage.edit")}
+                  </Button>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={handleSave} className="gap-1.5">
+                      <Save className="h-4 w-4" /> {t("profilePage.save")}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => { setEditing(false); setForm({ ...user }); }}>
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-                ))}
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-medium text-muted-foreground">{t("profilePage.role")}</Label>
-                  <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted capitalize">{roleLabel}</p>
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col md:flex-row gap-8">
+                  <div className="flex flex-col items-center gap-3">
+                    <Avatar className="h-32 w-32 text-4xl">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-4xl font-bold">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <Button
+                      size="sm"
+                      onClick={() => setPwdOpen(true)}
+                      className="gap-1.5 min-w-[180px]"
+                    >
+                      <KeyRound className="h-4 w-4" /> {t("profilePage.changePassword")}
+                    </Button>
+                    <div className="text-center">
+                      <p className="font-semibold text-lg">{user.firstName} {user.firstLastName}</p>
+                      <p className="text-sm text-muted-foreground capitalize">{roleLabel}</p>
+                      <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${user.statusId === 1 ? 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary' : 'bg-destructive/10 text-destructive dark:bg-destructive/20 dark:text-destructive'}`}>
+                        {statusLabel}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {fields.map((f) => (
+                      <div key={f.key} className="space-y-1.5">
+                        <Label className="text-sm font-medium text-muted-foreground">{f.label}</Label>
+                        {editing && !f.disabled ? (
+                          <Input
+                            value={(form as any)[f.key] || ""}
+                            onChange={(e) => setForm((p: any) => ({ ...p, [f.key]: e.target.value }))}
+                          />
+                        ) : (
+                          <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted">{(user as any)[f.key] || "—"}</p>
+                        )}
+                      </div>
+                    ))}
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium text-muted-foreground">{t("profilePage.role")}</Label>
+                      <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted capitalize">{roleLabel}</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium text-muted-foreground">{t("profilePage.status")}</Label>
+                      <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted capitalize">{statusLabel}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-sm font-medium text-muted-foreground">{t("profilePage.status")}</Label>
-                  <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted capitalize">{statusLabel}</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <LineamientosImportSection />
+          </TabsContent>
+        </Tabs>
       </div>
       <ChangePasswordDialog open={pwdOpen} onOpenChange={setPwdOpen} />
     </div>
