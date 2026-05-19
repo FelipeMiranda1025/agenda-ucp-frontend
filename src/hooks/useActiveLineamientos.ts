@@ -9,34 +9,55 @@ export interface LineamientosConfig {
     sinProyecto: number;
     investigadorPrincipal: number;
     coinvestigador: number;
-    posgrado: number;
-    practicas: number;
+    directorPrograma: number;
+    directorPosgradoDescarga?: number;
+    coordinacionAreaDescarga: number;
     formacionMaestria: number;
     formacionDoctorado: number;
   };
   docenciaIndirecta: {
     preparacionClasePorHora: number;
     asesoriaPorCurso: number;
+    asesoriaTrabajoGradoPregrado?: number;
+    asesoriaTrabajoGradoMaestria?: number;
+    asesoriaTrabajoGradoDoctorado?: number;
     maxTrabajosGrado: number;
+  };
+  equivalenciasPosgrado?: {
+    especializacion?: number;
+    maestria: number;
+    doctorado: number;
+  };
+  actividadesAnexas?: {
+    liderColectivo: number;
+    participacionColectivo?: number;
+    comiteCurricular: number;
+    comiteBasicoFacultad?: number;
+    liderGrupoInvestigacion: number;
+    liderRevista: number;
   };
   visualSettings?: {
     form_bg_color?: string;
   };
+  rules_extracted?: unknown[];
 }
+
+type SettingsRow = { value: LineamientosConfig } | null;
 
 export function useActiveLineamientos() {
   return useQuery({
     queryKey: ["active_lineamientos"],
-    queryFn: async () => {
-      const data = await api.get<{ version: string; rules_extracted: any[] }>("/lineamientos-documents/active");
-      
-      // Intentar obtener el objeto original desde system_settings si es posible
-      // El endpoint /active actualmente devuelve transformToExtractedRules(config)
-      // Pero necesitamos el objeto LineamientosConfig para los factores.
-      
-      const settings = await api.get<{ value: LineamientosConfig }>("/system-settings/lineamientos_activos");
-      return settings?.value || null;
+    queryFn: async (): Promise<LineamientosConfig | null> => {
+      try {
+        const active = await api.get<LineamientosConfig>("/lineamientos-documents/active");
+        if (active?.horasSemestre) return active;
+      } catch {
+        // Fallback a system_settings si /active falla
+      }
+
+      const row = await api.get<SettingsRow>("/system-settings/lineamientos_activos");
+      return row?.value ?? null;
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 }

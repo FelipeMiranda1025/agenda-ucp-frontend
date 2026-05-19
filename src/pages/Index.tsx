@@ -737,7 +737,7 @@ const Index = () => {
               </div>
               <div className="p-4 rounded-xl border bg-muted/50">
                 <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">{t("rules.maxDegreeWorks")}</p>
-                <p className="text-3xl font-bold">{lineamientos?.docenciaIndirecta.maxTrabajosGrado || 0}</p>
+                <p className="text-3xl font-bold">{lineamientos?.docenciaIndirecta?.maxTrabajosGrado ?? 0}</p>
               </div>
             </div>
 
@@ -750,23 +750,23 @@ const Index = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.noProject")}</span>
-                    <span className="font-bold">{lineamientos?.docenciaDirecta.sinProyecto}h</span>
+                    <span className="font-bold">{lineamientos?.docenciaDirecta?.sinProyecto ?? "—"}h</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.principalInvestigator")}</span>
-                    <span className="font-bold">{lineamientos?.docenciaDirecta.investigadorPrincipal}h</span>
+                    <span className="font-bold">{lineamientos?.docenciaDirecta?.investigadorPrincipal}h</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.coInvestigator")}</span>
-                    <span className="font-bold">{lineamientos?.docenciaDirecta.coinvestigador}h</span>
+                    <span className="font-bold">{lineamientos?.docenciaDirecta?.coinvestigador}h</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.programDirector")}</span>
-                    <span className="font-bold">{lineamientos?.docenciaDirecta.directorPrograma}h</span>
+                    <span className="font-bold">{lineamientos?.docenciaDirecta?.directorPrograma}h</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.areaCoordReduction")}</span>
-                    <span className="font-bold">{lineamientos?.docenciaDirecta.coordinacionAreaDescarga}h</span>
+                    <span className="font-bold">{lineamientos?.docenciaDirecta?.coordinacionAreaDescarga}h</span>
                   </div>
                 </div>
               </div>
@@ -779,31 +779,31 @@ const Index = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.prepPerHour")}</span>
-                    <span className="font-bold text-primary">{lineamientos?.docenciaIndirecta.preparacionClasePorHora}x</span>
+                    <span className="font-bold text-primary">{lineamientos?.docenciaIndirecta?.preparacionClasePorHora}x</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.advisoryPerCourse")}</span>
-                    <span className="font-bold">{lineamientos?.docenciaIndirecta.asesoriaPorCurso}h</span>
+                    <span className="font-bold">{lineamientos?.docenciaIndirecta?.asesoriaPorCurso}h</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.advisoryPregrado")}</span>
-                    <span className="font-bold">{lineamientos?.docenciaIndirecta.asesoriaTrabajoGradoPregrado}h</span>
+                    <span className="font-bold">{lineamientos?.docenciaIndirecta?.asesoriaTrabajoGradoPregrado}h</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.advisoryMaestria")}</span>
-                    <span className="font-bold">{lineamientos?.docenciaIndirecta.asesoriaTrabajoGradoMaestria}h</span>
+                    <span className="font-bold">{lineamientos?.docenciaIndirecta?.asesoriaTrabajoGradoMaestria}h</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.advisoryDoctorado")}</span>
-                    <span className="font-bold">{lineamientos?.docenciaIndirecta.asesoriaTrabajoGradoDoctorado}h</span>
+                    <span className="font-bold">{lineamientos?.docenciaIndirecta?.asesoriaTrabajoGradoDoctorado}h</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.equivalenceMaster")}</span>
-                    <span className="font-bold">{lineamientos?.equivalenciasPosgrado.maestria}x</span>
+                    <span className="font-bold">{lineamientos?.equivalenciasPosgrado?.maestria}x</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.equivalenceDoctor")}</span>
-                    <span className="font-bold">{lineamientos?.equivalenciasPosgrado.doctorado}x</span>
+                    <span className="font-bold">{lineamientos?.equivalenciasPosgrado?.doctorado}x</span>
                   </div>
                 </div>
               </div>
@@ -816,19 +816,19 @@ const Index = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.collectiveLeader")}</span>
-                    <span className="font-bold">{lineamientos?.actividadesAnexas.liderColectivo}h</span>
+                    <span className="font-bold">{lineamientos?.actividadesAnexas?.liderColectivo}h</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.curricularCommittee")}</span>
-                    <span className="font-bold">{lineamientos?.actividadesAnexas.comiteCurricular}h</span>
+                    <span className="font-bold">{lineamientos?.actividadesAnexas?.comiteCurricular}h</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.researchGroupLeader")}</span>
-                    <span className="font-bold">{lineamientos?.actividadesAnexas.liderGrupoInvestigacion}h</span>
+                    <span className="font-bold">{lineamientos?.actividadesAnexas?.liderGrupoInvestigacion}h</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.journalLeader")}</span>
-                    <span className="font-bold">{lineamientos?.actividadesAnexas.liderRevista}h</span>
+                    <span className="font-bold">{lineamientos?.actividadesAnexas?.liderRevista}h</span>
                   </div>
                 </div>
               </div>
@@ -841,11 +841,11 @@ const Index = () => {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.doctorateStudies")}</span>
-                    <span className="font-bold">{lineamientos?.docenciaDirecta.formacionDoctorado}h</span>
+                    <span className="font-bold">{lineamientos?.docenciaDirecta?.formacionDoctorado}h</span>
                   </div>
                   <div className="flex justify-between border-b border-dashed py-1">
                     <span className="text-muted-foreground">{t("rules.masterStudies")}</span>
-                    <span className="font-bold">{lineamientos?.docenciaDirecta.formacionMaestria}h</span>
+                    <span className="font-bold">{lineamientos?.docenciaDirecta?.formacionMaestria}h</span>
                   </div>
                 </div>
               </div>
