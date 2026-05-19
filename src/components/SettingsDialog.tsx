@@ -81,12 +81,18 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
       return Number(e.hours) !== Number(r.hours) || Number(e.subjects) !== Number(r.subjects);
     });
 
-    if (changed.length === 0) {
-      toast({ title: t("settings.noChanges") });
-      return;
-    }
-
     try {
+      if (changed.length === 0) {
+        // Tras "Aplicar reglas" del PDF los valores ya están en BD; forzar sincronización al sistema.
+        const result = await bulkSave.mutateAsync({ rules: payload, apply_to_system: true });
+        toast({
+          title: t("settings.syncedToSystem"),
+          description: t("settings.rulesUpdated", { count: result.updated }),
+        });
+        await refetch();
+        return;
+      }
+
       const result = await bulkSave.mutateAsync({ rules: payload });
       toast({
         title: t("settings.saved"),

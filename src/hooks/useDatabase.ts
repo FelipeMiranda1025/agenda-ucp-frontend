@@ -305,9 +305,14 @@ export function usePendingAgendaViewsForSupervisor(
     queryFn: async () => {
       if (!supervisorCc) return [];
 
-      const pendingViews = await api.get<PendingAgendaViewRow[]>(
-        `/agenda-views${qs({ pending_for_supervisor_cc: supervisorCc })}`
-      );
+      let pendingViews: PendingAgendaViewRow[] = [];
+      try {
+        pendingViews = await api.get<PendingAgendaViewRow[]>(
+          `/agenda-views${qs({ pending_for_supervisor_cc: supervisorCc })}`
+        );
+      } catch {
+        return [];
+      }
       if (pendingViews.length === 0) return [];
 
       const needsOwnerLookup = pendingViews.some((v) => !v.owner_name?.trim());
@@ -339,9 +344,10 @@ export function usePendingAgendaViewsForSupervisor(
       });
     },
     enabled: !!supervisorCc && isSupervisor,
-    staleTime: 0,
+    staleTime: 30_000,
     refetchOnMount: "always",
-    refetchInterval: 15000,
+    refetchInterval: 60_000,
+    retry: 1,
   });
 }
 
@@ -521,13 +527,18 @@ export function useApprovedAgendaCcs(
     queryFn: async () => {
       // Director, decano y vicerrector: agendas en cola para su rol en el flujo jerárquico
       if (!currentUserCc) return [];
-      const pendingViews = await api.get<DbAgendaView[]>(
-        `/agenda-views${qs({ pending_for_supervisor_cc: currentUserCc })}`
-      );
-      return Array.from(new Set(pendingViews.map((v) => v.user_cc)));
+      try {
+        const pendingViews = await api.get<DbAgendaView[]>(
+          `/agenda-views${qs({ pending_for_supervisor_cc: currentUserCc })}`
+        );
+        return Array.from(new Set(pendingViews.map((v) => v.user_cc)));
+      } catch {
+        return [];
+      }
     },
     enabled: enabled && (forRole === "vicerrector" || !!currentUserCc),
-    refetchInterval: 15000,
+    refetchInterval: 60_000,
+    retry: 1,
   });
 }
 

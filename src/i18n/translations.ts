@@ -385,9 +385,13 @@ const translations: Record<string, Record<Language, string>> = {
   "settings.resetConfirm": { es: "¿Restaurar todos los lineamientos a sus valores por defecto?", en: "Reset all guidelines to default values?" },
   "settings.resetDone": { es: "Lineamientos restaurados", en: "Guidelines restored" },
   "settings.noChanges": { es: "No hay cambios para guardar", en: "No changes to save" },
+  "settings.syncedToSystem": {
+    es: "Lineamientos sincronizados con el sistema",
+    en: "Guidelines synced to the system",
+  },
   "settings.pendingApplyHint": {
-    es: "Hay reglas cargadas desde el PDF pendientes de aplicar. Pulse Guardar cambios para sincronizar el sistema.",
-    en: "Rules loaded from PDF are pending application. Click Save changes to sync the system.",
+    es: "Tras aplicar el PDF, use Guardar cambios para sincronizar catálogos y reglas vigentes (aunque no haya editado números).",
+    en: "After applying the PDF, use Save changes to sync catalogs and active rules (even if you did not edit numbers).",
   },
   "settings.appliedToSystem": {
     es: "Lineamientos aplicados al sistema",

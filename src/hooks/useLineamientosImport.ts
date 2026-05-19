@@ -121,6 +121,7 @@ export function useApplyExtractedRules() {
       qc.invalidateQueries({ queryKey: ["academic_practices"] });
       qc.invalidateQueries({ queryKey: ["system-settings"] });
       qc.invalidateQueries({ queryKey: ["form_bg_color"] });
+      qc.invalidateQueries({ queryKey: ["active_lineamientos"] });
       toast.success("Lineamientos aplicados correctamente");
     },
   });
