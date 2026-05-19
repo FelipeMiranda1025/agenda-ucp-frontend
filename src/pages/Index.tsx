@@ -3,7 +3,7 @@ import { SubfunctionForm } from "@/components/SubfunctionForm";
 import { SummaryPanel } from "@/components/SummaryPanel";
 import { AppSidebar } from "@/components/AppSidebar";
 import { subfunctions } from "@/data/subfunctions";
-import { useAgenda } from "@/context/AgendaContext";
+import { useAgenda } from "@/hooks/useAgenda";
 
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";

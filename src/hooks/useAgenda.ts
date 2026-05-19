@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { AgendaContext } from "@/context/AgendaContext";
+import { AgendaContext } from "@/context/agendaContextRef";
 
 export const useAgenda = () => {
   const ctx = useContext(AgendaContext);

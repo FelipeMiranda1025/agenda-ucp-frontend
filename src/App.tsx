@@ -26,15 +26,18 @@ const SupportPanel = lazy(() => import("./pages/SupportPanel"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const HistoryPanel = lazy(() => import("./pages/HistoryPanel"));
 
-class AgendaErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+class AgendaErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; message: string }
+> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, message: "" };
   }
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, message: error?.message || "Error desconocido" };
   }
-  componentDidCatch(error: any, info: any) {
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("AgendaProvider error:", error, info);
   }
   render() {

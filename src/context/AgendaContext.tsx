@@ -1,4 +1,5 @@
-import React, { createContext, useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
+import { AgendaContext, type AgendaContextType } from "@/context/agendaContextRef";
 import { DropdownOption, Record as AgendaRecord, MetricasPie, ScheduleBlock, ScheduleData } from "@/types/agenda";
 import { initialDropdownOptions } from "@/data/initialDropdownOptions";
 import { subfunctions } from "@/data/subfunctions";
@@ -9,42 +10,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useSystemEnabled } from "@/hooks/useSystemEnabled";
 import { useActiveLineamientos } from "@/hooks/useActiveLineamientos";
 import { canAccessScheduleDistribution } from "@/lib/agendaScheduleAccess";
-
-interface AgendaContextType {
-  dropdownOptions: DropdownOption[];
-  addDropdownOption: (category: string, value: string) => void;
-  records: AgendaRecord[];
-  addRecord: (record: Omit<AgendaRecord, "id" | "createdAt">) => void;
-  updateRecord: (id: string, data: AgendaRecord["data"], totalHoras: number) => void;
-  deleteRecord: (id: string) => void;
-  upsertRecord: (subfunctionId: string, data: AgendaRecord["data"], totalHoras: number) => void;
-  getRecordsBySubfunction: (subfunctionId: string) => AgendaRecord[];
-  metricas: MetricasPie;
-  horasSemestreDefecto: number;
-  setHorasSemestreDefecto: (v: number) => void;
-  activeSubfunction: string;
-  setActiveSubfunction: (id: string) => void;
-  searchTerm: string;
-  setSearchTerm: (t: string) => void;
-  selectedDocente: DocentePlanta | null;
-  setSelectedDocente: (d: DocentePlanta | null) => void;
-  docentesList: DocentePlanta[];
-  saveSchedule: (blocks: ScheduleBlock[]) => void;
-  getSchedule: () => ScheduleData | null;
-  hasSchedule: boolean;
-  editingRecord: AgendaRecord | null;
-  setEditingRecord: (r: AgendaRecord | null) => void;
-  hasPendingAgendaView: boolean;
-  loadFromAgendaView: (targetCc?: string) => Promise<boolean>;
-  isAgendaReadOnly: boolean;
-  isOwnAgendaPendingReview: boolean;
-  canSupervisorReviewSubordinate: boolean;
-  canAccessScheduleDistribution: boolean;
-}
-
-export const AgendaContext = createContext<AgendaContextType | null>(null);
-
-export { useAgenda } from "@/hooks/useAgenda";
 
 export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, roleName } = useAuth();

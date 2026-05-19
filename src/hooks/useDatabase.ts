@@ -584,9 +584,14 @@ export function useFullyApprovedCareers(
       const users = await api.get<RawUserRow[]>(`/users${qs(usersFilter)}`);
       if (users.length === 0) return [];
 
-      const views = await api.get<Array<{ user_cc: string; reviewer_cc: string | null }>>(
-        `/agenda-views${qs({ status: "approved", has_reviewer: true })}`
-      );
+      let views: Array<{ user_cc: string; reviewer_cc: string | null }> = [];
+      try {
+        views = await api.get(
+          `/agenda-views${qs({ status: "approved", has_reviewer: true })}`
+        );
+      } catch {
+        return [];
+      }
       if (views.length === 0) return [];
 
       const reviewerCcs = Array.from(

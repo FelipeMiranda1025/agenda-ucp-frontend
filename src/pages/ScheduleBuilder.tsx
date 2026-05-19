@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAgenda } from "@/context/AgendaContext";
+import { useAgenda } from "@/hooks/useAgenda";
 import { useAuth } from "@/context/AuthContext";
 import { useAgendaView } from "@/hooks/useDatabase";
 import { subfunctions } from "@/data/subfunctions";
