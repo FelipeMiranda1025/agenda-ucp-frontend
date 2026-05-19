@@ -940,23 +940,19 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
 
       {/* Mensajes recomendativos dinámicos - docencia directa */}
       {resolvedId === "docencia-directa" && (
-        <div className="space-y-1 px-2">
-          <div className="flex justify-end">
-            <p className="text-sm text-muted-foreground font-medium">
-              {t("recommendation.hours", { hours: recommendation.hours })}
-            </p>
-          </div>
-          <div className="flex justify-end">
-            <p className="text-sm text-muted-foreground font-medium">
-              {t("recommendation.subjects", { hours: recommendation.subjects })}
-            </p>
-          </div>
+        <div className="space-y-1 px-2 text-left">
+          <p className="text-sm text-muted-foreground font-medium text-left">
+            {t("recommendation.hours", { hours: recommendation.hours })}
+          </p>
+          <p className="text-sm text-muted-foreground font-medium text-left">
+            {t("recommendation.subjects", { hours: recommendation.subjects })}
+          </p>
         </div>
       )}
 
       {/* Mensaje recomendativo de asesorías para trabajos de grado y prácticas académicas */}
       {(resolvedId === "trabajos-grado" || resolvedId === "practicas-academicas") && (
-        <div className="flex justify-end px-2">
+        <div className="px-2 text-left">
           <p className="text-sm text-muted-foreground font-medium">
             {t("recommendation.advisories", { 
               count: Math.max(0, (lineamientos?.docenciaIndirecta?.maxTrabajosGrado || 4) - (getRecordsBySubfunction("trabajos-grado").length + getRecordsBySubfunction("practicas-academicas").length)) 
