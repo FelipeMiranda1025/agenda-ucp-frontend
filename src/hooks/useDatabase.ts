@@ -270,17 +270,6 @@ export function useUpsertAgendaView() {
       records: any[];
       status?: string;
     }) => {
-      // Buscar la vista más reciente del usuario
-      const existing = await api.get<DbAgendaView[]>(
-        `/agenda-views${qs({ user_cc: userCc, limit: 1, order: "created_at.desc" })}`
-      );
-
-      if (existing.length > 0) {
-        return api.put<DbAgendaView>(`/agenda-views/${existing[0].id}`, {
-          records,
-          status: status || "pending",
-        });
-      }
       return api.post<DbAgendaView>("/agenda-views", {
         user_cc: userCc,
         records,
@@ -289,6 +278,8 @@ export function useUpsertAgendaView() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agenda_views"] });
+      qc.invalidateQueries({ queryKey: ["pending_agenda_views_supervisor"] });
+      qc.invalidateQueries({ queryKey: ["approved_agenda_ccs"] });
     },
   });
 }
@@ -300,59 +291,89 @@ export interface PendingAgendaForSupervisor {
   createdAt: string;
 }
 
-export function usePendingAgendaViewsForSupervisor(supervisorCc?: string) {
+type PendingAgendaViewRow = DbAgendaView & { owner_name?: string | null };
+
+export function usePendingAgendaViewsForSupervisor(
+  supervisorCc?: string,
+  supervisorRolId?: number
+) {
+  const isSupervisor =
+    supervisorRolId === 2 || supervisorRolId === 3 || supervisorRolId === 4;
+
   return useQuery<PendingAgendaForSupervisor[]>({
-    queryKey: ["pending_agenda_views_supervisor", supervisorCc],
+    queryKey: ["pending_agenda_views_supervisor", supervisorCc, supervisorRolId],
     queryFn: async () => {
       if (!supervisorCc) return [];
 
-      // 1. Obtener id numérico del supervisor a partir de su cc
-      const supervisorUser = await api
-        .get<{ id: number } | null>(`/users/by-cc/${supervisorCc}`)
-        .catch(() => null);
-      if (!supervisorUser) return [];
-
-      // 2. Subordinados del supervisor
-      const hierarchy = await api.get<DbUserHierarchy[]>(
-        `/user-hierarchy${qs({ supervisor_id: supervisorUser.id })}`
-      );
-      if (hierarchy.length === 0) return [];
-
-      const subordinateIds = hierarchy.map((h) => h.user_id);
-
-      // 3. Datos de los subordinados
-      const subordinateUsers = await api.get<
-        Array<{
-          id: number;
-          cc: string;
-          first_name: string;
-          second_name?: string;
-          first_last_name: string;
-        }>
-      >(`/users${qs({ ids: subordinateIds.join(",") })}`);
-      if (subordinateUsers.length === 0) return [];
-
-      const ccList = subordinateUsers.map((u) => u.cc);
-
-      // 4. Agenda views pendientes para esos cc
-      const pendingViews = await api.get<DbAgendaView[]>(
-        `/agenda-views${qs({ user_ccs: ccList.join(","), status: "pending" })}`
+      const pendingViews = await api.get<PendingAgendaViewRow[]>(
+        `/agenda-views${qs({ pending_for_supervisor_cc: supervisorCc })}`
       );
       if (pendingViews.length === 0) return [];
 
+      const needsOwnerLookup = pendingViews.some((v) => !v.owner_name?.trim());
+      let owners: Array<{
+        cc: string;
+        first_name: string;
+        second_name?: string;
+        first_last_name: string;
+      }> = [];
+
+      if (needsOwnerLookup) {
+        const ownerCcs = Array.from(new Set(pendingViews.map((v) => v.user_cc)));
+        owners = await api.get(`/users${qs({ ccs: ownerCcs.join(",") })}`);
+      }
+
       return pendingViews.map((view) => {
-        const user = subordinateUsers.find((u) => u.cc === view.user_cc);
-        const nameParts = [user?.first_name, user?.second_name, user?.first_last_name].filter(Boolean);
+        const user = owners.find((u) => u.cc === view.user_cc);
+        const nameParts = [user?.first_name, user?.second_name, user?.first_last_name].filter(
+          Boolean
+        );
+        const docenteName =
+          view.owner_name?.trim() || nameParts.join(" ") || view.user_cc;
         return {
           agendaView: view,
-          docenteName: nameParts.join(" "),
+          docenteName,
           docenteCc: view.user_cc,
-          createdAt: view.created_at,
+          createdAt: view.updated_at || view.created_at,
         } as PendingAgendaForSupervisor;
       });
     },
-    enabled: !!supervisorCc,
+    enabled: !!supervisorCc && isSupervisor,
+    staleTime: 0,
+    refetchOnMount: "always",
     refetchInterval: 15000,
+  });
+}
+
+export interface ApprovedAgendaHistoryItem {
+  agendaView: DbAgendaView & { owner_name?: string | null };
+  docenteCc: string;
+  docenteName: string;
+  approvedAt: string;
+  recordsCount: number;
+}
+
+/** Agendas aprobadas del semestre actual (historial para supervisores y docente). */
+export function useApprovedAgendasForHistory(viewerCc?: string, viewerRolId?: number) {
+  return useQuery<ApprovedAgendaHistoryItem[]>({
+    queryKey: ["approved_agendas_history", viewerCc, viewerRolId],
+    queryFn: async () => {
+      if (!viewerCc) return [];
+
+      const views = await api.get<Array<DbAgendaView & { owner_name?: string | null }>>(
+        `/agenda-views${qs({ approved_for_supervisor_cc: viewerCc })}`
+      );
+
+      return views.map((view) => ({
+        agendaView: view,
+        docenteCc: view.user_cc,
+        docenteName: view.owner_name?.trim() || view.user_cc,
+        approvedAt: view.reviewed_at || view.updated_at || view.created_at,
+        recordsCount: Array.isArray(view.records) ? view.records.length : 0,
+      }));
+    },
+    enabled: !!viewerCc && viewerRolId != null && viewerRolId >= 1 && viewerRolId <= 4,
+    staleTime: 0,
   });
 }
 
@@ -463,20 +484,24 @@ export function useUpdateAgendaViewStatus() {
       status,
       reviewerCc,
       reviewerComment,
+      records,
     }: {
       id: string;
       status: string;
       reviewerCc: string;
       reviewerComment?: string;
+      records?: unknown[];
     }) =>
       api.put<DbAgendaView>(`/agenda-views/${id}`, {
         status,
         reviewer_cc: reviewerCc,
         reviewer_comment: reviewerComment || null,
         reviewed_at: new Date().toISOString(),
+        ...(records ? { records } : {}),
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["agenda_views"] });
+      qc.invalidateQueries({ queryKey: ["pending_agenda_views_supervisor"] });
       qc.invalidateQueries({ queryKey: ["approved_agenda_ccs"] });
       qc.invalidateQueries({ queryKey: ["fully_approved_careers"] });
     },
@@ -494,68 +519,12 @@ export function useApprovedAgendaCcs(
   return useQuery<string[]>({
     queryKey: ["approved_agenda_ccs", forRole, currentUserCc],
     queryFn: async () => {
-      // ---------- DIRECTOR branch ----------
-      if (forRole === "director") {
-        if (!currentUserCc) return [];
-
-        const director = await api
-          .get<RawUserRow | null>(`/users/by-cc/${currentUserCc}`)
-          .catch(() => null);
-        const careerId = director?.id_professional_career ?? null;
-        if (careerId == null) return [];
-
-        const views = await api.get<Array<{ user_cc: string }>>("/agenda-views?all=true");
-        if (views.length === 0) return [];
-        const submittedCcs = Array.from(new Set(views.map((r) => r.user_cc)));
-        if (submittedCcs.length === 0) return [];
-
-        const docentes = await api.get<Array<{ cc: string }>>(
-          `/users${qs({ ccs: submittedCcs.join(","), id_rol: 1, id_professional_career: careerId })}`
-        );
-        return Array.from(new Set(docentes.map((u) => u.cc)));
-      }
-
-      // ---------- VICERRECTOR / DECANO ----------
-      const approverRolId = forRole === "vicerrector" ? 3 : 2;
-
-      const views = await api.get<Array<{ user_cc: string; reviewer_cc: string | null }>>(
-        `/agenda-views${qs({ status: "approved", has_reviewer: true })}`
+      // Director, decano y vicerrector: agendas en cola para su rol en el flujo jerárquico
+      if (!currentUserCc) return [];
+      const pendingViews = await api.get<DbAgendaView[]>(
+        `/agenda-views${qs({ pending_for_supervisor_cc: currentUserCc })}`
       );
-      if (views.length === 0) return [];
-
-      const reviewerCcs = Array.from(
-        new Set(views.map((r) => r.reviewer_cc).filter((x): x is string => !!x))
-      );
-      if (reviewerCcs.length === 0) return [];
-
-      const reviewers = await api.get<Array<{ cc: string }>>(
-        `/users${qs({ ccs: reviewerCcs.join(","), id_rol: approverRolId })}`
-      );
-      const validReviewerSet = new Set(reviewers.map((u) => u.cc));
-
-      const candidateCcs = views
-        .filter((v) => v.reviewer_cc && validReviewerSet.has(v.reviewer_cc))
-        .map((v) => v.user_cc);
-      if (candidateCcs.length === 0) return [];
-
-      // Decano: restringir a docentes de su facultad
-      if (forRole === "decano" && currentUserCc) {
-        const dean = await api
-          .get<RawUserRow | null>(`/users/by-cc/${currentUserCc}`)
-          .catch(() => null);
-        const deanFacultyId = dean?.id_faculty ?? null;
-        if (deanFacultyId == null) return [];
-
-        const docentes = await api.get<Array<{ cc: string }>>(
-          `/users${qs({
-            ccs: Array.from(new Set(candidateCcs)).join(","),
-            id_faculty: deanFacultyId,
-          })}`
-        );
-        return Array.from(new Set(docentes.map((u) => u.cc)));
-      }
-
-      return Array.from(new Set(candidateCcs));
+      return Array.from(new Set(pendingViews.map((v) => v.user_cc)));
     },
     enabled: enabled && (forRole === "vicerrector" || !!currentUserCc),
     refetchInterval: 15000,

@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, FlaskConical, Search, GraduationCap, Briefcase, Users, Brain, Building2, Lightbulb, Heart, Award, Calendar, ChevronLeft, ChevronRight, User, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,8 @@ import { subfunctions } from "@/data/subfunctions";
 import { getDocenteFullName } from "@/types/docentePlanta";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
-import { useFaculties, useProfessionalCareers, useApprovedAgendaCcs } from "@/hooks/useDatabase";
+import { useFaculties, useProfessionalCareers, useApprovedAgendaCcs, useAgendaView } from "@/hooks/useDatabase";
+import { canAccessScheduleDistribution } from "@/lib/agendaScheduleAccess";
 import ucpLogo from "@/assets/ucp-logo.png";
 
 const iconMap: { [key: string]: React.ElementType } = {
@@ -32,8 +34,10 @@ interface AppSidebarProps {
 type NavView = "root" | "careers" | "docentes";
 
 export function AppSidebar({ onClose }: AppSidebarProps) {
+  const navigate = useNavigate();
   const { activeSubfunction, setActiveSubfunction, searchTerm, setSearchTerm, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView } = useAgenda();
   const { roleName, user } = useAuth();
+  const { data: ownAgendaView } = useAgendaView(user?.id);
   const isVicerrector = roleName === "VicerrectorAcadémico";
   const isDecano = roleName === "DecanoFacultad";
   const isDirector = roleName === "DirectorPrograma";
@@ -63,12 +67,13 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
     ? "director"
     : null;
 
-  const { data: approvedCcs = [] } = useApprovedAgendaCcs(
+  // Docentes con agenda en cola de revisión para este supervisor
+  const { data: pendingReviewCcs = [] } = useApprovedAgendaCcs(
     (reviewerRole ?? "vicerrector"),
     isVicerrector ? undefined : user?.id,
     !!reviewerRole
   );
-  const approvedSet = useMemo(() => new Set(approvedCcs), [approvedCcs]);
+  const pendingReviewSet = useMemo(() => new Set(pendingReviewCcs), [pendingReviewCcs]);
 
   const [navView, setNavView] = useState<NavView>(isDecano ? "careers" : "root");
   const [selectedFacultyId, setSelectedFacultyId] = useState<number | null>(null);
@@ -91,7 +96,18 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
       ? items.filter((s) => s.title.toLowerCase().includes(searchTerm.toLowerCase()))
       : items;
 
+  const scheduleUnlocked = canAccessScheduleDistribution(ownAgendaView, user?.rolId);
+
   const handleItemClick = (id: string) => {
+    if (id === "distribucion-horaria") {
+      if (!scheduleUnlocked) {
+        toast.info(t("schedule.lockedUntilDecano"));
+        return;
+      }
+      navigate("/schedule");
+      onClose();
+      return;
+    }
     setActiveSubfunction(id);
     onClose();
     setTimeout(() => {
@@ -104,17 +120,26 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
     filter(items).map((item) => {
       const Icon = iconMap[item.id] || Users;
       const isActive = activeSubfunction === item.id;
+      const isScheduleItem = item.id === "distribucion-horaria";
+      const locked = isScheduleItem && !scheduleUnlocked;
       return (
         <button
           key={item.id}
           onClick={() => handleItemClick(item.id)}
+          disabled={locked}
           className={`w-full flex items-start gap-2 px-3 py-2 rounded-md text-sm transition-colors text-left ${
-            isActive
-              ? "bg-accent text-accent-foreground font-medium"
-              : "text-foreground/80 hover:bg-accent/50"
+            locked
+              ? "opacity-50 cursor-not-allowed text-neutral-500"
+              : isActive
+              ? "bg-accent text-black font-medium"
+              : "text-black hover:bg-accent/50"
           }`}
         >
-          <Icon className="h-4 w-4 shrink-0" />
+          {locked ? (
+            <Lock className="h-4 w-4 shrink-0" />
+          ) : (
+            <Icon className="h-4 w-4 shrink-0" />
+          )}
           <span className="whitespace-normal break-words">{t(item.shortTitleKey || item.shortTitle)}</span>
         </button>
       );
@@ -128,9 +153,9 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
     if (isDocente) return [];
     const base = docentesList.filter((d) => d.firstName !== "Yo");
     // Director sees ALL docentes from his career; locked state handled at render.
-    if (isVicerrector || isDecano) return base.filter((d) => approvedSet.has(d.id));
+    if (isVicerrector || isDecano) return base.filter((d) => pendingReviewSet.has(d.id));
     return base;
-  }, [docentesList, isVicerrector, isDecano, isDocente, approvedSet]);
+  }, [docentesList, isVicerrector, isDecano, isDocente, pendingReviewSet]);
   const selfDocente = useMemo(
     () => docentesList.find((d) => d.firstName === "Yo"),
     [docentesList]
@@ -197,12 +222,10 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
   const handleSelectDocente = async (d: typeof docentesList[number]) => {
     setSelectedDocente(d);
     if (d.firstName !== "Yo") {
-      setTimeout(async () => {
-        const found = await loadFromAgendaView();
-        if (!found) {
-          toast.info(`Docente ${getDocenteFullName(d)} no ha diligenciado su agenda`);
-        }
-      }, 100);
+      const found = await loadFromAgendaView(d.id);
+      if (!found) {
+        toast.info(`Docente ${getDocenteFullName(d)} no ha diligenciado su agenda`);
+      }
     }
   };
 
@@ -228,15 +251,15 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
       : "Sin carrera";
 
   const itemBtnClass =
-    "w-full flex items-start gap-2 px-3 py-2 rounded-md text-sm transition-colors text-foreground/80 hover:bg-accent/50 text-left";
+    "w-full flex items-start gap-2 px-3 py-2 rounded-md text-sm transition-colors text-black hover:bg-accent/50 text-left";
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-4 pb-3">
         <img src={ucpLogo} alt="Universidad Católica de Pereira" className="h-14 w-auto mb-2" />
-        <p className="text-xs text-muted-foreground mb-2">{t("sidebar.agendaDocente")}</p>
+        <p className="text-xs text-black mb-2">{t("sidebar.agendaDocente")}</p>
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-black/60" />
           <Input
             placeholder={t("sidebar.search")}
             value={searchTerm}
@@ -248,21 +271,21 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
 
       <div className="flex-1 overflow-auto px-4 space-y-4">
         <div>
-          <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">{t("sidebar.production")}</p>
+          <p className="font-semibold uppercase text-xs tracking-wider text-black mb-1">{t("sidebar.production")}</p>
           <div className="space-y-0.5">{renderItems(prodSubs)}</div>
         </div>
         <div>
-          <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">{t("sidebar.activities")}</p>
+          <p className="font-semibold uppercase text-xs tracking-wider text-black mb-1">{t("sidebar.activities")}</p>
           <div className="space-y-0.5">{renderItems(actSubs)}</div>
         </div>
         <div>
-          <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">{t("sidebar.schedule")}</p>
+          <p className="font-semibold uppercase text-xs tracking-wider text-black mb-1">{t("sidebar.schedule")}</p>
           <div className="space-y-0.5">{renderItems(horSubs)}</div>
         </div>
 
         {docentesList.length >= 1 && (
           <div>
-            <p className="font-semibold uppercase text-xs tracking-wider text-muted-foreground mb-1">
+            <p className="font-semibold uppercase text-xs tracking-wider text-black mb-1">
               {t("sidebar.docenteSection")} ({docentesList.length})
             </p>
 
@@ -273,7 +296,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                   <button
                     onClick={() => handleSelectDocente(selfDocente)}
                     className={`${itemBtnClass} ${
-                      selectedDocente?.id === selfDocente.id ? "bg-accent text-accent-foreground font-medium" : ""
+                      selectedDocente?.id === selfDocente.id ? "bg-accent text-black font-medium" : ""
                     }`}
                   >
                     <User className="h-4 w-4 shrink-0" />
@@ -283,7 +306,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
 
                 {/* Director: flat list of docentes (same career). Locked if agenda not submitted. */}
                 {isDirector && subordinates.map((d) => {
-                  const locked = !approvedSet.has(d.id);
+                  const locked = !pendingReviewSet.has(d.id);
                   return (
                     <button
                       key={d.id}
@@ -291,7 +314,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                       disabled={locked}
                       title={locked ? "El docente aún no ha diligenciado su agenda" : undefined}
                       className={`${itemBtnClass} ${
-                        selectedDocente?.id === d.id ? "bg-accent text-accent-foreground font-medium" : ""
+                        selectedDocente?.id === d.id ? "bg-accent text-black font-medium" : ""
                       } ${locked ? "opacity-50 cursor-not-allowed hover:bg-transparent" : ""}`}
                     >
                       {locked ? <Lock className="h-4 w-4 shrink-0" /> : <User className="h-4 w-4 shrink-0" />}
@@ -308,7 +331,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                   >
                     <Building2 className="h-4 w-4 shrink-0" />
                     <span className="whitespace-normal break-words flex-1 text-left">{faculty.name}</span>
-                    <span className="text-xs text-muted-foreground">{count}</span>
+                    <span className="text-xs text-black/70">{count}</span>
                     <ChevronRight className="h-4 w-4 shrink-0" />
                   </button>
                 ))}
@@ -324,7 +347,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                   >
                     <Users className="h-4 w-4 shrink-0" />
                     <span className="whitespace-normal break-words flex-1 text-left">Sin facultad asignada</span>
-                    <span className="text-xs text-muted-foreground">{facultiesWithSubs.unassigned.length}</span>
+                    <span className="text-xs text-black/70">{facultiesWithSubs.unassigned.length}</span>
                     <ChevronRight className="h-4 w-4 shrink-0" />
                   </button>
                 )}
@@ -358,7 +381,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                     >
                       <GraduationCap className="h-4 w-4 shrink-0" />
                       <span className="whitespace-normal break-words flex-1 text-left">{career.name}</span>
-                      <span className="text-xs text-muted-foreground">{disabled ? "—" : count}</span>
+                      <span className="text-xs text-black/70">{disabled ? "—" : count}</span>
                       {!disabled && <ChevronRight className="h-4 w-4 shrink-0" />}
                     </button>
                   );
@@ -368,7 +391,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                   <button onClick={() => goDocentes(null)} className={itemBtnClass}>
                     <Users className="h-4 w-4 shrink-0" />
                     <span className="whitespace-normal break-words flex-1 text-left">Sin carrera asignada</span>
-                    <span className="text-xs text-muted-foreground">{careersWithSubs.unassigned.length}</span>
+                    <span className="text-xs text-black/70">{careersWithSubs.unassigned.length}</span>
                     <ChevronRight className="h-4 w-4 shrink-0" />
                   </button>
                 )}
@@ -399,7 +422,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                   <button
                     onClick={() => handleSelectDocente(selfDocente)}
                     className={`${itemBtnClass} ${
-                      selectedDocente?.id === selfDocente.id ? "bg-accent text-accent-foreground font-medium" : ""
+                      selectedDocente?.id === selfDocente.id ? "bg-accent text-black font-medium" : ""
                     }`}
                   >
                     <User className="h-4 w-4 shrink-0" />
@@ -415,7 +438,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
                     key={d.id}
                     onClick={() => handleSelectDocente(d)}
                     className={`${itemBtnClass} ${
-                      selectedDocente?.id === d.id ? "bg-accent text-accent-foreground font-medium" : ""
+                      selectedDocente?.id === d.id ? "bg-accent text-black font-medium" : ""
                     }`}
                   >
                     <User className="h-4 w-4 shrink-0" />

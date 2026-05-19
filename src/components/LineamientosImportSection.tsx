@@ -21,6 +21,7 @@ type Phase = "idle" | "selected" | "processing" | "preview" | "applied";
 const categoryLabel = (c: ExtractedRule["category"], t: (k: string) => string) => {
   if (c === "investigacion") return t("settings.investigacion");
   if (c === "administrativas") return t("settings.administrativas");
+  if (c === "docencia") return t("settings.formacion"); // O podrías crear un t("settings.docencia")
   if (c === "visual") return "Cambios Visuales / Diseño";
   return t("settings.formacion");
 };
@@ -91,6 +92,7 @@ export function LineamientosImportSection() {
     if (!docId) return;
     const selectedRules = extracted.filter((_, i) => selected.has(i));
     if (selectedRules.length === 0) return;
+
     try {
       await apply.mutateAsync({
         documentId: docId,
@@ -244,25 +246,28 @@ export function LineamientosImportSection() {
                     <TableHead className="w-20 text-right">{t("settings.hours")}</TableHead>
                     <TableHead className="w-24 text-right">{t("settings.subjects")}</TableHead>
                     <TableHead className="w-28">{t("settings.sourceArticle")}</TableHead>
+                    <TableHead className="w-24 text-center">Fuente</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {Object.entries(grouped).map(([cat, items]) => (
                     <>
                       <TableRow key={`h-${cat}`} className="bg-muted/40 hover:bg-muted/40">
-                        <TableCell colSpan={5} className="py-1.5 text-xs font-semibold uppercase tracking-wide">
+                        <TableCell colSpan={6} className="py-1.5 text-xs font-semibold uppercase tracking-wide">
                           {categoryLabel(cat as ExtractedRule["category"], t)}
                         </TableCell>
                       </TableRow>
                       {items.map(({ rule, idx }) => (
-                        <TableRow key={idx}>
+                        <TableRow key={idx} className={rule.is_default ? "opacity-60" : "bg-primary/5"}>
                           <TableCell className="py-2">
                             <Checkbox
                               checked={selected.has(idx)}
                               onCheckedChange={() => toggleSelect(idx)}
                             />
                           </TableCell>
-                          <TableCell className="py-2 text-sm">{rule.label}</TableCell>
+                          <TableCell className="py-2 text-sm font-medium">
+                            {rule.label}
+                          </TableCell>
                           <TableCell className="py-2 text-right text-sm">
                             {rule.category === "visual" ? (
                               <div className="flex items-center justify-end gap-2">
@@ -273,13 +278,23 @@ export function LineamientosImportSection() {
                                 />
                               </div>
                             ) : (
-                              rule.hours
+                              <span className={rule.is_default ? "" : "font-bold text-primary"}>
+                                {rule.hours}
+                              </span>
                             )}
                           </TableCell>
                           <TableCell className="py-2 text-right text-sm">
                             {rule.category === "visual" ? "—" : rule.subjects}
                           </TableCell>
                           <TableCell className="py-2 text-xs text-muted-foreground">{rule.source_article}</TableCell>
+                          <TableCell className="py-2 text-center">
+                            <Badge 
+                              variant={rule.is_default ? "secondary" : "default"}
+                              className={`text-[10px] px-1.5 py-0 ${!rule.is_default ? "bg-green-600 hover:bg-green-700" : ""}`}
+                            >
+                              {rule.is_default ? "Defecto" : "PDF"}
+                            </Badge>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </>

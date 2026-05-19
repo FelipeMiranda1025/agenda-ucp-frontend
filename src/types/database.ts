@@ -193,6 +193,8 @@ export interface DbAgendaView {
   user_cc: string;
   records: Record<string, any>[];
   status: 'pending' | 'approved' | 'returned';
+  /** id_rol del supervisor que debe revisar (2=director, 3=decano, 4=vicerrector) */
+  pending_reviewer_rol: number | null;
   reviewer_cc: string | null;
   reviewer_comment: string | null;
   reviewed_at: string | null;

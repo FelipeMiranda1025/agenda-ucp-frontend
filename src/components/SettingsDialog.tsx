@@ -9,7 +9,7 @@ import { useLanguage } from "@/i18n/LanguageContext";
 import { toast } from "@/hooks/use-toast";
 import {
   useRecommendationRules,
-  useUpdateRecommendationRule,
+  useBulkSaveRecommendationRules,
   useResetRecommendationRules,
   useToggleRecommendationRuleActive,
   useCreateRecommendationRule,
@@ -17,7 +17,6 @@ import {
 } from "@/hooks/useRecommendationRules";
 import { Loader2, RotateCcw, Save, Eye, EyeOff, Plus, X } from "lucide-react";
 import { LineamientosImportSection } from "@/components/LineamientosImportSection";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Props {
   open: boolean;
@@ -29,8 +28,8 @@ type Category = RecommendationRule["category"];
 
 export function SettingsDialog({ open, onOpenChange }: Props) {
   const { t } = useLanguage();
-  const { data: rules, isLoading } = useRecommendationRules();
-  const updateRule = useUpdateRecommendationRule();
+  const { data: rules, isLoading, refetch } = useRecommendationRules(open);
+  const bulkSave = useBulkSaveRecommendationRules();
   const resetRules = useResetRecommendationRules();
   const toggleActive = useToggleRecommendationRuleActive();
   const createRule = useCreateRecommendationRule();
@@ -40,11 +39,16 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
   const [activeTab, setActiveTab] = useState<Category>("investigacion");
   const [addingFor, setAddingFor] = useState<Category | null>(null);
   const [newRule, setNewRule] = useState({ label: "", hours: 0, subjects: 0 });
+  useEffect(() => {
+    if (open) void refetch();
+  }, [open, refetch]);
 
   useEffect(() => {
     if (rules) {
       const initial: Edits = {};
-      rules.forEach(r => { initial[r.id] = { hours: r.hours, subjects: r.subjects }; });
+      rules.forEach(r => {
+        initial[r.id] = { hours: Number(r.hours), subjects: Number(r.subjects) };
+      });
       setEdits(initial);
     }
   }, [rules]);
@@ -60,21 +64,35 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
   };
 
   const handleSaveAll = async () => {
-    if (!rules) return;
+    if (!rules?.length) return;
+
+    const payload = rules.map(r => {
+      const e = edits[r.id] ?? { hours: r.hours, subjects: r.subjects };
+      return {
+        id: r.id,
+        hours: Number(e.hours),
+        subjects: Number(e.subjects),
+      };
+    });
+
     const changed = rules.filter(r => {
       const e = edits[r.id];
-      return e && (e.hours !== r.hours || e.subjects !== r.subjects);
+      if (!e) return false;
+      return Number(e.hours) !== Number(r.hours) || Number(e.subjects) !== Number(r.subjects);
     });
+
     if (changed.length === 0) {
       toast({ title: t("settings.noChanges") });
       return;
     }
+
     try {
-      for (const r of changed) {
-        const e = edits[r.id];
-        await updateRule.mutateAsync({ id: r.id, hours: e.hours, subjects: e.subjects });
-      }
-      toast({ title: t("settings.saved") });
+      const result = await bulkSave.mutateAsync({ rules: payload });
+      toast({
+        title: t("settings.saved"),
+        description: t("settings.rulesUpdated", { count: result.updated }),
+      });
+      await refetch();
     } catch {
       toast({ title: t("settings.saveError"), variant: "destructive" });
     }
@@ -85,6 +103,7 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
     try {
       await resetRules.mutateAsync();
       toast({ title: t("settings.resetDone") });
+      await refetch();
     } catch {
       toast({ title: t("settings.saveError"), variant: "destructive" });
     }
@@ -120,7 +139,7 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
     const visible = showInactive ? list : list.filter(r => r.active !== false);
     return (
       <div className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 shrink-0">
           <Button
             type="button"
             variant="ghost"
@@ -191,7 +210,7 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
           </div>
         )}
 
-        <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
+        <div className="space-y-3">
           {visible.map(rule => {
             const edit = edits[rule.id] ?? { hours: rule.hours, subjects: rule.subjects };
             const isInactive = rule.active === false;
@@ -244,14 +263,14 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden p-0 gap-0">
+        <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
           <DialogTitle>{t("settings.title")}</DialogTitle>
           <DialogDescription>{t("settings.description")}</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
-          <div className="space-y-6 pr-1">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6">
+          <div className="space-y-6 pb-28">
             <LineamientosImportSection />
 
             <div className="space-y-2">
@@ -267,20 +286,26 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
                     <TabsTrigger value="administrativas">{t("settings.administrativas")}</TabsTrigger>
                     <TabsTrigger value="formacion">{t("settings.formacion")}</TabsTrigger>
                   </TabsList>
-                  <TabsContent value="investigacion" className="mt-4">{renderRules("investigacion", grouped.investigacion)}</TabsContent>
-                  <TabsContent value="administrativas" className="mt-4">{renderRules("administrativas", grouped.administrativas)}</TabsContent>
-                  <TabsContent value="formacion" className="mt-4">{renderRules("formacion", grouped.formacion)}</TabsContent>
+                  <TabsContent value="investigacion" className="mt-4 focus-visible:outline-none">
+                    {renderRules("investigacion", grouped.investigacion)}
+                  </TabsContent>
+                  <TabsContent value="administrativas" className="mt-4 focus-visible:outline-none">
+                    {renderRules("administrativas", grouped.administrativas)}
+                  </TabsContent>
+                  <TabsContent value="formacion" className="mt-4 focus-visible:outline-none">
+                    {renderRules("formacion", grouped.formacion)}
+                  </TabsContent>
                 </Tabs>
               )}
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
-        <DialogFooter className="gap-2 sm:gap-2">
+        <DialogFooter className="shrink-0 gap-2 sm:gap-2 border-t bg-background px-6 py-4">
           <Button
             variant="outline"
             onClick={handleReset}
-            disabled={resetRules.isPending}
+            disabled={resetRules.isPending || bulkSave.isPending}
             className="gap-2"
           >
             <RotateCcw className="h-4 w-4" />
@@ -288,14 +313,19 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
           </Button>
           <Button
             onClick={handleSaveAll}
-            disabled={updateRule.isPending}
+            disabled={bulkSave.isPending}
             className="gap-2"
           >
-            <Save className="h-4 w-4" />
+            {bulkSave.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
             {t("settings.saveAll")}
           </Button>
         </DialogFooter>
       </DialogContent>
+
     </Dialog>
   );
 }

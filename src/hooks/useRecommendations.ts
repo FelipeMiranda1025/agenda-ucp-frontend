@@ -24,21 +24,22 @@ interface Recommendation {
 }
 
 // Hardcoded fallbacks (used when DB is empty / loading)
+/** hours = ⌛ docencia directa; subjects = ✍🏼 horas semanales a registrar */
 const FALLBACK: Record<string, Recommendation> = {
-  form_doctorado: { hours: 8, subjects: 2 },
-  form_maestria: { hours: 12, subjects: 4 },
-  form_pedagogicos: { hours: 13, subjects: 4 },
-  admin_decano_vicerrector_doctorado: { hours: 2, subjects: 1 },
-  admin_dir_depto_pregrado: { hours: 6, subjects: 2 },
-  admin_dir_posgrado_2: { hours: 6, subjects: 3 },
-  admin_dir_posgrado_1: { hours: 11, subjects: 4 },
-  admin_coord_area: { hours: 13, subjects: 4 },
-  inv_1p_2c: { hours: 3, subjects: 1 },
-  inv_2p: { hours: 4, subjects: 1 },
-  inv_1p: { hours: 10, subjects: 3 },
-  inv_3c: { hours: 6, subjects: 2 },
-  inv_2c: { hours: 9, subjects: 3 },
-  inv_1c: { hours: 13, subjects: 4 },
+  form_doctorado: { hours: 8, subjects: 15 },
+  form_maestria: { hours: 12, subjects: 7 },
+  form_pedagogicos: { hours: 13, subjects: 13 },
+  admin_decano_vicerrector_doctorado: { hours: 4, subjects: 4 },
+  admin_dir_depto_pregrado: { hours: 6, subjects: 6 },
+  admin_dir_posgrado_2: { hours: 6, subjects: 6 },
+  admin_dir_posgrado_1: { hours: 7, subjects: 9 },
+  admin_coord_area: { hours: 13, subjects: 6 },
+  inv_1p_2c: { hours: 6, subjects: 17 },
+  inv_2p: { hours: 4, subjects: 22 },
+  inv_1p: { hours: 10, subjects: 11 },
+  inv_3c: { hours: 6, subjects: 12 },
+  inv_2c: { hours: 9, subjects: 12 },
+  inv_1c: { hours: 13, subjects: 6 },
 };
 
 function getRule(rules: RecommendationRule[] | undefined, key: string): Recommendation {
@@ -57,7 +58,7 @@ export function useRecommendations(records: AgendaRecord[], userRolId?: number):
   const { data: rules } = useRecommendationRules();
 
   return useMemo(() => {
-    const defaults: Recommendation = { hours: 16, subjects: 5 };
+    const defaults: Recommendation = { hours: 16, subjects: 16 };
 
     // Count investigation records
     const invRecords = records.filter(r => r.subfunctionId === "investigacion");

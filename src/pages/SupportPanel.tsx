@@ -56,17 +56,11 @@ import {
   Users,
   Shield,
   Network,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import ucpLogo from "@/assets/ucp-logo.png";
 
-// SHA-256 hash (mismo método del AuthContext)
-async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 interface UserRow {
   id: number;
@@ -133,53 +127,95 @@ export default function SupportPanel() {
   const [deleteTarget, setDeleteTarget] = useState<UserRow | null>(null);
   const [hierarchyTarget, setHierarchyTarget] = useState<UserRow | null>(null);
   const [supervisorPick, setSupervisorPick] = useState<string>("none");
+  const [showPassword, setShowPassword] = useState(false);
 
   // ----- Queries
   const { data: users = [], isLoading } = useQuery<UserRow[]>({
     queryKey: ["sp_users"],
-    queryFn: () => api.get<UserRow[]>("/users?order=id.asc"),
+    queryFn: async () => {
+      try {
+        return await api.get<UserRow[]>("/users?order=id.asc");
+      } catch (err: any) {
+        toast.error("Error al cargar usuarios: " + err.message);
+        return [];
+      }
+    },
   });
 
   const { data: roles = [] } = useQuery<RoleRow[]>({
     queryKey: ["sp_roles"],
-    queryFn: () => api.get<RoleRow[]>("/roles?order=id.asc"),
+    queryFn: async () => {
+      try {
+        return await api.get<RoleRow[]>("/roles?order=id.asc");
+      } catch (err: any) {
+        toast.error("Error al cargar roles");
+        return [];
+      }
+    },
   });
 
   const { data: states = [] } = useQuery<StateRow[]>({
     queryKey: ["sp_states"],
-    queryFn: () => api.get<StateRow[]>("/states?order=id.asc"),
+    queryFn: async () => {
+      try {
+        return await api.get<StateRow[]>("/states?order=id.asc");
+      } catch {
+        return [];
+      }
+    },
   });
 
   const { data: hierarchy = [] } = useQuery<HierarchyRow[]>({
     queryKey: ["sp_hierarchy"],
-    queryFn: () => api.get<HierarchyRow[]>("/user-hierarchy"),
+    queryFn: async () => {
+      try {
+        return await api.get<HierarchyRow[]>("/user-hierarchy");
+      } catch {
+        return [];
+      }
+    },
   });
 
   const { data: faculties = [] } = useQuery<FacultyRow[]>({
     queryKey: ["sp_faculties"],
-    queryFn: () => api.get<FacultyRow[]>("/faculties?order=name.asc"),
+    queryFn: async () => {
+      try {
+        return await api.get<FacultyRow[]>("/faculties?order=name.asc");
+      } catch {
+        return [];
+      }
+    },
   });
 
   const { data: careers = [] } = useQuery<CareerRow[]>({
     queryKey: ["sp_careers"],
-    queryFn: () => api.get<CareerRow[]>("/professional-careers?order=name.asc"),
+    queryFn: async () => {
+      try {
+        return await api.get<CareerRow[]>("/professional-careers?order=name.asc");
+      } catch {
+        return [];
+      }
+    },
   });
 
-  // ----- Mutations
-  // Helper interno: aplica la jerarquía (borrar previa + insertar nueva si corresponde)
+  // ----- Mutations con manejo de errores y try/catch
   const applyHierarchy = async (userId: number, supervisorId: number | null) => {
-    await api.delete(`/user-hierarchy/${userId}`).catch(() => undefined);
-    if (supervisorId !== null) {
-      await api.post("/user-hierarchy", {
-        user_id: userId,
-        supervisor_id: supervisorId,
-      });
+    try {
+      await api.delete(`/user-hierarchy/${userId}`).catch(() => undefined);
+      if (supervisorId !== null) {
+        await api.post("/user-hierarchy", {
+          user_id: userId,
+          supervisor_id: supervisorId,
+        });
+      }
+    } catch (err: any) {
+      console.error("Error en applyHierarchy:", err);
+      throw new Error("No se pudo actualizar la jerarquía");
     }
   };
 
   const createUser = useMutation({
     mutationFn: async (payload: typeof emptyForm) => {
-      const hashed = await hashPassword(payload.password);
       const data = await api.post<{ id: number }>("/users", {
         cc: payload.cc.trim(),
         email: payload.email.trim(),
@@ -243,7 +279,6 @@ export default function SupportPanel() {
 
   const deleteUser = useMutation({
     mutationFn: async (id: number) => {
-      // El backend limpia la jerarquía vinculada al borrar el usuario
       await api.delete(`/users/${id}`);
     },
     onSuccess: () => {
@@ -290,33 +325,66 @@ export default function SupportPanel() {
     return users.find((x) => x.id === h.supervisor_id) || null;
   };
 
-  // Carreras filtradas por facultad seleccionada (para el filtro de la tabla)
+  // ============================================================
+  // LÓGICA MEJORADA PARA CANDIDATOS A SUPERVISOR (diálogo de jerarquía)
+  // ============================================================
+  const getSupervisorCandidates = (targetUser: UserRow): UserRow[] => {
+    if (!targetUser) return [];
+
+    switch (targetUser.id_rol) {
+      case 1: // Docente Planta -> Directores de Programa de la misma carrera
+        if (!targetUser.id_professional_career) return [];
+        return users.filter(
+          (u) => u.id_rol === 2 && u.id_professional_career === targetUser.id_professional_career && u.id !== targetUser.id
+        );
+
+      case 2: // Director de Programa -> Decanos de la misma facultad
+        if (!targetUser.id_faculty) return [];
+        return users.filter(
+          (u) => u.id_rol === 3 && u.id_faculty === targetUser.id_faculty && u.id !== targetUser.id
+        );
+
+      case 3: // Decano -> Vicerrector (rol 4)
+        return users.filter((u) => u.id_rol === 4 && u.id !== targetUser.id);
+
+      case 4: // Vicerrector no tiene supervisor
+      case 5: // Soporte no tiene supervisor
+      default:
+        return [];
+    }
+  };
+
+  // Carreras filtradas por facultad (para filtro de tabla)
   const careersForFilter = useMemo(() => {
     if (filterFaculty === "all") return careers;
     return careers.filter((c) => c.id_faculty === Number(filterFaculty));
   }, [careers, filterFaculty]);
 
-  // Carreras filtradas por facultad del formulario (para el select del diálogo)
+  // Carreras filtradas por facultad del formulario (para diálogo crear/editar)
   const careersForForm = useMemo(() => {
     if (form.id_faculty === null) return careers;
     return careers.filter((c) => c.id_faculty === form.id_faculty);
   }, [careers, form.id_faculty]);
 
-  // Candidatos a supervisor según el rol elegido en el formulario:
-  // - Rol 1 (DocentePlanta) -> Director de Programa (rol 2) de la misma carrera
-  // - Rol 2 (DirectorPrograma) -> Decano de Facultad (rol 3) de la misma facultad
-  // - Rol 3 (DecanoFacultad) -> Vicerrector Académico (rol 4), único en el sistema
-  // - Roles 4 y 5 -> sin supervisor
-  const supervisorCandidates = useMemo(() => {
+  // Candidatos a supervisor en el formulario con fallback inteligente
+  const supervisorCandidatesForm = useMemo(() => {
     if (form.id_rol === 1) {
       if (!form.id_professional_career) return [];
-      return users.filter(
+      const exact = users.filter(
         (u) => u.id_rol === 2 && u.id_professional_career === form.id_professional_career
       );
+      if (exact.length > 0) return exact;
+      const inFaculty = form.id_faculty
+        ? users.filter((u) => u.id_rol === 2 && u.id_faculty === form.id_faculty)
+        : [];
+      if (inFaculty.length > 0) return inFaculty;
+      return users.filter((u) => u.id_rol === 2);
     }
     if (form.id_rol === 2) {
       if (!form.id_faculty) return [];
-      return users.filter((u) => u.id_rol === 3 && u.id_faculty === form.id_faculty);
+      const exact = users.filter((u) => u.id_rol === 3 && u.id_faculty === form.id_faculty);
+      if (exact.length > 0) return exact;
+      return users.filter((u) => u.id_rol === 3);
     }
     if (form.id_rol === 3) {
       return users.filter((u) => u.id_rol === 4);
@@ -324,32 +392,28 @@ export default function SupportPanel() {
     return [];
   }, [users, form.id_rol, form.id_faculty, form.id_professional_career]);
 
-  // Auto-seleccionar el supervisor cuando solo hay un candidato y aún no se ha elegido uno válido
- const prevRolRef = useRef(form.id_rol);
-useEffect(() => {
-  const rolChanged = prevRolRef.current !== form.id_rol;
-  prevRolRef.current = form.id_rol;
-
-   // No interferir si estamos editando
-  if (editing) return;
-
-  if (![1, 2, 3].includes(form.id_rol)) {
-    if (form.supervisor_id !== null) setForm((f) => ({ ...f, supervisor_id: null }));
-    return;
-  }
-
-  // Solo auto-seleccionar si cambió el rol o no hay supervisor
-  if (rolChanged || form.supervisor_id === null) {
-    const validIds = supervisorCandidates.map((s) => s.id);
-    if (form.supervisor_id !== null && !validIds.includes(form.supervisor_id)) {
-      setForm((f) => ({ ...f, supervisor_id: null }));
+  // Auto-selección en formulario
+  const prevRolRef = useRef(form.id_rol);
+  useEffect(() => {
+    const rolChanged = prevRolRef.current !== form.id_rol;
+    prevRolRef.current = form.id_rol;
+    if (editing) return;
+    if (![1, 2, 3].includes(form.id_rol)) {
+      if (form.supervisor_id !== null) setForm((f) => ({ ...f, supervisor_id: null }));
+      return;
     }
-    if (form.supervisor_id === null && supervisorCandidates.length === 1) {
-      setForm((f) => ({ ...f, supervisor_id: supervisorCandidates[0].id }));
+    if (rolChanged || form.supervisor_id === null) {
+      const validIds = supervisorCandidatesForm.map((s) => s.id);
+      if (form.supervisor_id !== null && !validIds.includes(form.supervisor_id)) {
+        setForm((f) => ({ ...f, supervisor_id: null }));
+      }
+      if (form.supervisor_id === null && supervisorCandidatesForm.length === 1) {
+        setForm((f) => ({ ...f, supervisor_id: supervisorCandidatesForm[0].id }));
+      }
     }
-  }
-}, [supervisorCandidates, form.id_rol, form.supervisor_id]);
+  }, [supervisorCandidatesForm, form.id_rol, form.supervisor_id, editing]);
 
+  // Filtro de usuarios para la tabla
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return users.filter((u) => {
@@ -362,26 +426,21 @@ useEffect(() => {
       const matchesFaculty =
         filterFaculty === "all" || u.id_faculty === Number(filterFaculty);
       const matchesCareer =
-        filterCareer === "all" ||
-        u.id_professional_career === Number(filterCareer);
+        filterCareer === "all" || u.id_professional_career === Number(filterCareer);
       return matchesSearch && matchesFaculty && matchesCareer;
     });
   }, [users, search, roles, filterFaculty, filterCareer]);
-
-  // Roles que pueden ser supervisores (excluye Soporte y al propio usuario)
-  const possibleSupervisors = (forUserId: number) =>
-    users.filter((u) => u.id !== forUserId && u.id_rol !== 5);
 
   // ----- Handlers
   const openCreate = () => {
     setEditing(null);
     setForm({ ...emptyForm });
+    setShowPassword(false);
     setDialogOpen(true);
   };
   const openEdit = (u: UserRow) => {
     setEditing(u);
     const currentSup = supervisorOf(u.id);
-    console.log("Editando usuario:", u.id, "Supervisor encontrado:", currentSup);
     setForm({
       cc: u.cc,
       email: u.email,
@@ -396,6 +455,7 @@ useEffect(() => {
       id_professional_career: u.id_professional_career,
       supervisor_id: currentSup ? currentSup.id : null,
     });
+    setShowPassword(false);
     setDialogOpen(true);
   };
   const openHierarchy = (u: UserRow) => {
@@ -406,29 +466,57 @@ useEffect(() => {
 
   const submit = () => {
     if (!form.cc || !form.email || !form.first_name || !form.first_last_name) {
-      toast.error("Completa los campos obligatorios");
+      toast.error("Completa todos los campos obligatorios (*)");
       return;
     }
-    if (!editing && !form.password) {
-      toast.error("La contraseña es obligatoria al crear");
+
+    // 1. Validación estricta de cédula (mínimo 6 dígitos numéricos)
+    const ccClean = form.cc.trim();
+    if (!/^\d+$/.test(ccClean) || ccClean.length < 6) {
+      toast.error("La cédula debe tener mínimo 6 dígitos numéricos enteros sin letras.");
       return;
     }
-    // Para roles académicos (Docente Planta, Director de Programa, Decano de Facultad)
-    // exigir Facultad, Carrera (cuando aplique) y Supervisor.
+
+    // 2. Validación estricta de correo institucional UCP
+    const emailClean = form.email.trim();
+    if (!emailClean.toLowerCase().endsWith("@ucp.edu.co")) {
+      toast.error("El correo debe terminar con @ucp.edu.co");
+      return;
+    }
+
+    // 3. Validación estricta de contraseña (si se está creando o si se ingresa al editar)
+    if (!editing || form.password) {
+      const p = form.password;
+      if (p.length < 8) {
+        toast.error("La contraseña debe tener mínimo 8 caracteres.");
+        return;
+      }
+      if (!/[A-Z]/.test(p)) {
+        toast.error("La contraseña debe incluir al menos una letra mayúscula.");
+        return;
+      }
+      if (!/[a-z]/.test(p)) {
+        toast.error("La contraseña debe incluir al menos una letra minúscula.");
+        return;
+      }
+      if (!/[@$!%*?&#\-_+]/.test(p)) {
+        toast.error("La contraseña debe incluir al menos un carácter especial (@ - $ ! #).");
+        return;
+      }
+    }
     if ([1, 2, 3].includes(form.id_rol)) {
       if (!form.id_faculty) {
         toast.error("La Facultad es obligatoria para este rol");
         return;
       }
-      // Decano (3) no requiere carrera; Director (2) y Docente Planta (1) sí
       if ([1, 2].includes(form.id_rol) && !form.id_professional_career) {
         toast.error("La Carrera profesional es obligatoria para este rol");
         return;
       }
-      if (form.supervisor_id === null) {
+      if (form.supervisor_id === null && supervisorCandidatesForm.length > 0) {
         const msg =
           form.id_rol === 3
-            ? "No hay Vicerrector Académico disponible como supervisor."
+            ? "Debes seleccionar un Vicerrector Académico como supervisor."
             : form.id_rol === 2
               ? "Debes seleccionar un Decano de Facultad como supervisor."
               : "Debes seleccionar un Director de Programa como supervisor.";
@@ -445,7 +533,7 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* Header igual que antes... */}
       <header className="border-b bg-card sticky top-0 z-40">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -475,7 +563,7 @@ useEffect(() => {
         </div>
       </header>
 
-      {/* Main */}
+      {/* Main content: tabla y filtros (igual que antes, sin cambios) */}
       <main className="container mx-auto px-6 py-8 max-w-7xl">
         <Card className="shadow-sm">
           <CardHeader className="border-b">
@@ -634,7 +722,7 @@ useEffect(() => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
-                            {u.id_rol !== 5 && (
+                            {u.id_rol !== 5 && u.id_rol !== 4 && (
                               <Button
                                 size="icon"
                                 variant="ghost"
@@ -674,7 +762,84 @@ useEffect(() => {
         </Card>
       </main>
 
-      {/* Create/Edit Dialog */}
+      {/* ================================================================ */}
+      {/* DIÁLOGO DE JERARQUÍA MEJORADO */}
+      {/* ================================================================ */}
+      <Dialog open={!!hierarchyTarget} onOpenChange={(o) => !o && setHierarchyTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Network className="h-5 w-5 text-primary" />
+              Asignar jerarquía
+            </DialogTitle>
+            <DialogDescription>
+              Define el supervisor directo de{" "}
+              <span className="font-medium text-foreground">
+                {hierarchyTarget && fullName(hierarchyTarget)}
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Información del usuario objetivo */}
+          {hierarchyTarget && (
+            <div className="space-y-2 text-sm bg-muted/30 p-3 rounded-md">
+              <p><span className="font-medium">Rol:</span> {roleName(hierarchyTarget.id_rol)}</p>
+              {hierarchyTarget.id_faculty && (
+                <p><span className="font-medium">Facultad:</span> {facultyName(hierarchyTarget.id_faculty)}</p>
+              )}
+              {hierarchyTarget.id_professional_career && (
+                <p><span className="font-medium">Carrera:</span> {careerName(hierarchyTarget.id_professional_career)}</p>
+              )}
+            </div>
+          )}
+
+          <div className="space-y-2 py-2">
+            <Label>Supervisor</Label>
+            <Select value={supervisorPick} onValueChange={setSupervisorPick}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecciona un supervisor" />
+              </SelectTrigger>
+              <SelectContent className="max-h-72">
+                <SelectItem value="none">— Sin supervisor —</SelectItem>
+                {hierarchyTarget &&
+                  getSupervisorCandidates(hierarchyTarget).map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>
+                      {fullName(s)} · {roleName(s.id_rol)}
+                      {s.id_rol === 2 && ` (${careerName(s.id_professional_career)})`}
+                      {s.id_rol === 3 && ` (${facultyName(s.id_faculty)})`}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+            {hierarchyTarget && hierarchyTarget.id_rol === 4 && (
+              <p className="text-xs text-muted-foreground">
+                Los Vicerrectores no tienen supervisor asignado.
+              </p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHierarchyTarget(null)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() =>
+                hierarchyTarget &&
+                setSupervisor.mutate({
+                  userId: hierarchyTarget.id,
+                  supervisorId: supervisorPick === "none" ? null : Number(supervisorPick),
+                })
+              }
+              disabled={setSupervisor.isPending}
+              className="bg-primary hover:bg-primary/90"
+            >
+              Guardar jerarquía
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de creación/edición (sin cambios significativos) */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -688,66 +853,84 @@ useEffect(() => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
-            <div className="space-y-2">
-              <Label>Cédula (CC) *</Label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2 text-sm">
+            <div className="space-y-1">
+              <Label htmlFor="user-cc" className="text-xs">Cédula / Identificación <span className="text-destructive">*</span></Label>
               <Input
+                id="user-cc"
                 value={form.cc}
                 onChange={(e) => setForm({ ...form, cc: e.target.value })}
-                placeholder="12345678"
+                placeholder="Ej. 12345678"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Email *</Label>
+            <div className="space-y-1">
+              <Label htmlFor="user-email" className="text-xs">Correo electrónico <span className="text-destructive">*</span></Label>
               <Input
+                id="user-email"
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="usuario@ucp.edu.co"
+                placeholder="ejemplo@ucp.edu.co"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Primer nombre *</Label>
+
+            <div className="space-y-1">
+              <Label htmlFor="user-fn" className="text-xs">Primer nombre <span className="text-destructive">*</span></Label>
               <Input
+                id="user-fn"
                 value={form.first_name}
                 onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+                placeholder="Ej. Carlos"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Segundo nombre</Label>
+            <div className="space-y-1">
+              <Label htmlFor="user-sn" className="text-xs">Segundo nombre</Label>
               <Input
+                id="user-sn"
                 value={form.second_name}
                 onChange={(e) => setForm({ ...form, second_name: e.target.value })}
+                placeholder="Opcional"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Primer apellido *</Label>
+
+            <div className="space-y-1">
+              <Label htmlFor="user-fln" className="text-xs">Primer apellido <span className="text-destructive">*</span></Label>
               <Input
+                id="user-fln"
                 value={form.first_last_name}
-                onChange={(e) =>
-                  setForm({ ...form, first_last_name: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, first_last_name: e.target.value })}
+                placeholder="Ej. Ramírez"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Segundo apellido</Label>
+            <div className="space-y-1">
+              <Label htmlFor="user-sln" className="text-xs">Segundo apellido</Label>
               <Input
+                id="user-sln"
                 value={form.second_last_name}
-                onChange={(e) =>
-                  setForm({ ...form, second_last_name: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, second_last_name: e.target.value })}
+                placeholder="Opcional"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Rol *</Label>
+
+            <div className="space-y-1">
+              <Label htmlFor="user-role" className="text-xs">Rol en el sistema <span className="text-destructive">*</span></Label>
               <Select
                 value={String(form.id_rol)}
-                onValueChange={(v) => setForm({ ...form, id_rol: Number(v) })}
+                onValueChange={(v) => {
+                  const r = Number(v);
+                  setForm({
+                    ...form,
+                    id_rol: r,
+                    id_faculty: [1, 2, 3].includes(r) ? form.id_faculty : null,
+                    id_professional_career: [1, 2].includes(r) ? form.id_professional_career : null,
+                    supervisor_id: null,
+                  });
+                }}
               >
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger id="user-role" className="bg-background">
+                  <SelectValue placeholder="Selecciona un rol" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-72">
                   {roles.map((r) => (
                     <SelectItem key={r.id} value={String(r.id)}>
                       {r.name}
@@ -756,14 +939,15 @@ useEffect(() => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Estado *</Label>
+
+            <div className="space-y-1">
+              <Label htmlFor="user-state" className="text-xs">Estado del usuario <span className="text-destructive">*</span></Label>
               <Select
                 value={String(form.id_state)}
                 onValueChange={(v) => setForm({ ...form, id_state: Number(v) })}
               >
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger id="user-state" className="bg-background">
+                  <SelectValue placeholder="Selecciona un estado" />
                 </SelectTrigger>
                 <SelectContent>
                   {states.map((s) => (
@@ -774,178 +958,134 @@ useEffect(() => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>
-                Facultad{[1, 2, 3].includes(form.id_rol) && <span className="text-destructive"> *</span>}
+
+            <div className="space-y-1 sm:col-span-2">
+              <Label htmlFor="user-pass" className="text-xs font-medium">
+                Contraseña {editing ? "(Dejar en blanco si no se desea cambiar)" : <span className="text-destructive">*</span>}
               </Label>
-              <Select
-                value={form.id_faculty === null ? "none" : String(form.id_faculty)}
-                onValueChange={(v) =>
-                  setForm({
-                    ...form,
-                    id_faculty: v === "none" ? null : Number(v),
-                    // Reset carrera si ya no pertenece a la nueva facultad
-                    id_professional_career:
-                      v === "none"
-                        ? form.id_professional_career
-                        : careers.find((c) => c.id === form.id_professional_career)?.id_faculty === Number(v)
-                          ? form.id_professional_career
-                          : null,
-                  })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona facultad" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  <SelectItem value="none">— Sin facultad —</SelectItem>
-                  {faculties.map((f) => (
-                    <SelectItem key={f.id} value={String(f.id)}>
-                      {f.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="relative">
+                <Input
+                  id="user-pass"
+                  type={showPassword ? "text" : "password"}
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  placeholder={editing ? "•••••••• (Sin cambios)" : "Mínimo 6 caracteres"}
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  onClick={() => setShowPassword(!showPassword)}
+                  title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                >
+                  {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                </Button>
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>
-                Carrera profesional{[1, 2].includes(form.id_rol) && <span className="text-destructive"> *</span>}
-              </Label>
-              <Select
-                value={
-                  form.id_professional_career === null
-                    ? "none"
-                    : String(form.id_professional_career)
-                }
-                onValueChange={(v) => {
-                  if (v === "none") {
-                    setForm({ ...form, id_professional_career: null });
-                  } else {
-                    const careerId = Number(v);
-                    const career = careers.find((c) => c.id === careerId);
-                    // Auto-asigna la facultad de la carrera elegida
+
+            {/* Condicional: Facultad requerida para DocentePlanta(1), DirectorPrograma(2), Decano(3) */}
+            {[1, 2, 3].includes(form.id_rol) && (
+              <div className="space-y-1 sm:col-span-2">
+                <Label htmlFor="user-fac" className="text-xs">Facultad a la que pertenece <span className="text-destructive">*</span></Label>
+                <Select
+                  value={form.id_faculty ? String(form.id_faculty) : "none"}
+                  onValueChange={(v) => {
+                    const fac = v === "none" ? null : Number(v);
                     setForm({
                       ...form,
-                      id_professional_career: careerId,
-                      id_faculty: career?.id_faculty ?? form.id_faculty,
+                      id_faculty: fac,
+                      id_professional_career: null, // Reset career when faculty changes
+                      supervisor_id: null,
                     });
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona carrera" />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  <SelectItem value="none">— Sin carrera —</SelectItem>
-                  {careersForForm.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {form.id_rol === 5 && (
-              <div className="sm:col-span-2 text-xs text-muted-foreground italic">
-                Nota: el rol Soporte normalmente no pertenece a ninguna facultad/carrera.
-              </div>
-            )}
-            {form.id_rol === 4 && (
-              <div className="sm:col-span-2 text-xs text-muted-foreground italic">
-                Nota: el rol Vicerrector Académico no pertenece a ninguna facultad/carrera y no tiene supervisor.
+                  }}
+                >
+                  <SelectTrigger id="user-fac" className="bg-background">
+                    <SelectValue placeholder="Selecciona una facultad" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    <SelectItem value="none">-- Selecciona una facultad --</SelectItem>
+                    {faculties.map((f) => (
+                      <SelectItem key={f.id} value={String(f.id)}>
+                        {f.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
-            {/* Asignación automática de supervisor según el rol */}
+            {/* Condicional: Carrera requerida para DocentePlanta(1), DirectorPrograma(2) */}
+            {[1, 2].includes(form.id_rol) && (
+              <div className="space-y-1 sm:col-span-2">
+                <Label htmlFor="user-car" className="text-xs">Carrera Profesional <span className="text-destructive">*</span></Label>
+                <Select
+                  value={form.id_professional_career ? String(form.id_professional_career) : "none"}
+                  onValueChange={(v) => {
+                    const car = v === "none" ? null : Number(v);
+                    setForm({
+                      ...form,
+                      id_professional_career: car,
+                      supervisor_id: null,
+                    });
+                  }}
+                  disabled={!form.id_faculty}
+                >
+                  <SelectTrigger id="user-car" className="bg-background">
+                    <SelectValue placeholder={form.id_faculty ? "Selecciona una carrera" : "Primero selecciona una facultad"} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    <SelectItem value="none">-- Selecciona una carrera --</SelectItem>
+                    {careersForForm.map((c) => (
+                      <SelectItem key={c.id} value={String(c.id)}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Condicional: Selección de Supervisor para DocentePlanta(1), DirectorPrograma(2), Decano(3) */}
             {[1, 2, 3].includes(form.id_rol) && (
-              <div className="sm:col-span-2 space-y-2 rounded-md border bg-muted/30 p-3">
-                <Label className="flex items-center gap-2">
-                  <Network className="h-4 w-4 text-primary" />
-                  Supervisor asignado<span className="text-destructive"> *</span>
+              <div className="space-y-1 sm:col-span-2 p-3 bg-muted/40 rounded-md border">
+                <Label htmlFor="user-sup" className="text-xs font-semibold text-primary">
+                  Supervisor Directo <span className="text-destructive">*</span>
                 </Label>
-                {form.id_rol === 3 ? (
-                  // Decano -> Vicerrector único
-                  supervisorCandidates.length === 0 ? (
-                    <p className="text-xs text-destructive">
-                      No existe ningún Vicerrector Académico en el sistema. Crea primero ese usuario.
-                    </p>
-                  ) : (
-                    <div className="text-sm">
-                      <span className="font-medium">{fullName(supervisorCandidates[0])}</span>
-                      <span className="text-muted-foreground"> · Vicerrector Académico</span>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Asignado automáticamente: el Vicerrector Académico es único en el sistema.
-                      </p>
-                    </div>
-                  )
-                ) : form.id_rol === 2 ? (
-                  // Director de programa -> Decano de la facultad seleccionada
-                  !form.id_faculty ? (
-                    <p className="text-xs text-muted-foreground">
-                      Selecciona primero una facultad para ver el Decano correspondiente.
-                    </p>
-                  ) : supervisorCandidates.length === 0 ? (
-                    <p className="text-xs text-destructive">
-                      No existe un Decano para esta facultad. Crea primero ese usuario.
-                    </p>
-                  ) : (
-                    <Select
-                      value={form.supervisor_id ? String(form.supervisor_id) : ""}
-                      onValueChange={(v) => setForm({ ...form, supervisor_id: Number(v) })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona el Decano" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {supervisorCandidates.map((s) => (
-                          <SelectItem key={s.id} value={String(s.id)}>
-                            {fullName(s)} · Decano de Facultad
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )
-                ) : (
-                  // Docente Planta -> Director de la carrera seleccionada
-                  !form.id_professional_career ? (
-                    <p className="text-xs text-muted-foreground">
-                      Selecciona primero una carrera profesional para ver el Director correspondiente.
-                    </p>
-                  ) : supervisorCandidates.length === 0 ? (
-                    <p className="text-xs text-destructive">
-                      No existe un Director de Programa para esta carrera. Crea primero ese usuario.
-                    </p>
-                  ) : (
-                    <Select
-                      value={form.supervisor_id ? String(form.supervisor_id) : ""}
-                      onValueChange={(v) => setForm({ ...form, supervisor_id: Number(v) })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecciona el Director de Programa" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {supervisorCandidates.map((s) => (
-                          <SelectItem key={s.id} value={String(s.id)}>
-                            {fullName(s)} · Director de Programa
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )
+                <p className="text-[11px] text-muted-foreground mb-1">
+                  {form.id_rol === 1 && "Docente Planta es supervisado por Director de Programa de su carrera."}
+                  {form.id_rol === 2 && "Director de Programa es supervisado por Decano de su facultad."}
+                  {form.id_rol === 3 && "Decano de Facultad es supervisado por Vicerrector Académico."}
+                </p>
+                <Select
+                  value={form.supervisor_id ? String(form.supervisor_id) : "none"}
+                  onValueChange={(v) => setForm({ ...form, supervisor_id: v === "none" ? null : Number(v) })}
+                >
+                  <SelectTrigger id="user-sup" className="bg-background font-medium">
+                    <SelectValue placeholder="Selecciona un supervisor" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    <SelectItem value="none">
+                      {supervisorCandidatesForm.length === 0
+                        ? "-- Guardar sin supervisor (puedes crearlo y asignarlo más tarde) --"
+                        : "-- Sin supervisor seleccionado --"}
+                    </SelectItem>
+                    {supervisorCandidatesForm.map((s) => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        {fullName(s)} ({s.cc})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {supervisorCandidatesForm.length === 0 && form.id_faculty && (
+                  <p className="text-[11px] text-amber-600 mt-1 font-medium bg-amber-50 p-2 rounded border border-amber-200">
+                    ⚠️ Aún no hay usuarios creados en el sistema con el rol requerido para ser supervisor en esta facultad/carrera. 
+                    <strong> Se guardará al usuario sin supervisor</strong> para que puedas crear a su supervisor y asignárselo más adelante desde la tabla.
+                  </p>
                 )}
               </div>
             )}
-            <div className="space-y-2 sm:col-span-2">
-              <Label>
-                Contraseña {editing ? "(dejar vacío para no cambiar)" : "*"}
-              </Label>
-              <Input
-                type="password"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                placeholder={editing ? "••••••••" : "Mínimo 4 caracteres"}
-              />
-            </div>
           </div>
 
           <DialogFooter>
@@ -963,63 +1103,7 @@ useEffect(() => {
         </DialogContent>
       </Dialog>
 
-      {/* Hierarchy Dialog */}
-      <Dialog open={!!hierarchyTarget} onOpenChange={(o) => !o && setHierarchyTarget(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Network className="h-5 w-5 text-primary" />
-              Asignar jerarquía
-            </DialogTitle>
-            <DialogDescription>
-              Define el supervisor directo de{" "}
-              <span className="font-medium text-foreground">
-                {hierarchyTarget && fullName(hierarchyTarget)}
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-2 py-2">
-            <Label>Supervisor</Label>
-            <Select value={supervisorPick} onValueChange={setSupervisorPick}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona un supervisor" />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                <SelectItem value="none">— Sin supervisor —</SelectItem>
-                {hierarchyTarget &&
-                  possibleSupervisors(hierarchyTarget.id).map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>
-                      {fullName(s)} · {roleName(s.id_rol)}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setHierarchyTarget(null)}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={() =>
-                hierarchyTarget &&
-                setSupervisor.mutate({
-                  userId: hierarchyTarget.id,
-                  supervisorId:
-                    supervisorPick === "none" ? null : Number(supervisorPick),
-                })
-              }
-              disabled={setSupervisor.isPending}
-              className="bg-primary hover:bg-primary/90"
-            >
-              Guardar jerarquía
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete confirmation */}
+      {/* Alerta de eliminación (sin cambios) */}
       <AlertDialog
         open={!!deleteTarget}
         onOpenChange={(o) => !o && setDeleteTarget(null)}

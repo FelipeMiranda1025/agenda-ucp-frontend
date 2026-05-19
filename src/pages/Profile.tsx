@@ -21,12 +21,13 @@ const Profile = () => {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ ...user });
   const [pwdOpen, setPwdOpen] = useState(false);
-
   if (!user) return null;
 
   const initials = `${user.firstName?.[0] || ""}${user.firstLastName?.[0] || ""}`.toUpperCase();
   const roleLabel = ROLES.find((r) => r.id === user.rolId)?.name || "";
   const statusLabel = STATUSES.find((s) => s.id === user.statusId)?.name || "";
+
+  const isSupport = user.rolId === 4;
 
   const handleSave = () => {
     toast.success(t("profilePage.updated"));
@@ -34,8 +35,8 @@ const Profile = () => {
   };
 
   const fields = [
-    { label: t("profilePage.cedula"), key: "id", disabled: true },
-    { label: t("profilePage.email"), key: "email", disabled: false },
+    { label: t("profilePage.cedula"), key: "id", disabled: !isSupport },
+    { label: t("profilePage.email"), key: "email", disabled: !isSupport },
     { label: t("profilePage.firstName"), key: "firstName", disabled: false },
     { label: t("profilePage.secondName"), key: "secondName", disabled: false },
     { label: t("profilePage.firstLastName"), key: "firstLastName", disabled: false },
@@ -55,7 +56,7 @@ const Profile = () => {
         <Tabs defaultValue="info" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="info">Información Personal</TabsTrigger>
-            {user?.rolId === 4 && (
+            {isSupport && (
               <TabsTrigger value="settings" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
                 Ajustes
@@ -116,17 +117,33 @@ const Profile = () => {
                             onChange={(e) => setForm((p: any) => ({ ...p, [f.key]: e.target.value }))}
                           />
                         ) : (
-                          <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted">{(user as any)[f.key] || "—"}</p>
+                          <p className={`text-sm font-medium py-2 px-3 rounded-md bg-muted ${f.disabled ? 'opacity-70' : ''}`}>{(user as any)[f.key] || "—"}</p>
                         )}
                       </div>
                     ))}
                     <div className="space-y-1.5">
                       <Label className="text-sm font-medium text-muted-foreground">{t("profilePage.role")}</Label>
-                      <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted capitalize">{roleLabel}</p>
+                      {editing && isSupport ? (
+                         <Input
+                           value={form.rolId}
+                           onChange={(e) => setForm((p: any) => ({ ...p, rolId: Number(e.target.value) }))}
+                           type="number"
+                         />
+                      ) : (
+                        <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted capitalize opacity-70">{roleLabel}</p>
+                      )}
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-sm font-medium text-muted-foreground">{t("profilePage.status")}</Label>
-                      <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted capitalize">{statusLabel}</p>
+                      {editing && isSupport ? (
+                         <Input
+                           value={form.statusId}
+                           onChange={(e) => setForm((p: any) => ({ ...p, statusId: Number(e.target.value) }))}
+                           type="number"
+                         />
+                      ) : (
+                        <p className="text-sm font-medium py-2 px-3 rounded-md bg-muted capitalize opacity-70">{statusLabel}</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -135,7 +152,7 @@ const Profile = () => {
           </TabsContent>
 
           <TabsContent value="settings">
-            <LineamientosImportSection />
+            <LineamientosImportSection runWithCatalogGate={catalogGate.runWithCatalogGate} />
           </TabsContent>
         </Tabs>
       </div>

@@ -16,13 +16,29 @@ import { translateOption } from "@/i18n/optionTranslations";
 import { ConfirmSuccessDialog } from "@/components/ConfirmSuccessDialog";
 import { DownloadAgendasDialog } from "@/components/DownloadAgendasDialog";
 import { getDocenteFullName } from "@/types/docentePlanta";
+import { useActiveLineamientos } from "@/hooks/useActiveLineamientos";
+import type { DbAgendaView } from "@/types/database";
+
+function approveToastMessage(view: DbAgendaView, t: (key: string) => string): string {
+  if (view.status === "approved") {
+    return t("summary.approveSuccess");
+  }
+  if (view.pending_reviewer_rol === 4) {
+    return t("summary.approveSentToVicerrector");
+  }
+  if (view.pending_reviewer_rol === 3) {
+    return t("summary.approveSentToDecano");
+  }
+  return t("summary.approveSentToVicerrector");
+}
 
 export function SummaryPanel() {
-  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView, isAgendaReadOnly, getSchedule } = useAgenda();
+  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView, isAgendaReadOnly, getSchedule, canSupervisorReviewSubordinate } = useAgenda();
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
   const insertComment = useInsertAgendaComment();
+  const { data: lineamientos } = useActiveLineamientos();
   const { data: agendaView } = useAgendaView(user?.id);
   const upsertAgendaView = useUpsertAgendaView();
   const updateAgendaViewStatus = useUpdateAgendaViewStatus();
@@ -64,25 +80,33 @@ export function SummaryPanel() {
       return;
     }
 
-    // Check if there's already a pending agenda view
-    if (agendaView && agendaView.status === "pending") {
+    // Ya enviada y en revisión (no retornada): no duplicar envío
+    if (agendaView?.status === "pending") {
       setDialogVariant("pending");
       setDialogOpen(true);
       return;
     }
 
-    // Save to agenda_views
+    // Save to agenda_views (primer envío o reenvío tras retorno)
     if (user?.id) {
       try {
-        await upsertAgendaView.mutateAsync({
+        const saved = await upsertAgendaView.mutateAsync({
           userCc: user.id,
           records: records.map((r) => ({ ...r })),
           status: "pending",
         });
+        if (agendaView?.id) {
+          localStorage.removeItem(`read_pending_${agendaView.id}`);
+          localStorage.removeItem(`dismissed_return_${agendaView.id}`);
+        }
+        if (saved?.id) {
+          localStorage.removeItem(`read_pending_${saved.id}`);
+        }
         setDialogVariant("success");
         setDialogOpen(true);
       } catch (err) {
-        toast.error("Error al guardar la agenda");
+        const msg = err instanceof Error ? err.message : "Error al guardar la agenda";
+        toast.error(msg);
       }
     }
   };
@@ -103,9 +127,11 @@ export function SummaryPanel() {
         status: "returned",
         reviewerCc: user.id,
         reviewerComment: returnObservation.trim(),
+        records: records.map((r) => ({ ...r })),
       });
       toast.success(t("summary.returnSuccess"));
       setReturnObservation("");
+      setSelectedDocente(docentesList[0] ?? null);
     } catch {
       toast.error("Error al retornar la agenda");
     }
@@ -114,12 +140,15 @@ export function SummaryPanel() {
   const handleApprove = async () => {
     if (!subordinateAgendaView?.id || !user?.id) return;
     try {
-      await updateAgendaViewStatus.mutateAsync({
+      const updated = await updateAgendaViewStatus.mutateAsync({
         id: subordinateAgendaView.id,
         status: "approved",
         reviewerCc: user.id,
+        records: records.map((r) => ({ ...r })),
       });
-      toast.success(t("summary.approveSuccess"));
+      toast.success(approveToastMessage(updated, t));
+      localStorage.removeItem(`read_pending_${subordinateAgendaView.id}`);
+      setSelectedDocente(docentesList[0] ?? null);
     } catch {
       toast.error("Error al aprobar la agenda");
     }
@@ -137,8 +166,11 @@ export function SummaryPanel() {
   };
 
   return (
-    <div className="w-full shrink-0 flex flex-col bg-background lg:border-l pt-6">
-      <div className="px-4 py-3 border-b bg-ucp-red flex items-start gap-2">
+    <div className="w-full h-full flex flex-col bg-background lg:border-l pt-6">
+      <div 
+        className="px-4 py-3 border-b flex items-start gap-2"
+        style={{ backgroundColor: lineamientos?.visualSettings?.form_bg_color || "#00804E" }}
+      >
         <div className="flex-1 min-w-0">
           <h2 className="text-sm font-bold text-primary-foreground">{t("summary.title")}</h2>
           {(() => {
@@ -168,12 +200,10 @@ export function SummaryPanel() {
               if (!d) return;
               setSelectedDocente(d);
               if (d.firstName !== "Yo") {
-                setTimeout(async () => {
-                  const found = await loadFromAgendaView();
-                  if (!found) {
-                    toast.info(`Docente ${getDocenteFullName(d)} no ha diligenciado su agenda`);
-                  }
-                }, 100);
+                const found = await loadFromAgendaView(d.id);
+                if (!found) {
+                  toast.info(`Docente ${getDocenteFullName(d)} no ha diligenciado su agenda`);
+                }
               }
             }}
           >
@@ -288,14 +318,25 @@ export function SummaryPanel() {
             type="number"
             min={1}
             className="w-20 h-7 text-sm"
-            value={horasSemestreDefecto}
-            onChange={(e) => setHorasSemestreDefecto(Number(e.target.value) || 920)}
+            value={(() => {
+              // Leer el valor guardado de los lineamientos, si existe
+              const stored = localStorage.getItem("system_setting_horas_totales_semestre");
+              if (stored) {
+                const val = JSON.parse(stored).value;
+                return val !== undefined ? val : horasSemestreDefecto;
+              }
+              return horasSemestreDefecto;
+            })()}
+            onChange={(e) => {
+              const newVal = Number(e.target.value) || 920;
+              setHorasSemestreDefecto(newVal);
+            }}
             disabled={isAgendaReadOnly}
           />
         </div>
       </div>
 
-      
+
 
       <div className="p-4 border-t">
         {isReviewingSubordinate ? (
@@ -306,16 +347,28 @@ export function SummaryPanel() {
               onChange={(e) => setReturnObservation(e.target.value)}
               className="min-h-[60px] text-sm"
               aria-required="true"
+              disabled={!canSupervisorReviewSubordinate}
             />
-            {!returnObservation.trim() && (
+            {!returnObservation.trim() && canSupervisorReviewSubordinate && (
               <p className="text-xs text-destructive">
                 {t("summary.observationRequired")}
+              </p>
+            )}
+            {!canSupervisorReviewSubordinate && (
+              <p className="text-xs text-muted-foreground text-center">
+                {subordinateAgendaView?.status === "returned"
+                  ? t("summary.reviewDisabledReturned")
+                  : t("summary.reviewDisabledWaiting")}
               </p>
             )}
             <div className="flex gap-2">
               <Button
                 onClick={handleReturn}
-                disabled={!returnObservation.trim() || updateAgendaViewStatus.isPending}
+                disabled={
+                  !canSupervisorReviewSubordinate ||
+                  !returnObservation.trim() ||
+                  updateAgendaViewStatus.isPending
+                }
                 className="flex-1 gap-2 text-white hover:opacity-90 disabled:opacity-50"
                 style={{ backgroundColor: "#a8822c" }}
               >
@@ -324,7 +377,8 @@ export function SummaryPanel() {
               </Button>
               <Button
                 onClick={handleApprove}
-                className="flex-1 gap-2 bg-green-600 hover:bg-green-700 text-white"
+                disabled={!canSupervisorReviewSubordinate || updateAgendaViewStatus.isPending}
+                className="flex-1 gap-2 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
               >
                 <ThumbsUp className="h-4 w-4" />
                 {t("summary.approve")}
@@ -332,13 +386,26 @@ export function SummaryPanel() {
             </div>
           </div>
         ) : (
-          <Button
-            onClick={handleConfirm}
-            className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
-          >
-            <CheckCircle className="h-4 w-4" />
-            {t("summary.confirm")}
-          </Button>
+          <div className="space-y-2">
+            <Button
+              onClick={handleConfirm}
+              disabled={isAgendaReadOnly || upsertAgendaView.isPending}
+              className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50"
+            >
+              <CheckCircle className="h-4 w-4" />
+              {t("summary.confirm")}
+            </Button>
+            {isAgendaReadOnly && agendaView?.status === "approved" && (
+              <p className="text-xs text-muted-foreground text-center">
+                {t("summary.confirmDisabledApproved")}
+              </p>
+            )}
+            {isAgendaReadOnly && agendaView?.status === "pending" && (
+              <p className="text-xs text-muted-foreground text-center">
+                {t("summary.confirmDisabledPending")}
+              </p>
+            )}
+          </div>
         )}
       </div>
       <ConfirmSuccessDialog

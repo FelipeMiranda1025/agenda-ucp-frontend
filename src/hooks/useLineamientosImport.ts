@@ -1,14 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { toast } from "sonner";
 
 export interface ExtractedRule {
-  category: "investigacion" | "administrativas" | "formacion" | "visual";
+  category: "investigacion" | "administrativas" | "formacion" | "visual" | "docencia";
   rule_key: string;
   label: string;
-  hours?: number;
-  subjects?: number;
+  hours?: number | null;
+  subjects?: number | null;
   value?: any;
   source_article: string;
+  is_default?: boolean;
 }
 
 export interface LineamientosDocument {
@@ -54,37 +56,25 @@ export function useUploadLineamientos() {
 
       const data = await res.json();
 
-      // 2. Convertir reglas del backend al formato del frontend
-      const rules: ExtractedRule[] = (data.reglas || []).map((r: any) => ({
-        category: r.key?.includes("investigacion") ? "investigacion" :
-          r.key?.includes("administrativas") ? "administrativas" :
-            r.key?.includes("docencia") || r.key?.includes("horas") ? "formacion" :
-              "visual",
-        rule_key: r.key || "desconocido",
-        label: r.description || "Regla detectada",
-        hours: typeof r.value === "number" ? r.value : undefined,
-        value: typeof r.value === "string" ? r.value : undefined,
-        source_article: "Extraído del PDF",
-      }));
-
-      const summary = data.reglas?.length
-        ? `Se detectaron ${data.reglas.length} reglas del PDF.`
-        : "No se detectaron reglas en el PDF.";
-
-      // 3. Guardar documento en BD
-      const docRow = await api.post<LineamientosDocument>("/lineamientos-documents", {
+      // El backend ya devuelve el documento procesado y las reglas en rules_extracted
+      return {
+        id: data.id,
         semester_label: input.semesterLabel,
-        file_path: data.archivo || input.file.name,
+        file_path: data.file_path || "",
         file_name: input.file.name,
         uploaded_by: input.uploadedBy,
-        rules_extracted: rules,
-        summary,
-        applied: false,
-      });
-
-      return docRow;
+        uploaded_at: new Date().toISOString(),
+        rules_extracted: data.rules_extracted || [],
+        summary: data.summary || "PDF procesado con éxito.",
+        applied: data.applied ?? false,
+        applied_at: null,
+        applied_by: null,
+      };
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: HISTORY_KEY }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: HISTORY_KEY });
+      qc.invalidateQueries({ queryKey: ["recommendation_rules"] });
+    },
   });
 }
 
@@ -107,19 +97,31 @@ export function useApplyExtractedRules() {
         }
       });
 
-      // Marcar documento como aplicado en el backend
-      await api.put(`/lineamientos-documents/${input.documentId}`, {
-        applied: true,
-        applied_at: new Date().toISOString(),
-        applied_by: input.appliedBy,
-      });
+      const res = await api.post<{ applied_count: number; message?: string }>(
+        `/lineamientos-documents/${input.documentId}/apply-rules`,
+        { rules: input.rules }
+      );
 
-      return { success: true, applied_count: input.rules.length };
+      return {
+        success: true,
+        applied_count: res.applied_count ?? input.rules.length,
+        message: res.message,
+      };
     },
-    onSuccess: (data) => {
-      console.log(`Se aplicaron ${data.applied_count} reglas exitosamente`);
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: HISTORY_KEY });
-      setTimeout(() => window.location.reload(), 1500);
+      qc.invalidateQueries({ queryKey: ["recommendation_rules"] });
+      qc.invalidateQueries({ queryKey: ["investigations"] });
+      qc.invalidateQueries({ queryKey: ["administrative_activities"] });
+      qc.invalidateQueries({ queryKey: ["teacher_training"] });
+      qc.invalidateQueries({ queryKey: ["indirect_teaching"] });
+      qc.invalidateQueries({ queryKey: ["degree_works"] });
+      qc.invalidateQueries({ queryKey: ["social_projects"] });
+      qc.invalidateQueries({ queryKey: ["complementary_activities"] });
+      qc.invalidateQueries({ queryKey: ["academic_practices"] });
+      qc.invalidateQueries({ queryKey: ["system-settings"] });
+      qc.invalidateQueries({ queryKey: ["form_bg_color"] });
+      toast.success("Lineamientos aplicados correctamente");
     },
   });
 }

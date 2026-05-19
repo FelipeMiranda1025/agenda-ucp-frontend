@@ -16,8 +16,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
-import { useSemesterArchives, type SemesterArchive } from "@/hooks/useSemesterArchive";
-import { useUpsertAgendaView } from "@/hooks/useDatabase";
+import { useSemesterArchives, useSemesterLabel, type SemesterArchive } from "@/hooks/useSemesterArchive";
+import { useApprovedAgendasForHistory, useUpsertAgendaView } from "@/hooks/useDatabase";
 import { toast } from "sonner";
 
 interface ArchivedDocenteEntry {
@@ -28,38 +28,49 @@ interface ArchivedDocenteEntry {
 
 const HistoryPanel = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, roleName } = useAuth();
   const { t } = useLanguage();
-  const { data: archives = [], isLoading } = useSemesterArchives();
+  const { data: archives = [], isLoading: loadingArchives } = useSemesterArchives();
+  const { label: semesterLabel, isLoading: loadingLabel } = useSemesterLabel();
+  const { data: approvedAgendas = [], isLoading: loadingApproved } = useApprovedAgendasForHistory(
+    user?.id,
+    user?.rolId
+  );
   const upsertAgendaView = useUpsertAgendaView();
 
-  const allowedCcs = useMemo<Set<string>>(() => {
-    return new Set<string>(user ? [user.id] : []);
-  }, [user]);
+  const isSupervisor =
+    roleName === "DirectorPrograma" ||
+    roleName === "DecanoFacultad" ||
+    roleName === "VicerrectorAcadémico";
 
   const [selectedArchive, setSelectedArchive] = useState<SemesterArchive | null>(null);
-  const [confirmCopy, setConfirmCopy] = useState<{ entry: ArchivedDocenteEntry; name: string } | null>(null);
+  const [confirmCopy, setConfirmCopy] = useState<{ entry: ArchivedDocenteEntry; name: string } | null>(
+    null
+  );
 
-  const filterEntries = (archive: SemesterArchive): ArchivedDocenteEntry[] => {
+  const filterArchiveEntries = (archive: SemesterArchive): ArchivedDocenteEntry[] => {
     const entries = (archive.agenda_views || []) as ArchivedDocenteEntry[];
-    return entries.filter((e) => allowedCcs.has(e.user_cc));
+    if (isSupervisor) return entries;
+    return entries.filter((e) => e.user_cc === user?.id);
   };
 
   const visibleArchives = useMemo(() => {
     return archives
-      .map((a) => ({ archive: a, entries: filterEntries(a) }))
+      .map((a) => ({ archive: a, entries: filterArchiveEntries(a) }))
       .filter((x) => x.entries.length > 0);
-  }, [archives, allowedCcs]);
+  }, [archives, isSupervisor, user?.id]);
 
   const docenteNameByCc = useMemo(() => {
     const map = new Map<string, string>();
     if (user) map.set(user.id, t("history.you"));
+    for (const item of approvedAgendas) {
+      map.set(item.docenteCc, item.docenteName);
+    }
     return map;
-  }, [user, t]);
+  }, [user, approvedAgendas, t]);
 
   const handleCopy = async (entry: ArchivedDocenteEntry) => {
     try {
-      // Cada rol solo puede copiar su propia agenda archivada a su agenda actual
       const targetCc = user!.id;
       await upsertAgendaView.mutateAsync({
         userCc: targetCc,
@@ -81,6 +92,11 @@ const HistoryPanel = () => {
     }
   };
 
+  const isLoading = loadingArchives || loadingApproved || loadingLabel;
+  const hasCurrentApproved = approvedAgendas.length > 0;
+  const hasArchives = visibleArchives.length > 0;
+  const isEmpty = !isLoading && !hasCurrentApproved && !hasArchives;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-10 border-b bg-card">
@@ -94,48 +110,92 @@ const HistoryPanel = () => {
 
       <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
         {!selectedArchive && (
-          <Card>
-            <CardHeader>
-              <CardTitle>{t("history.title")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <p className="text-muted-foreground text-sm">{t("dashboard.loading")}</p>
-              ) : visibleArchives.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
-                  <Inbox className="h-10 w-10" />
-                  <p>{t("history.empty")}</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t("history.semester")}</TableHead>
-                      <TableHead>{t("history.archivedAt")}</TableHead>
-                      <TableHead className="text-right">{t("history.docentesCount")}</TableHead>
-                      <TableHead className="w-12"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {visibleArchives.map(({ archive, entries }) => (
-                      <TableRow
-                        key={archive.id}
-                        className="cursor-pointer"
-                        onClick={() => setSelectedArchive(archive)}
-                      >
-                        <TableCell className="font-medium">{archive.semester_label}</TableCell>
-                        <TableCell>{formatDate(archive.archived_at)}</TableCell>
-                        <TableCell className="text-right">{entries.length}</TableCell>
-                        <TableCell>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                        </TableCell>
+          <>
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {t("history.currentSemester")}: {semesterLabel}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <p className="text-muted-foreground text-sm">{t("dashboard.loading")}</p>
+                ) : !hasCurrentApproved ? (
+                  <p className="text-muted-foreground text-sm text-center py-6">
+                    {t("history.approvedEmpty")}
+                  </p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("history.docente")}</TableHead>
+                        <TableHead>{t("history.statusApproved")}</TableHead>
+                        <TableHead className="text-right">{t("history.recordsCount")}</TableHead>
+                        <TableHead>{t("history.approvedAt")}</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {approvedAgendas.map((item) => (
+                        <TableRow key={item.agendaView.id}>
+                          <TableCell className="font-medium">{item.docenteName}</TableCell>
+                          <TableCell>{t("history.statusApproved")}</TableCell>
+                          <TableCell className="text-right">{item.recordsCount}</TableCell>
+                          <TableCell>{formatDate(item.approvedAt)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{t("history.archivedSemesters")}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <p className="text-muted-foreground text-sm">{t("dashboard.loading")}</p>
+                ) : !hasArchives ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
+                    <Inbox className="h-10 w-10" />
+                    <p>{t("history.empty")}</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t("history.semester")}</TableHead>
+                        <TableHead>{t("history.archivedAt")}</TableHead>
+                        <TableHead className="text-right">{t("history.docentesCount")}</TableHead>
+                        <TableHead className="w-12"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {visibleArchives.map(({ archive, entries }) => (
+                        <TableRow
+                          key={archive.id}
+                          className="cursor-pointer"
+                          onClick={() => setSelectedArchive(archive)}
+                        >
+                          <TableCell className="font-medium">{archive.semester_label}</TableCell>
+                          <TableCell>{formatDate(archive.archived_at)}</TableCell>
+                          <TableCell className="text-right">{entries.length}</TableCell>
+                          <TableCell>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+
+            {isEmpty && (
+              <p className="text-center text-sm text-muted-foreground">{t("history.allEmpty")}</p>
+            )}
+          </>
         )}
 
         {selectedArchive && (
@@ -150,35 +210,39 @@ const HistoryPanel = () => {
                 </p>
               </div>
               <Button variant="outline" size="sm" onClick={() => setSelectedArchive(null)}>
-                <ArrowLeft className="h-4 w-4 mr-2" /> {t("common.back") || "Volver"}
+                <ArrowLeft className="h-4 w-4 mr-2" /> {t("common.back")}
               </Button>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t("history.docente") || "Docente"}</TableHead>
-                    <TableHead className="text-right">{t("history.recordsCount") || "Registros"}</TableHead>
-                    <TableHead className="text-right">{t("history.actions") || "Acciones"}</TableHead>
+                    <TableHead>{t("history.docente")}</TableHead>
+                    <TableHead className="text-right">{t("history.recordsCount")}</TableHead>
+                    {!isSupervisor && (
+                      <TableHead className="text-right">{t("history.actions")}</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filterEntries(selectedArchive).map((entry) => {
+                  {filterArchiveEntries(selectedArchive).map((entry) => {
                     const name = docenteNameByCc.get(entry.user_cc) || entry.user_cc;
                     return (
                       <TableRow key={entry.user_cc}>
                         <TableCell className="font-medium">{name}</TableCell>
                         <TableCell className="text-right">{(entry.records || []).length}</TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setConfirmCopy({ entry, name })}
-                          >
-                            <Copy className="h-4 w-4 mr-2" />
-                            {t("history.copyToCurrent")}
-                          </Button>
-                        </TableCell>
+                        {!isSupervisor && (
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setConfirmCopy({ entry, name })}
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              {t("history.copyToCurrent")}
+                            </Button>
+                          </TableCell>
+                        )}
                       </TableRow>
                     );
                   })}
@@ -193,9 +257,7 @@ const HistoryPanel = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("history.copyToCurrent")}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t("history.copyConfirm")}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{t("history.copyConfirm")}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{t("common.cancel") || "Cancelar"}</AlertDialogCancel>

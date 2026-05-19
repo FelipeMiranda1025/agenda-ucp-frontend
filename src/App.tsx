@@ -2,7 +2,8 @@ import React, { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -12,6 +13,7 @@ import { LoginDialog } from "@/components/LoginDialog";
 import { InactivityWarning } from "@/components/InactivityWarning";
 import { SystemMaintenance } from "@/components/SystemMaintenance";
 import { useSystemEnabled } from "@/hooks/useSystemEnabled";
+import { RoleRouteGuard, SupportPanelGuard } from "@/components/RoleRouteGuard";
 
 // Lazy-loaded pages — each becomes its own chunk so the initial bundle is small
 // and route transitions only fetch what's needed (with prefetch warming the cache).
@@ -23,16 +25,6 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const SupportPanel = lazy(() => import("./pages/SupportPanel"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const HistoryPanel = lazy(() => import("./pages/HistoryPanel"));
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-      staleTime: 30_000, // cache results 30s → instant when revisiting a route
-    },
-  },
-});
 
 class AgendaErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
   constructor(props: { children: React.ReactNode }) {
@@ -87,7 +79,8 @@ const AppContent = () => {
   }
 
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <RoleRouteGuard />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route
@@ -116,7 +109,14 @@ const AppContent = () => {
           <Route path="/audit" element={<AuditLog />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/history" element={<HistoryPanel />} />
-          <Route path="/support" element={<SupportPanel />} />
+          <Route
+            path="/support"
+            element={
+              <SupportPanelGuard>
+                <SupportPanel />
+              </SupportPanelGuard>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

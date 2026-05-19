@@ -11,7 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Lock, User, Loader2 } from 'lucide-react';
+import { Lock, User, Loader2, Eye, EyeOff } from 'lucide-react';
 import { api } from '@/lib/api';
 import ucpLogoWhite from '@/assets/ucp-logo-white.png';
 
@@ -52,6 +52,7 @@ export const LoginDialog: React.FC = () => {
   const [passwordError, setPasswordError] = useState('');
   const [serverError,   setServerError]   = useState('');
   const [loading,       setLoading]       = useState(false);
+  const [showPassword,  setShowPassword]  = useState(false);
 
   // Recuperación directa
   const [forgotSending, setForgotSending] = useState(false);
@@ -208,7 +209,7 @@ export const LoginDialog: React.FC = () => {
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Ingrese su contraseña"
                 value={password}
                 onChange={(e) => {
@@ -216,10 +217,22 @@ export const LoginDialog: React.FC = () => {
                   setPasswordError('');
                   setServerError('');
                 }}
-                className="pl-10"
+                className="pl-10 pr-10"
                 autoComplete="current-password"
                 maxLength={128}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                tabIndex={-1}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
             </div>
             {passwordError && (
               <p className="text-sm text-destructive text-left">{passwordError}</p>

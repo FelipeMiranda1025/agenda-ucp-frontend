@@ -5,11 +5,23 @@ import { useAuth } from "@/context/AuthContext";
 import { useAgendaView } from "@/hooks/useDatabase";
 import { subfunctions } from "@/data/subfunctions";
 import { ScheduleBlock } from "@/types/agenda";
-import { SUBFUNCTION_COLORS, SUBFUNCTION_BORDER_COLORS, DAYS, HOURS, formatHour } from "@/data/scheduleConstants";
+import {
+  blockColorStyles,
+  DAYS,
+  formatHour,
+  getSubfunctionBlockColor,
+  HOURS,
+  resolveBlockColor,
+} from "@/data/scheduleConstants";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Save, ShieldAlert } from "lucide-react";
+import { Save, User } from "lucide-react";
+import ucpLogoWhite from "@/assets/ucp-logo-white.png";
+import { useLanguage } from "@/i18n/LanguageContext";
 import { toast } from "sonner";
+import { canAccessScheduleDistribution } from "@/lib/agendaScheduleAccess";
+
+const SCHEDULE_BAR_COLOR = "rgb(0, 128, 78)";
 
 interface DraggableItem {
   id: string;
@@ -17,14 +29,28 @@ interface DraggableItem {
   subfunctionId: string;
   label: string;
   color: string;
-  borderColor: string;
 }
 
 export default function ScheduleBuilder() {
   const navigate = useNavigate();
-  const { records, saveSchedule, getSchedule, isAgendaReadOnly } = useAgenda();
+  const { records, saveSchedule, getSchedule, loadFromAgendaView } = useAgenda();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const { data: agendaView, isLoading: loadingView } = useAgendaView(user?.id);
+  const scheduleAllowed = canAccessScheduleDistribution(agendaView, user?.rolId);
+  const [agendaDataReady, setAgendaDataReady] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      await loadFromAgendaView(user.id);
+      if (!cancelled) setAgendaDataReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, loadFromAgendaView]);
 
   const existingSchedule = getSchedule();
 
@@ -39,8 +65,7 @@ export default function ScheduleBuilder() {
       const label = String(
         record.data["asignatura"] || record.data["actividad"] || record.data["tipoTrabajo"] || `Registro`
       );
-      const color = SUBFUNCTION_COLORS[record.subfunctionId] || "bg-gray-500";
-      const borderColor = SUBFUNCTION_BORDER_COLORS[record.subfunctionId] || "border-gray-600";
+      const color = getSubfunctionBlockColor(record.subfunctionId);
       for (let i = 0; i < horasSemana; i++) {
         items.push({
           id: `${record.id}-${i}`,
@@ -48,7 +73,6 @@ export default function ScheduleBuilder() {
           subfunctionId: record.subfunctionId,
           label,
           color,
-          borderColor,
         });
       }
     }
@@ -67,11 +91,11 @@ export default function ScheduleBuilder() {
   );
 
   const groupedAvailable = useMemo(() => {
-    const map = new Map<string, { label: string; color: string; borderColor: string; items: DraggableItem[] }>();
+    const map = new Map<string, { label: string; color: string; items: DraggableItem[] }>();
     for (const item of availableItems) {
       const key = `${item.recordId}`;
       if (!map.has(key)) {
-        map.set(key, { label: item.label, color: item.color, borderColor: item.borderColor, items: [] });
+        map.set(key, { label: item.label, color: item.color, items: [] });
       }
       map.get(key)!.items.push(item);
     }
@@ -85,7 +109,6 @@ export default function ScheduleBuilder() {
   }, []);
 
   const handleDrop = useCallback((day: number, hour: number) => {
-    if (isAgendaReadOnly) return;
     if (!draggedItem) return;
     if (placedBlocks.some((b) => b.day === day && b.hour === hour)) {
       toast.error("Esta celda ya está ocupada");
@@ -105,64 +128,76 @@ export default function ScheduleBuilder() {
     };
     setPlacedBlocks((prev) => [...prev, block]);
     setDraggedItem(null);
-  }, [draggedItem, allItems, placedBlocks, isAgendaReadOnly]);
+  }, [draggedItem, allItems, placedBlocks]);
 
   const handleRemoveBlock = useCallback((blockId: string) => {
-    if (isAgendaReadOnly) return;
     setPlacedBlocks((prev) => prev.filter((b) => b.id !== blockId));
-  }, [isAgendaReadOnly]);
+  }, []);
 
   const handleSave = () => {
     saveSchedule(placedBlocks);
     toast.success("Horario guardado exitosamente");
-    navigate("/");
+    navigate("/?view=agenda");
   };
 
-  // Protect route: only allow access if agenda is approved
   useEffect(() => {
-    if (!loadingView && (!agendaView || agendaView.status !== "approved")) {
-      navigate("/", { replace: true });
+    if (!loadingView && !scheduleAllowed) {
+      navigate("/?view=agenda", { replace: true });
     }
-  }, [agendaView, loadingView, navigate]);
+  }, [scheduleAllowed, loadingView, navigate]);
 
-  if (loadingView) {
+  if (loadingView || !agendaDataReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <p className="text-muted-foreground">Cargando...</p>
+        <p className="text-muted-foreground">{t("schedule.redirecting")}</p>
       </div>
     );
   }
 
-  if (!agendaView || agendaView.status !== "approved") {
+  if (!agendaView || !scheduleAllowed) {
     return null;
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <header className="h-14 flex items-center gap-3 border-b bg-primary px-4 shrink-0">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/")} className="text-primary-foreground hover:bg-primary-foreground/10">
-          <ArrowLeft className="h-5 w-5" />
+    <div className="h-screen flex flex-col overflow-hidden bg-background">
+      <header
+        className="h-14 flex items-center gap-3 border-b px-4 shrink-0"
+        style={{ backgroundColor: SCHEDULE_BAR_COLOR }}
+      >
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/?view=agenda")}
+          className="h-10 px-2 hover:bg-white/10 shrink-0"
+          aria-label={t("schedule.backToAgenda")}
+        >
+          <img src={ucpLogoWhite} alt="Universidad Católica de Pereira" className="h-8 w-auto" />
         </Button>
-        <h1 className="text-primary-foreground font-semibold text-lg">
-          Distribución Horaria
+        <h1 className="text-white font-semibold text-lg truncate">
+          {t("schedule.builderTitle")}
         </h1>
         {user && (
-          <span className="text-primary-foreground/70 text-sm ml-2">
+          <span className="text-white/70 text-sm ml-2">
             {[user.firstName, user.firstLastName].filter(Boolean).join(" ")}
           </span>
         )}
-        <div className="ml-auto">
-          {!isAgendaReadOnly && (
-            <Button onClick={handleSave} className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
-              <Save className="h-4 w-4" />
-              Guardar horario
-            </Button>
-          )}
+        <div className="ml-auto flex items-center gap-2 shrink-0">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/profile")}
+            className="gap-2 text-white hover:bg-white/10"
+          >
+            <User className="h-4 w-4" />
+            <span className="hidden sm:inline text-sm">{t("profile.view")}</span>
+          </Button>
+          <Button onClick={handleSave} className="gap-2 bg-white text-[rgb(0,128,78)] hover:bg-white/90">
+            <Save className="h-4 w-4" />
+            <span className="hidden sm:inline">{t("schedule.save")}</span>
+          </Button>
         </div>
       </header>
 
-      <div className="flex-1 flex min-h-0">
-        <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 flex min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-hidden p-4">
           <div className="min-w-[700px]">
             <table className="w-full border-collapse text-xs">
               <thead>
@@ -184,10 +219,10 @@ export default function ScheduleBuilder() {
                       return (
                         <td
                           key={dayIdx}
-                          className={`border p-0.5 h-12 align-top transition-colors ${isAgendaReadOnly ? '' : 'hover:bg-accent/30'}`}
-                          onDragOver={isAgendaReadOnly ? undefined : (e) => { e.preventDefault(); e.currentTarget.classList.add("bg-accent/50"); }}
-                          onDragLeave={isAgendaReadOnly ? undefined : (e) => { e.currentTarget.classList.remove("bg-accent/50"); }}
-                          onDrop={isAgendaReadOnly ? undefined : (e) => {
+                          className="border p-0.5 h-12 align-top transition-colors hover:bg-accent/30"
+                          onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add("bg-accent/50"); }}
+                          onDragLeave={(e) => { e.currentTarget.classList.remove("bg-accent/50"); }}
+                          onDrop={(e) => {
                             e.preventDefault();
                             e.currentTarget.classList.remove("bg-accent/50");
                             handleDrop(dayIdx, hour);
@@ -195,9 +230,10 @@ export default function ScheduleBuilder() {
                         >
                           {block && (
                             <div
-                              className={`${SUBFUNCTION_COLORS[block.subfunctionId] || "bg-gray-500"} text-white rounded px-1.5 py-1 text-[10px] leading-tight font-medium h-full flex items-center ${isAgendaReadOnly ? '' : 'cursor-pointer hover:opacity-80'}`}
-                              onClick={isAgendaReadOnly ? undefined : () => handleRemoveBlock(block.id)}
-                              title={isAgendaReadOnly ? undefined : "Click para quitar"}
+                              className="rounded px-1.5 py-1 text-[10px] leading-tight font-medium h-full flex items-center cursor-pointer hover:opacity-80 border-2"
+                              style={blockColorStyles(resolveBlockColor(block.subfunctionId, block.color))}
+                              onClick={() => handleRemoveBlock(block.id)}
+                              title="Click para quitar"
                             >
                               <span className="truncate">{block.label}</span>
                             </div>
@@ -212,13 +248,16 @@ export default function ScheduleBuilder() {
           </div>
         </div>
 
-        {!isAgendaReadOnly && (
-          <div className="w-72 shrink-0 border-l bg-card flex flex-col">
-            <div className="px-4 py-3 border-b bg-ucp-red">
-              <h2 className="text-sm font-bold text-primary-foreground">Bloques disponibles</h2>
-              <p className="text-xs text-primary-foreground/80 mt-0.5">Arrastra al horario</p>
+        <aside className="w-72 shrink-0 border-l bg-card flex flex-col min-h-0 overflow-hidden">
+            <div
+              className="shrink-0 px-4 py-3 border-b"
+              style={{ backgroundColor: SCHEDULE_BAR_COLOR }}
+            >
+              <h2 className="text-sm font-bold text-white">Bloques disponibles</h2>
+              <p className="text-xs text-white/80 mt-0.5">Arrastra al horario</p>
             </div>
-            <ScrollArea className="flex-1 p-3">
+            <ScrollArea className="flex-1 min-h-0 h-0 overscroll-contain">
+              <div className="p-3 pr-4">
               {groupedAvailable.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
                   {allItems.length === 0
@@ -239,7 +278,8 @@ export default function ScheduleBuilder() {
                             draggable
                             onDragStart={() => handleDragStart(item.id)}
                             onDragEnd={() => setDraggedItem(null)}
-                            className={`${item.color} text-white text-[10px] font-medium px-2 py-1.5 rounded cursor-grab active:cursor-grabbing border-2 ${item.borderColor} hover:opacity-90 transition-opacity select-none`}
+                            className="text-[10px] font-medium px-2 py-1.5 rounded cursor-grab active:cursor-grabbing border-2 hover:opacity-90 transition-opacity select-none"
+                            style={blockColorStyles(item.color)}
                           >
                             1h
                           </div>
@@ -249,9 +289,9 @@ export default function ScheduleBuilder() {
                   ))}
                 </div>
               )}
+              </div>
             </ScrollArea>
-          </div>
-        )}
+        </aside>
       </div>
     </div>
   );

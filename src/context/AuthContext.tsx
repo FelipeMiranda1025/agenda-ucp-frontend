@@ -1,5 +1,6 @@
 import React, { createContext, useState, useCallback } from "react";
 import { api } from "@/lib/api";
+import { resetAgendaWorkflowQueries } from "@/lib/queryClient";
 import { User, AuthState, getRoleName } from "@/types/auth";
 
 interface AuthContextType extends AuthState {
@@ -11,6 +12,27 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 const SESSION_KEY = "ucp_session";
 const TOKEN_KEY = "ucp_token";
+const SOPORTE_ROL_ID = 5;
+
+/** Reset browser path so a previous /support visit does not stick after logout. */
+function syncPathForRole(rolId: number) {
+  if (typeof window === "undefined") return;
+  const path = window.location.pathname;
+  if (rolId === SOPORTE_ROL_ID) {
+    if (path !== "/support") {
+      window.history.replaceState(null, "", "/support");
+    }
+  } else if (path === "/support") {
+    window.history.replaceState(null, "", "/");
+  }
+}
+
+function resetPathOnLogout() {
+  if (typeof window === "undefined") return;
+  if (window.location.pathname !== "/") {
+    window.history.replaceState(null, "", "/");
+  }
+}
 
 interface BackendLoginResponse {
   token: string;
@@ -38,6 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Verify that a token exists before restoring session
         const token = localStorage.getItem(TOKEN_KEY);
         if (token) {
+          syncPathForRole(parsed.user.rolId);
           return {
             user: parsed.user,
             isAuthenticated: true,
@@ -74,6 +97,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const roleName = getRoleName(response.user.rolId);
       setAuthState({ user: appUser, isAuthenticated: true, roleName });
       localStorage.setItem(SESSION_KEY, JSON.stringify({ user: appUser }));
+      syncPathForRole(response.user.rolId);
+      resetAgendaWorkflowQueries();
 
       return { success: true };
     } catch (err) {
@@ -86,6 +111,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthState({ user: null, isAuthenticated: false, roleName: null });
     localStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(TOKEN_KEY);
+    resetPathOnLogout();
+    resetAgendaWorkflowQueries();
   }, []);
 
   return (

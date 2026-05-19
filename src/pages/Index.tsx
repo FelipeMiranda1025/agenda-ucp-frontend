@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
 import { SubfunctionForm } from "@/components/SubfunctionForm";
 import { SummaryPanel } from "@/components/SummaryPanel";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -7,11 +7,14 @@ import { useAgenda } from "@/context/AgendaContext";
 
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { canAccessScheduleDistribution as checkScheduleAccess } from "@/lib/agendaScheduleAccess";
 import { useTheme } from "next-themes";
 import { useAllAgendaComments, useMarkCommentsRead, useAgendaView, usePendingAgendaViewsForSupervisor, useUserNameByCc, useFullyApprovedCareers } from "@/hooks/useDatabase";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +22,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, ClipboardList, History, Settings, Power, BarChart3, Download } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, ClipboardList, History, Settings, Power, BarChart3, Download, Info, BookOpen, GraduationCap, Building2, Brain, Check, ChevronsUpDown } from "lucide-react";
 import { exportAgendaToExcel } from "@/lib/exportAgenda";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import {
@@ -35,6 +41,7 @@ import {
 import { useSystemEnabled, useToggleSystemEnabled } from "@/hooks/useSystemEnabled";
 import { useFormBgColor } from "@/hooks/useFormBgColor";
 import { useArchiveAndResetSemester } from "@/hooks/useSemesterArchive";
+import { useActiveLineamientos } from "@/hooks/useActiveLineamientos";
 import { toast } from "sonner";
 import { prefetchRoute, warmupCommonRoutes } from "@/lib/routePrefetch";
 
@@ -48,6 +55,8 @@ const Index = () => {
   const { user, logout, roleName } = useAuth();
   const { language, setLanguage, t } = useLanguage();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const skipScheduleLanding = searchParams.get("view") === "agenda";
   const { theme, setTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showNotifHistory, setShowNotifHistory] = useState(false);
@@ -57,10 +66,13 @@ const Index = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [systemSwitchOpen, setSystemSwitchOpen] = useState(false);
   const [showSummaryMobile, setShowSummaryMobile] = useState(false);
+  const [rulesDialogOpen, setRulesDialogOpen] = useState(false);
+  const [formComboboxOpen, setFormComboboxOpen] = useState(false);
   const { enabled: systemEnabled } = useSystemEnabled();
   const toggleSystem = useToggleSystemEnabled();
   const archiveAndReset = useArchiveAndResetSemester();
   const { color: formBgColor } = useFormBgColor();
+  const { data: lineamientos } = useActiveLineamientos();
 
   const isVicerrector = roleName === "VicerrectorAcadémico";
   const isDecano = roleName === "DecanoFacultad";
@@ -71,11 +83,23 @@ const Index = () => {
   const mainRef = useRef<HTMLDivElement>(null);
 
   // Global comments & notifications
-  const { setSelectedDocente, docentesList, loadFromAgendaView, hasSchedule, records, getSchedule, selectedDocente, activeSubfunction, setActiveSubfunction } = useAgenda();
+  const { setSelectedDocente, docentesList, loadFromAgendaView, hasSchedule, records, getSchedule, selectedDocente, activeSubfunction, setActiveSubfunction, isOwnAgendaPendingReview, canAccessScheduleDistribution: scheduleUnlocked } = useAgenda();
   const { data: allComments = [] } = useAllAgendaComments();
   const markRead = useMarkCommentsRead();
-  const { data: agendaView } = useAgendaView(user?.id);
-  const { data: pendingSubordinateAgendas = [] } = usePendingAgendaViewsForSupervisor(user?.id);
+  const { data: agendaView, isLoading: loadingAgendaView } = useAgendaView(user?.id);
+  const isDocenteOrDirector = user?.rolId === 1 || user?.rolId === 2;
+  const scheduleLandingEnabled =
+    !skipScheduleLanding &&
+    isDocenteOrDirector &&
+    checkScheduleAccess(agendaView, user?.rolId);
+  const isSupervisorRole =
+    roleName === "DirectorPrograma" ||
+    roleName === "DecanoFacultad" ||
+    roleName === "VicerrectorAcadémico";
+  const { data: pendingSubordinateAgendas = [] } = usePendingAgendaViewsForSupervisor(
+    user?.id,
+    user?.rolId
+  );
   const { data: fullyApprovedCareers = [] } = useFullyApprovedCareers(
     isVicerrector ? "vicerrector" : "decano",
     isDecano ? user?.id : undefined,
@@ -102,12 +126,14 @@ const Index = () => {
     if (isReturnedAgenda && !isDismissedReturn) {
       count += 1;
     }
-    count += pendingSubordinateAgendas.filter((pa) => !isPendingRead(pa.agendaView.id)).length;
+    if (isSupervisorRole) {
+      count += pendingSubordinateAgendas.length;
+    }
     if (isVicerrector || isDecano) {
       count += fullyApprovedCareers.filter((c) => !isCareerRead(c.careerId)).length;
     }
     return count;
-  }, [allComments, user, isReturnedAgenda, isDismissedReturn, pendingSubordinateAgendas, readTick, isVicerrector, isDecano, fullyApprovedCareers]);
+  }, [allComments, user, isReturnedAgenda, isDismissedReturn, pendingSubordinateAgendas, readTick, isVicerrector, isDecano, fullyApprovedCareers, isSupervisorRole]);
 
   const handleOpenNotifications = () => {
     if (!user) return;
@@ -162,26 +188,21 @@ const Index = () => {
   // Prefetch common routes in idle time so navigation feels instant.
   useEffect(() => { warmupCommonRoutes(); }, []);
 
-  // Auto-redirect to /schedule when the owner's agenda has been approved by the Decano.
-  // Supervisors (Decano, Vicerrector) are excluded so their review flow stays intact.
-  // Escape hatch: visit "/?view=agenda" to bypass the redirect and inspect the agenda form.
-  const isOwnerRole = roleName === "DocentePlanta" || roleName === "DirectorPrograma";
-  // Redirigir Admin (rolId === 1) al panel de soporte
-  const isSupport = user?.rolId === 5;
-  useEffect(() => {
-    if (isSupport) {
-      navigate("/support", { replace: true });
-    }
-  }, [isSupport, navigate]);
-  useEffect(() => {
-    if (!isOwnerRole) return;
-    if (agendaView?.status !== "approved") return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("view") === "agenda") return;
+  useLayoutEffect(() => {
+    if (!scheduleLandingEnabled || loadingAgendaView) return;
     navigate("/schedule", { replace: true });
-  }, [isOwnerRole, agendaView?.status, navigate]);
+  }, [scheduleLandingEnabled, loadingAgendaView, navigate]);
 
   const currentFlag = language === "es" ? flagCol : flagUsa;
+
+  if (isDocenteOrDirector && !skipScheduleLanding && (loadingAgendaView || scheduleLandingEnabled)) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-background gap-3">
+        <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        <p className="text-sm text-muted-foreground">{t("schedule.redirecting")}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col">
@@ -244,16 +265,12 @@ const Index = () => {
                   </div>
                 )}
 
-                {/* Pending subordinate agendas */}
-                {(showNotifHistory
-                  ? pendingSubordinateAgendas
-                  : pendingSubordinateAgendas.filter((pa) => !isPendingRead(pa.agendaView.id))
-                ).map((pa) => {
-                  const read = isPendingRead(pa.agendaView.id);
-                  return (
+                {/* Agendas pendientes de subordinados (hasta aprobar o retornar) */}
+                {isSupervisorRole &&
+                  pendingSubordinateAgendas.map((pa) => (
                     <button
                       key={pa.agendaView.id}
-                      className={`w-full text-left px-3 py-2 text-xs border-b last:border-0 bg-accent/30 hover:bg-accent/50 cursor-pointer transition-colors ${read ? "opacity-60" : ""}`}
+                      className="w-full text-left px-3 py-2 text-xs border-b last:border-0 bg-accent/30 hover:bg-accent/50 cursor-pointer transition-colors"
                       onClick={async () => {
                         const docente = docentesList.find((d) => d.id === pa.docenteCc);
                         if (docente) {
@@ -268,26 +285,22 @@ const Index = () => {
                           });
                         }
                         try {
-                          await loadFromAgendaView();
+                          await loadFromAgendaView(pa.docenteCc);
                         } catch {
                           // noop
                         }
-                        localStorage.setItem(`read_pending_${pa.agendaView.id}`, "1");
-                        setReadTick((n) => n + 1);
                         setNotifOpen(false);
                       }}
                     >
                       <div className="flex items-center justify-between">
                         <p className="text-foreground font-medium">{pa.docenteName}</p>
-                        {read && <span className="text-[10px] text-muted-foreground italic ml-2 shrink-0">{t("notifications.read")}</span>}
                       </div>
                       <p className="text-muted-foreground">{t("notifications.pendingReview")}</p>
                       <span className="text-muted-foreground text-[10px]">
                         {new Date(pa.createdAt).toLocaleDateString()}
                       </span>
                     </button>
-                  );
-                })}
+                  ))}
 
                 {/* Vicerrector / Decano: fully approved careers (program ready to review) */}
                 {(isVicerrector || isDecano) && (showNotifHistory
@@ -330,10 +343,9 @@ const Index = () => {
                     ? userComments
                     : userComments.filter((c) => !(c.read_by || []).includes(user?.id || ""));
 
-                  const visiblePendingCount = (showNotifHistory
-                    ? pendingSubordinateAgendas
-                    : pendingSubordinateAgendas.filter((pa) => !isPendingRead(pa.agendaView.id))
-                  ).length;
+                  const visiblePendingCount = isSupervisorRole
+                    ? pendingSubordinateAgendas.length
+                    : 0;
                   const visibleCareerCount = (isVicerrector || isDecano)
                     ? (showNotifHistory ? fullyApprovedCareers : fullyApprovedCareers.filter((c) => !isCareerRead(c.careerId))).length
                     : 0;
@@ -541,38 +553,105 @@ const Index = () => {
       {/* Añadimos 'flex-col' para que en móvil se apilen y 'lg:flex-row' para que en PC sigan a los lados */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         {/*<main ref={mainRef} className="flex-1 overflow-auto">*/}
-        <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50/50 dark:bg-transparent">
-          <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 space-y-6">
-            {/* Selector de formulario */}
+        <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50/50 dark:bg-transparent relative">
+          <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 space-y-6 relative">
+            {isOwnAgendaPendingReview && (
+              <div
+                className="absolute inset-0 z-20 flex items-start justify-center pt-24 bg-background/75 backdrop-blur-[2px] rounded-lg pointer-events-auto"
+                role="status"
+              >
+                <p className="text-sm font-medium text-foreground bg-card border shadow-md rounded-lg px-4 py-3 max-w-md text-center">
+                  {scheduleUnlocked
+                    ? t("schedule.unlockedHint")
+                    : t("summary.confirmDisabledPending")}
+                </p>
+              </div>
+            )}
             {/* Selector de formulario */}
             <div className="rounded-lg shadow-sm overflow-hidden">
               <div
-                className="px-4 py-3 rounded-t-lg"
+                className="px-4 py-3 rounded-t-lg flex items-center justify-between transition-colors duration-500"
                 style={{
-                  backgroundColor:
-                    JSON.parse(localStorage.getItem("system_setting_color_header_formulario") || '{}').value || "#8B0000"
+                  backgroundColor: lineamientos?.visualSettings?.form_bg_color || "#00804E"
                 }}
               >
                 <h1 className="text-xl font-bold text-white">
-                  Seleccionar formulario
+                  {t("form.selectForm")}
                 </h1>
+                
+                {/* Botón para ver las reglas vigentes */}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="text-white hover:bg-white/20 gap-2 h-8"
+                  onClick={() => setRulesDialogOpen(true)}
+                >
+                  <History className="h-4 w-4" />
+                  {t("form.viewActiveRules")}
+                </Button>
               </div>
 
               <div className="bg-white dark:bg-[#1f1f1f] border border-gray-200 dark:border-gray-700 border-t-0 rounded-b-lg p-4">
-                <select
-                  className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[#2a2a2a] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8B0000]"
-                  value={activeSubfunction || ""}
-                  onChange={(e) => setActiveSubfunction(e.target.value)}
-                >
-                  <option value="">Seleccionar...</option>
-                  {subfunctions
-                    .filter((s) => s.id !== "distribucion-horaria")
-                    .map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {t(s.shortTitleKey || s.shortTitle)}
-                      </option>
-                    ))}
-                </select>
+                <Popover open={formComboboxOpen} onOpenChange={setFormComboboxOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={formComboboxOpen}
+                      className="w-full justify-between rounded-md border border-input dark:border-gray-600 bg-background dark:bg-[#2a2a2a] px-3 py-2 text-sm font-normal focus:outline-none focus:ring-2 focus:ring-[#8B0000]"
+                    >
+                      {activeSubfunction
+                        ? t(subfunctions.find(s => s.id === activeSubfunction)?.shortTitleKey || subfunctions.find(s => s.id === activeSubfunction)?.shortTitle || "")
+                        : t("form.select")}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder={t("form.filterType") || "Escriba para filtrar"} />
+                      <CommandList>
+                        <CommandEmpty>{t("form.noSubjects") || "No hay resultados"}</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            value="none"
+                            onSelect={() => {
+                              setActiveSubfunction("");
+                              setFormComboboxOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                !activeSubfunction ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {t("form.select")}
+                          </CommandItem>
+                          {subfunctions
+                            .filter((s) => s.id !== "distribucion-horaria")
+                            .map((s) => (
+                              <CommandItem
+                                key={s.id}
+                                value={t(s.shortTitleKey || s.shortTitle) || s.shortTitle}
+                                onSelect={() => {
+                                  setActiveSubfunction(s.id);
+                                  setFormComboboxOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    activeSubfunction === s.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {t(s.shortTitleKey || s.shortTitle)}
+                              </CommandItem>
+                            ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 
@@ -584,11 +663,9 @@ const Index = () => {
             )}
 
             {/* Placeholder */}
-            {!activeSubfunction && (
               <div className="text-center py-12 text-muted-foreground">
-                <p className="text-lg">Selecciona un formulario para comenzar</p>
+                <p className="text-lg">{t("summary.empty")}</p>
               </div>
-            )}
           </div>
         </main>
         {/* En móvil ocupa todo el ancho (w-full), en PC vuelve a su tamaño normal (lg:w-80) */}
@@ -597,7 +674,7 @@ const Index = () => {
         </div>*/}
 
         {/* SummaryPanel siempre visible */}
-        <div className="flex flex-col w-full lg:w-80 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f1f1f]">
+        <div className="flex flex-col w-full lg:w-[450px] border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f1f1f] overflow-hidden">
           <SummaryPanel />
         </div>
       </div>
@@ -637,6 +714,145 @@ const Index = () => {
         </div>
       )}
 
+
+      <Dialog open={rulesDialogOpen} onOpenChange={setRulesDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Info className="h-6 w-6 text-primary" />
+              {t("rules.title")} ({lineamientos?.version || "—"})
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="overflow-y-auto pr-2 py-4 space-y-8">
+            {/* 1. Indicadores Globales */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl border bg-primary/5 border-primary/20">
+                <p className="text-[10px] text-primary uppercase font-black tracking-widest mb-1">{t("rules.semesterCapacity")}</p>
+                <p className="text-3xl font-bold text-primary">{lineamientos?.horasSemestre || 0}h</p>
+              </div>
+              <div className="p-4 rounded-xl border bg-muted/50">
+                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">{t("rules.periodWeeks")}</p>
+                <p className="text-3xl font-bold">{lineamientos?.semanasSemestre || 0}</p>
+              </div>
+              <div className="p-4 rounded-xl border bg-muted/50">
+                <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">{t("rules.maxDegreeWorks")}</p>
+                <p className="text-3xl font-bold">{lineamientos?.docenciaIndirecta.maxTrabajosGrado || 0}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* 2. Docencia Directa */}
+              <div className="space-y-4">
+                <h3 className="font-bold text-sm uppercase tracking-wider border-b pb-2 flex items-center gap-2">
+                   <BookOpen className="h-4 w-4 text-primary" /> {t("rules.directTeaching")}
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.noProject")}</span>
+                    <span className="font-bold">{lineamientos?.docenciaDirecta.sinProyecto}h</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.principalInvestigator")}</span>
+                    <span className="font-bold">{lineamientos?.docenciaDirecta.investigadorPrincipal}h</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.coInvestigator")}</span>
+                    <span className="font-bold">{lineamientos?.docenciaDirecta.coinvestigador}h</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.programDirector")}</span>
+                    <span className="font-bold">{lineamientos?.docenciaDirecta.directorPrograma}h</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.areaCoordReduction")}</span>
+                    <span className="font-bold">{lineamientos?.docenciaDirecta.coordinacionAreaDescarga}h</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Docencia Indirecta y Factores */}
+              <div className="space-y-4">
+                <h3 className="font-bold text-sm uppercase tracking-wider border-b pb-2 flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4 text-primary" /> {t("rules.indirectAndFactors")}
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.prepPerHour")}</span>
+                    <span className="font-bold text-primary">{lineamientos?.docenciaIndirecta.preparacionClasePorHora}x</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.advisoryPerCourse")}</span>
+                    <span className="font-bold">{lineamientos?.docenciaIndirecta.asesoriaPorCurso}h</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.advisoryPregrado")}</span>
+                    <span className="font-bold">{lineamientos?.docenciaIndirecta.asesoriaTrabajoGradoPregrado}h</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.advisoryMaestria")}</span>
+                    <span className="font-bold">{lineamientos?.docenciaIndirecta.asesoriaTrabajoGradoMaestria}h</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.advisoryDoctorado")}</span>
+                    <span className="font-bold">{lineamientos?.docenciaIndirecta.asesoriaTrabajoGradoDoctorado}h</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.equivalenceMaster")}</span>
+                    <span className="font-bold">{lineamientos?.equivalenciasPosgrado.maestria}x</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.equivalenceDoctor")}</span>
+                    <span className="font-bold">{lineamientos?.equivalenciasPosgrado.doctorado}x</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4. Actividades Anexas */}
+              <div className="space-y-4">
+                <h3 className="font-bold text-sm uppercase tracking-wider border-b pb-2 flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-primary" /> {t("rules.annexAndCommittees")}
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.collectiveLeader")}</span>
+                    <span className="font-bold">{lineamientos?.actividadesAnexas.liderColectivo}h</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.curricularCommittee")}</span>
+                    <span className="font-bold">{lineamientos?.actividadesAnexas.comiteCurricular}h</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.researchGroupLeader")}</span>
+                    <span className="font-bold">{lineamientos?.actividadesAnexas.liderGrupoInvestigacion}h</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.journalLeader")}</span>
+                    <span className="font-bold">{lineamientos?.actividadesAnexas.liderRevista}h</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. Formación Docente */}
+              <div className="space-y-4">
+                <h3 className="font-bold text-sm uppercase tracking-wider border-b pb-2 flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-primary" /> {t("rules.teacherTraining")}
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.doctorateStudies")}</span>
+                    <span className="font-bold">{lineamientos?.docenciaDirecta.formacionDoctorado}h</span>
+                  </div>
+                  <div className="flex justify-between border-b border-dashed py-1">
+                    <span className="text-muted-foreground">{t("rules.masterStudies")}</span>
+                    <span className="font-bold">{lineamientos?.docenciaDirecta.formacionMaestria}h</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
 

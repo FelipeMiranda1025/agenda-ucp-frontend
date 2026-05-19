@@ -9,6 +9,13 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api";
 
+function errorMessageFromBody(err: Record<string, unknown>, status: number): string {
+  const msg = err.message ?? err.error;
+  if (typeof msg === "string" && msg.trim()) return msg;
+  if (msg !== undefined && msg !== null) return JSON.stringify(msg);
+  return `Error ${status}`;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem("ucp_token");
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -21,10 +28,8 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({} as Record<string, unknown>));
-    throw new Error(
-      (err as { message?: string }).message ?? `Error ${res.status}`
-    );
+    const err = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    throw new Error(errorMessageFromBody(err, res.status));
   }
 
   // 204 No Content
@@ -59,10 +64,8 @@ export async function uploadFile<T = unknown>(
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({} as Record<string, unknown>));
-    throw new Error(
-      (err as { message?: string }).message ?? `Error ${res.status}`
-    );
+    const err = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    throw new Error(errorMessageFromBody(err, res.status));
   }
 
   return (await res.json()) as T;

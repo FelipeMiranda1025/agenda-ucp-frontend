@@ -18,20 +18,39 @@ import { ActivityManagementDialog, type ActivityTableType } from "@/components/A
 import { cn } from "@/lib/utils";
 import { translateOption } from "@/i18n/optionTranslations";
 import { toast } from "sonner";
-import { SUBFUNCTION_COLORS, HOURS, formatHour, getTranslatedDays } from "@/data/scheduleConstants";
+import { blockColorStyles, HOURS, formatHour, getTranslatedDays, resolveBlockColor } from "@/data/scheduleConstants";
+import { useNavigate } from "react-router-dom";
+import { canAccessScheduleDistribution } from "@/lib/agendaScheduleAccess";
 import { DocentePlanta } from "@/types/docentePlanta";
-import { useSubjects, useSemesters, useFaculties, useEducationLevels, useProfessionalCareers, useDegreeWorks, useAcademicPractices, useInvestigations, useSocialProjects, useComplementaryActivities, useTeacherTraining, useAdministrativeActivities, useIndirectTeaching } from "@/hooks/useDatabase";
+import { useSubjects, useSemesters, useFaculties, useEducationLevels, useProfessionalCareers, useDegreeWorks, useAcademicPractices, useInvestigations, useSocialProjects, useComplementaryActivities, useTeacherTraining, useAdministrativeActivities, useIndirectTeaching, useAgendaView } from "@/hooks/useDatabase";
 import { useRecommendations, getBlockedInvestigationActivities, getBlockedAdminActivities, getBlockedFormacionActivities, isFormBlockedByDoctorado } from "@/hooks/useRecommendations";
+import { useActiveLineamientos } from "@/hooks/useActiveLineamientos";
 
 // Persistent form data across subfunctions
 const formDataStore: { [subfunctionId: string]: { [key: string]: string | number } } = {};
 
-function ScheduleReadOnlyView({ hasSchedule, getSchedule, displayName }: { hasSchedule: boolean; getSchedule: () => ScheduleData | null; displayName: string }) {
+function ScheduleReadOnlyView({
+  hasSchedule,
+  getSchedule,
+  displayName,
+  canOpenBuilder,
+}: {
+  hasSchedule: boolean;
+  getSchedule: () => ScheduleData | null;
+  displayName: string;
+  canOpenBuilder: boolean;
+}) {
   const { t } = useLanguage();
+  const { data: lineamientos } = useActiveLineamientos();
+  const navigate = useNavigate();
+
   if (!hasSchedule) {
     return (
       <div className="space-y-6">
-        <div className="bg-ucp-red px-6 py-4 rounded-lg">
+        <div 
+          className="px-6 py-4 rounded-lg"
+          style={{ backgroundColor: lineamientos?.visualSettings?.form_bg_color || "#00804E" }}
+        >
            <h1 className="text-xl font-bold text-primary-foreground">{t("schedule.title")}</h1>
           {displayName && (
             <p className="text-sm text-primary-foreground/80 mt-1">
@@ -42,9 +61,14 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule, displayName }: { hasSc
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-16">
             <CalendarX className="h-12 w-12 text-muted-foreground/40 mb-4" />
-            <p className="text-muted-foreground text-center">
-              {t("schedule.noSchedule")}
+            <p className="text-muted-foreground text-center mb-4">
+              {canOpenBuilder ? t("schedule.unlockedHint") : t("schedule.noSchedule")}
             </p>
+            {canOpenBuilder && (
+              <Button onClick={() => navigate("/schedule")} className="gap-2">
+                {t("schedule.openBuilder")}
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -87,7 +111,10 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule, displayName }: { hasSc
                     return (
                       <td key={dayIdx} className="border p-0.5 h-10">
                         {block && (
-                          <div className={`${SUBFUNCTION_COLORS[block.subfunctionId] || "bg-gray-500"} text-white rounded px-1.5 py-1 text-[10px] leading-tight font-medium h-full flex items-center`}>
+                          <div
+                            className="rounded px-1.5 py-1 text-[10px] leading-tight font-medium h-full flex items-center border-2"
+                            style={blockColorStyles(resolveBlockColor(block.subfunctionId, block.color))}
+                          >
                             <span className="truncate">{block.label}</span>
                           </div>
                         )}
@@ -105,9 +132,22 @@ function ScheduleReadOnlyView({ hasSchedule, getSchedule, displayName }: { hasSc
 }
 
 export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
-  const { activeSubfunction, records, dropdownOptions, addDropdownOption, addRecord, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord, selectedDocente, isAgendaReadOnly } = useAgenda();
+  const { activeSubfunction, records, dropdownOptions, addDropdownOption, addRecord, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord, selectedDocente, isAgendaReadOnly, canAccessScheduleDistribution: scheduleUnlocked } = useAgenda();
   const { user } = useAuth();
   const { t, language } = useLanguage();
+  const { data: lineamientos } = useActiveLineamientos();
+  const isOwnAgenda = selectedDocente?.id === user?.id;
+  const { data: ownAgendaView } = useAgendaView(isOwnAgenda ? user?.id : undefined);
+  const readOnlyBannerText = useMemo(() => {
+    if (!isAgendaReadOnly) return "";
+    if (
+      isOwnAgenda &&
+      (ownAgendaView?.status === "approved" || ownAgendaView?.status === "pending")
+    ) {
+      return t("form.readOnlyOwnLocked");
+    }
+    return t("form.readOnlyBanner");
+  }, [isAgendaReadOnly, isOwnAgenda, ownAgendaView?.status, t]);
 
   const displayName = selectedDocente && selectedDocente.firstName !== "Yo"
     ? [selectedDocente.firstName, selectedDocente.secondName, selectedDocente.firstLastName].filter(Boolean).join(' ')
@@ -389,10 +429,28 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
         const allowDuplicates = ["investigacion", "administrativas"];
         if (allowDuplicates.includes(resolvedId)) {
           addRecord({ subfunctionId: resolvedId, data: { ...formData }, totalHoras: total });
+          toast.success(t("form.savedRecord"));
         } else {
+          const existingRecords = getRecordsBySubfunction(resolvedId);
+          const stringValues = Object.entries(formData)
+            .filter(([, v]) => typeof v === "string")
+            .map(([k, v]) => `${k}=${v}`);
+            
+          const isDuplicate = stringValues.length > 0 && existingRecords.some((r) => {
+            const rStringValues = Object.entries(r.data)
+              .filter(([, v]) => typeof v === "string")
+              .map(([k, v]) => `${k}=${v}`);
+            return stringValues.length === rStringValues.length && stringValues.every((sv) => rStringValues.includes(sv));
+          });
+
           upsertRecord(resolvedId, { ...formData }, total);
+          
+          if (isDuplicate) {
+            toast.error(t("form.duplicateRecord"));
+          } else {
+            toast.success(t("form.savedRecord"));
+          }
         }
-        toast.success(t("form.savedRecord"));
       }
 
       setFormData({});
@@ -429,7 +487,16 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   if (!config) return null;
 
   if (resolvedId === "distribucion-horaria") {
-    return <ScheduleReadOnlyView hasSchedule={hasSchedule} getSchedule={getSchedule} displayName={displayName} />;
+    const canOpenBuilder =
+      isOwnAgenda && scheduleUnlocked && canAccessScheduleDistribution(ownAgendaView, user?.rolId);
+    return (
+      <ScheduleReadOnlyView
+        hasSchedule={hasSchedule}
+        getSchedule={getSchedule}
+        displayName={displayName}
+        canOpenBuilder={!!canOpenBuilder}
+      />
+    );
   }
 
   const handleAddOption = () => {
@@ -444,7 +511,10 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
   if (formBlocked) {
     return (
       <div className="space-y-6">
-        <div className="bg-ucp-red px-6 py-4 rounded-lg">
+        <div 
+          className="px-6 py-4 rounded-lg"
+          style={{ backgroundColor: lineamientos?.visualSettings?.form_bg_color || "#00804E" }}
+        >
           <h1 className="text-xl font-bold text-primary-foreground">{t(config.titleKey || config.title)}</h1>
         </div>
         <Card>
@@ -461,7 +531,10 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="bg-ucp-red px-6 py-4 rounded-lg flex items-center justify-between">
+      <div 
+        className="px-6 py-4 rounded-lg flex items-center justify-between"
+        style={{ backgroundColor: lineamientos?.visualSettings?.form_bg_color || "#00804E" }}
+      >
         <div>
           <h1 className="text-xl font-bold text-primary-foreground">{t(config.titleKey || config.title)}</h1>
           {displayName && (
@@ -487,7 +560,7 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       {isAgendaReadOnly && (
         <div className="px-4 py-2 rounded-md bg-muted border border-border text-xs text-muted-foreground flex items-center gap-2">
           <Lock className="h-3.5 w-3.5" />
-          {t("form.readOnlyBanner")}
+          {readOnlyBannerText}
         </div>
       )}
 
@@ -870,12 +943,12 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
         <div className="space-y-1 px-2">
           <div className="flex justify-end">
             <p className="text-sm text-muted-foreground font-medium">
-              Se recomienda {recommendation.hours}h de docencia directa
+              {t("recommendation.hours", { hours: recommendation.hours })}
             </p>
           </div>
           <div className="flex justify-end">
             <p className="text-sm text-muted-foreground font-medium">
-              Se recomienda {recommendation.subjects} asignaturas
+              {t("recommendation.subjects", { hours: recommendation.subjects })}
             </p>
           </div>
         </div>
@@ -885,7 +958,9 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       {(resolvedId === "trabajos-grado" || resolvedId === "practicas-academicas") && (
         <div className="flex justify-end px-2">
           <p className="text-sm text-muted-foreground font-medium">
-            Se recomienda {Math.max(0, 4 - (getRecordsBySubfunction("trabajos-grado").length + getRecordsBySubfunction("practicas-academicas").length))} asesorías
+            {t("recommendation.advisories", { 
+              count: Math.max(0, (lineamientos?.docenciaIndirecta?.maxTrabajosGrado || 4) - (getRecordsBySubfunction("trabajos-grado").length + getRecordsBySubfunction("practicas-academicas").length)) 
+            })}
           </p>
         </div>
       )}
