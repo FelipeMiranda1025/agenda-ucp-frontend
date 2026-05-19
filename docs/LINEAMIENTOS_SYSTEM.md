@@ -38,10 +38,16 @@ El sistema permite al Vicerrector cargar documentos PDF con nuevos lineamientos 
 
 ### 3. Backend Endpoints
 
-#### Upload y Procesamiento
-- **Endpoint**: `POST /upload/parse-document`
-- **Función**: Recibe PDF, extrae texto, utiliza IA para interpretar reglas
-- **Respuesta**: `{ rules: ExtractedRule[], summary: string, filePath: string }`
+#### Upload y Procesamiento (flujo activo en la UI)
+- **Endpoint**: `POST /api/lineamientos-documents/upload`
+- **IA**: Google **Gemini 1.5 Flash** (`agenda-ucp-backend/src/services/iaLineamientosParser.ts`)
+- **Variable**: `GEMINI_API_KEY` en el backend
+- **Función**: Recibe PDF, extrae texto (`pdfParser.ts`), Gemini devuelve JSON de lineamientos; si falla, regex (`fallbackExtract`)
+- **Respuesta**: `{ success, id, rules_extracted, summary }`
+
+#### Endpoint alternativo (legacy)
+- **Endpoint**: `POST /api/upload/parse-document`
+- **IA**: Google **Gemini 2.5 Flash** vía REST (`src/routes/upload.ts`)
 
 #### Gestión de Documentos
 - **POST /lineamientos-documents**: Persiste documento procesado
@@ -59,7 +65,7 @@ El sistema permite al Vicerrector cargar documentos PDF con nuevos lineamientos 
 1. Vicerrector accede a Perfil → Ajustes
 2. Selecciona archivo PDF (validación de formato)
 3. Sistema sube PDF al backend
-4. Backend procesa PDF con IA y extrae reglas
+4. Backend procesa PDF con **Gemini 1.5 Flash** y extrae reglas (o fallback regex)
 
 ### 2. Revisión y Selección
 1. Sistema muestra vista previa con reglas extraídas
