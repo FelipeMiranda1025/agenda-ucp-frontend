@@ -90,6 +90,7 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
           description: t("settings.rulesUpdated", { count: result.updated }),
         });
         await refetch();
+        onOpenChange(false);
         return;
       }
 
@@ -99,6 +100,7 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
         description: t("settings.rulesUpdated", { count: result.updated }),
       });
       await refetch();
+      onOpenChange(false);
     } catch {
       toast({ title: t("settings.saveError"), variant: "destructive" });
     }
