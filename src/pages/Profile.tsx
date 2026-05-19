@@ -151,9 +151,11 @@ const Profile = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="settings">
-            <LineamientosImportSection runWithCatalogGate={catalogGate.runWithCatalogGate} />
-          </TabsContent>
+          {isSupport && (
+            <TabsContent value="settings">
+              <LineamientosImportSection />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
       <ChangePasswordDialog open={pwdOpen} onOpenChange={setPwdOpen} />
