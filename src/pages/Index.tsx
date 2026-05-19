@@ -550,7 +550,7 @@ const Index = () => {
       {/* Main content area */}
       {/*<div className="flex-1 flex min-h-0">*/}
       {/* Añadimos 'flex-col' para que en móvil se apilen y 'lg:flex-row' para que en PC sigan a los lados */}
-      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-y-auto lg:overflow-hidden">
+      <div className="flex-1 flex flex-col gap-4 lg:gap-0 lg:flex-row min-h-0 overflow-y-auto lg:overflow-hidden">
         {/*<main ref={mainRef} className="flex-1 overflow-auto">*/}
         <main
           ref={mainRef}
@@ -677,8 +677,12 @@ const Index = () => {
         </div>*/}
 
         {/* SummaryPanel siempre visible */}
-        <aside className="order-2 w-full shrink-0 lg:w-[min(450px,38vw)] lg:min-h-0 lg:flex lg:flex-col border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f1f1f] lg:overflow-hidden pb-28 lg:pb-0">
-          <SummaryPanel />
+        <aside className="order-2 w-full shrink-0 lg:w-[min(450px,38vw)] lg:min-h-0 lg:flex lg:flex-col lg:border-l border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-transparent lg:bg-white dark:lg:bg-[#1f1f1f] lg:overflow-hidden pb-28 lg:pb-0">
+          <div className="max-w-4xl mx-auto px-4 md:px-8 lg:max-w-none lg:px-0 lg:h-full lg:flex lg:flex-col">
+            <div className="rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f1f1f] lg:rounded-none lg:border-0 lg:shadow-none lg:flex-1 lg:flex lg:flex-col lg:min-h-0">
+              <SummaryPanel />
+            </div>
+          </div>
         </aside>
       </div>
 
