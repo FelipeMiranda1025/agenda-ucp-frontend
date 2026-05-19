@@ -65,7 +65,6 @@ const Index = () => {
   const [visibleSection, setVisibleSection] = useState<string>("header.production");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [systemSwitchOpen, setSystemSwitchOpen] = useState(false);
-  const [showSummaryMobile, setShowSummaryMobile] = useState(false);
   const [rulesDialogOpen, setRulesDialogOpen] = useState(false);
   const [formComboboxOpen, setFormComboboxOpen] = useState(false);
   const { enabled: systemEnabled } = useSystemEnabled();
@@ -551,10 +550,13 @@ const Index = () => {
       {/* Main content area */}
       {/*<div className="flex-1 flex min-h-0">*/}
       {/* Añadimos 'flex-col' para que en móvil se apilen y 'lg:flex-row' para que en PC sigan a los lados */}
-      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-y-auto lg:overflow-hidden">
         {/*<main ref={mainRef} className="flex-1 overflow-auto">*/}
-        <main ref={mainRef} className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50/50 dark:bg-transparent relative">
-          <div className="max-w-4xl mx-auto px-4 md:px-8 py-6 space-y-6 relative">
+        <main
+          ref={mainRef}
+          className="order-1 w-full shrink-0 lg:flex-1 lg:min-h-0 lg:overflow-y-auto overflow-x-hidden bg-gray-50/50 dark:bg-transparent relative"
+        >
+          <div className="max-w-4xl mx-auto px-4 md:px-8 py-4 md:py-6 space-y-4 md:space-y-6 relative">
             {isOwnAgendaPendingReview && (
               <div
                 className="absolute inset-0 z-20 flex items-start justify-center pt-24 bg-background/75 backdrop-blur-[2px] rounded-lg pointer-events-auto"
@@ -570,7 +572,7 @@ const Index = () => {
             {/* Selector de formulario */}
             <div className="rounded-lg shadow-sm overflow-hidden">
               <div
-                className="px-4 py-3 rounded-t-lg flex items-center justify-between transition-colors duration-500"
+                className="px-4 py-3 rounded-t-lg flex flex-col sm:flex-row sm:items-center justify-between gap-2 transition-colors duration-500"
                 style={{
                   backgroundColor: lineamientos?.visualSettings?.form_bg_color || "#00804E"
                 }}
@@ -662,10 +664,11 @@ const Index = () => {
               </section>
             )}
 
-            {/* Placeholder */}
-              <div className="text-center py-12 text-muted-foreground">
-                <p className="text-lg">{t("summary.empty")}</p>
+            {!activeSubfunction && (
+              <div className="text-center py-8 text-muted-foreground">
+                <p className="text-base md:text-lg">{t("form.select")}</p>
               </div>
+            )}
           </div>
         </main>
         {/* En móvil ocupa todo el ancho (w-full), en PC vuelve a su tamaño normal (lg:w-80) */}
@@ -674,9 +677,9 @@ const Index = () => {
         </div>*/}
 
         {/* SummaryPanel siempre visible */}
-        <div className="flex flex-col w-full lg:w-[450px] border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f1f1f] overflow-hidden">
+        <aside className="order-2 w-full shrink-0 lg:w-[min(450px,38vw)] lg:min-h-0 lg:flex lg:flex-col border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1f1f1f] lg:overflow-hidden pb-28 lg:pb-0">
           <SummaryPanel />
-        </div>
+        </aside>
       </div>
 
 
@@ -688,15 +691,6 @@ const Index = () => {
         aria-label={t("menu.open")}
       >
         <Menu className="h-6 w-6" />
-      </button>
-
-      {/* Botón toggle SummaryPanel (solo móvil) */}
-      <button
-        onClick={() => setShowSummaryMobile(!showSummaryMobile)}
-        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg flex items-center justify-center transition-colors lg:hidden"
-        aria-label="Resumen"
-      >
-        <ClipboardList className="h-6 w-6" />
       </button>
 
       {/* Menu overlay */}

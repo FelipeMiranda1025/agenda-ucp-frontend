@@ -166,7 +166,7 @@ export function SummaryPanel() {
   };
 
   return (
-    <div className="w-full h-full flex flex-col bg-background lg:border-l pt-6">
+    <div className="w-full flex flex-col bg-background lg:h-full lg:border-l lg:pt-6">
       <div 
         className="px-4 py-3 border-b flex items-start gap-2"
         style={{ backgroundColor: lineamientos?.visualSettings?.form_bg_color || "#00804E" }}
@@ -221,7 +221,7 @@ export function SummaryPanel() {
         </div>
       )}
 
-      <ScrollArea className="flex-1 px-4 py-3 bg-white dark:bg-[#1f1f1f]">
+      <ScrollArea className="max-h-[min(42vh,360px)] lg:max-h-none lg:flex-1 px-4 py-3 bg-white dark:bg-[#1f1f1f]">
         {grouped.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <ClipboardList className="h-10 w-10 mb-3 opacity-40" />
