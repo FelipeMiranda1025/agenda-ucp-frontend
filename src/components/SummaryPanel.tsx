@@ -179,7 +179,9 @@ export function SummaryPanel() {
         records: records.map((r) => ({ ...r })),
         status: "pending",
       });
-      toast.success(t("summary.amendSuccess"));
+      toast.success(
+        user.rolId === 3 ? t("summary.amendSuccessDecano") : t("summary.amendSuccessDirector")
+      );
       setSelectedDocente(docentesList[0] ?? null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al guardar la modificación";
@@ -375,7 +377,7 @@ export function SummaryPanel() {
         {isReviewingSubordinate && canSupervisorAmendApprovedAgenda ? (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground text-center">
-              {t("summary.amendHint")}
+              {user?.rolId === 3 ? t("summary.amendHintDecano") : t("summary.amendHintDirector")}
             </p>
             <Button
               onClick={handleAmendApproved}
@@ -383,7 +385,7 @@ export function SummaryPanel() {
               className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50"
             >
               <CheckCircle className="h-4 w-4" />
-              {t("summary.amendSubmit")}
+              {user?.rolId === 3 ? t("summary.amendSubmitDecano") : t("summary.amendSubmitDirector")}
             </Button>
           </div>
         ) : isReviewingSubordinate ? (
@@ -406,9 +408,12 @@ export function SummaryPanel() {
                 {subordinateAgendaView?.status === "returned"
                   ? t("summary.reviewDisabledReturned")
                   : subordinateAgendaView?.status === "pending" &&
-                      subordinateAgendaView.pending_reviewer_rol === 4
-                    ? t("summary.reviewDisabledVicerrectorPending")
-                    : t("summary.reviewDisabledWaiting")}
+                      subordinateAgendaView.pending_reviewer_rol === 3
+                    ? t("summary.reviewDisabledDecanoPending")
+                    : subordinateAgendaView?.status === "pending" &&
+                        subordinateAgendaView.pending_reviewer_rol === 4
+                      ? t("summary.reviewDisabledVicerrectorPending")
+                      : t("summary.reviewDisabledWaiting")}
               </p>
             )}
             <div className="flex gap-2">
