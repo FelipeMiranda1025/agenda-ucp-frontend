@@ -26,7 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { Sun, Moon, ChevronDown, User, LogOut, Menu, X, Bell, MessageSquare, ClipboardList, History, Settings, Power, BarChart3, Download, Info, BookOpen, GraduationCap, Building2, Brain, Check, ChevronsUpDown } from "lucide-react";
-import { exportAgendaToExcel } from "@/lib/exportAgenda";
+import { exportAgendaToPdf } from "@/lib/exportAgendaPdf";
 import { SettingsDialog } from "@/components/SettingsDialog";
 import {
   AlertDialog,
@@ -464,7 +464,7 @@ const Index = () => {
                         return;
                       }
                       try {
-                        exportAgendaToExcel({
+                        exportAgendaToPdf({
                           user,
                           selectedDocente,
                           records,

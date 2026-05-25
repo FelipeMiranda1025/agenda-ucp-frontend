@@ -16,7 +16,7 @@ import {
   useAgendaViewsByCcs,
   type SubordinateDocente,
 } from "@/hooks/useDatabase";
-import { exportAgendasBatch, type BatchAgendaItem } from "@/lib/exportAgenda";
+import { exportAgendasBatchPdf, type BatchAgendaPdfItem } from "@/lib/exportAgendaPdf";
 import { toast } from "sonner";
 import { getDocenteFullName } from "@/types/docentePlanta";
 
@@ -101,7 +101,7 @@ export function DownloadAgendasDialog({ open, onOpenChange, ownRecords, ownSched
 
   const handleDownload = async () => {
     if (!user) return;
-    const items: BatchAgendaItem[] = [];
+    const items: BatchAgendaPdfItem[] = [];
 
     if (isDocente || includeSelf) {
       items.push({
@@ -142,11 +142,11 @@ export function DownloadAgendasDialog({ open, onOpenChange, ownRecords, ownSched
 
     setDownloading(true);
     try {
-      await exportAgendasBatch(items, { zipName: "Agendas_UCP" });
+      await exportAgendasBatchPdf(items, { zipName: "Agendas_UCP" });
       toast.success(
         items.length === 1
-          ? "Agenda descargada"
-          : `${items.length} agendas comprimidas en ZIP`
+          ? "Agenda descargada en PDF"
+          : `${items.length} agendas en PDF comprimidas en ZIP`
       );
       if (missing > 0) toast.warning(`${missing} docente(s) sin agenda diligenciada`);
       onOpenChange(false);
@@ -174,7 +174,7 @@ export function DownloadAgendasDialog({ open, onOpenChange, ownRecords, ownSched
           {/* Docente: only own agenda */}
           {isDocente && (
             <p className="text-sm text-muted-foreground">
-              Se descargará tu agenda con los datos actuales del formulario.
+              Se descargará tu agenda en PDF con los datos actuales del formulario.
             </p>
           )}
 
@@ -271,7 +271,7 @@ export function DownloadAgendasDialog({ open, onOpenChange, ownRecords, ownSched
 
           {!isDocente && totalCount > 1 && (
             <p className="text-xs text-muted-foreground">
-              Se generará un archivo ZIP con {totalCount} agendas.
+              Se generará un ZIP con {totalCount} archivos PDF.
             </p>
           )}
         </div>
