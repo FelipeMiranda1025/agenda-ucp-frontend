@@ -33,7 +33,7 @@ function approveToastMessage(view: DbAgendaView, t: (key: string) => string): st
 }
 
 export function SummaryPanel() {
-  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView, isAgendaReadOnly, getSchedule, canSupervisorReviewSubordinate } = useAgenda();
+  const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView, isAgendaReadOnly, getSchedule, canSupervisorReviewSubordinate, canSupervisorAmendApprovedAgenda } = useAgenda();
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
@@ -151,6 +151,39 @@ export function SummaryPanel() {
       setSelectedDocente(docentesList[0] ?? null);
     } catch {
       toast.error("Error al aprobar la agenda");
+    }
+  };
+
+  const handleAmendApproved = async () => {
+    if (!subordinateCc || !user?.id) return;
+    const total = metricas.totalHorasSemestrales;
+    if (total < 900 || total > 930) {
+      if (total > 930) {
+        const exceso = total - 930;
+        toast.error(
+          t("validation.exceeds", { max: 930, excess: exceso, suggestions: "" }),
+          { duration: 7000 }
+        );
+      } else {
+        const faltante = 900 - total;
+        toast.error(
+          t("validation.missing", { missing: faltante, max: 900 }),
+          { duration: 6000 }
+        );
+      }
+      return;
+    }
+    try {
+      await upsertAgendaView.mutateAsync({
+        userCc: subordinateCc,
+        records: records.map((r) => ({ ...r })),
+        status: "pending",
+      });
+      toast.success(t("summary.amendSuccess"));
+      setSelectedDocente(docentesList[0] ?? null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Error al guardar la modificación";
+      toast.error(msg);
     }
   };
 
@@ -339,7 +372,21 @@ export function SummaryPanel() {
 
 
       <div className="p-4 border-t">
-        {isReviewingSubordinate ? (
+        {isReviewingSubordinate && canSupervisorAmendApprovedAgenda ? (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground text-center">
+              {t("summary.amendHint")}
+            </p>
+            <Button
+              onClick={handleAmendApproved}
+              disabled={upsertAgendaView.isPending}
+              className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50"
+            >
+              <CheckCircle className="h-4 w-4" />
+              {t("summary.amendSubmit")}
+            </Button>
+          </div>
+        ) : isReviewingSubordinate ? (
           <div className="space-y-3">
             <Textarea
               placeholder={t("summary.observationPlaceholder")}
@@ -358,7 +405,10 @@ export function SummaryPanel() {
               <p className="text-xs text-muted-foreground text-center">
                 {subordinateAgendaView?.status === "returned"
                   ? t("summary.reviewDisabledReturned")
-                  : t("summary.reviewDisabledWaiting")}
+                  : subordinateAgendaView?.status === "pending" &&
+                      subordinateAgendaView.pending_reviewer_rol === 4
+                    ? t("summary.reviewDisabledVicerrectorPending")
+                    : t("summary.reviewDisabledWaiting")}
               </p>
             )}
             <div className="flex gap-2">

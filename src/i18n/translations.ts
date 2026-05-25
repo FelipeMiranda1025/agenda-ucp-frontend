@@ -144,6 +144,22 @@ const translations: Record<string, Record<Language, string>> = {
     es: "Agenda en revisión. Los formularios están bloqueados hasta que un supervisor retorne o finalice el proceso.",
     en: "Agenda under review. Forms are locked until a supervisor returns it or the process is complete.",
   },
+  "summary.amendHint": {
+    es: "Agenda aprobada. Puede modificar los registros y enviar los cambios a Vicerrectoría Académica para su nueva aprobación.",
+    en: "Approved agenda. You may edit records and send changes to the Academic Vice-Rector's office for re-approval.",
+  },
+  "summary.amendSubmit": {
+    es: "Guardar modificación y enviar a Vicerrectoría",
+    en: "Save amendment and send to Vice-Rector's office",
+  },
+  "summary.amendSuccess": {
+    es: "Modificación guardada. La agenda quedó pendiente de aprobación por Vicerrectoría Académica.",
+    en: "Amendment saved. The agenda is pending approval by the Academic Vice-Rector's office.",
+  },
+  "summary.reviewDisabledVicerrectorPending": {
+    es: "Modificación enviada. En espera de aprobación de Vicerrectoría Académica.",
+    en: "Amendment submitted. Awaiting approval by the Academic Vice-Rector's office.",
+  },
   "summary.deleteRecord": { es: "Eliminar registro", en: "Delete record" },
 
   // SubfunctionForm

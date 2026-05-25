@@ -32,6 +32,7 @@ export interface AgendaContextType {
   isAgendaReadOnly: boolean;
   isOwnAgendaPendingReview: boolean;
   canSupervisorReviewSubordinate: boolean;
+  canSupervisorAmendApprovedAgenda: boolean;
   canAccessScheduleDistribution: boolean;
 }
 

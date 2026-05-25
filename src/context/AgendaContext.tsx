@@ -112,12 +112,25 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const isViewingOwnAgenda = !!(selectedDocente && user && selectedDocente.id === user.id);
 
-  /** Supervisor actual puede editar la agenda del subordinado en revisión */
-  const canSupervisorEditSubordinate = useMemo(() => {
+  /** Director o decano pueden modificar una agenda ya aprobada (reenvío a vicerrectoría). */
+  const canSupervisorAmendApprovedAgenda = useMemo(() => {
+    if (!isSupervisorRole || !user || !subordinateCc) return false;
+    if (subordinateAgendaView?.status !== "approved") return false;
+    return user.rolId === 2 || user.rolId === 3;
+  }, [isSupervisorRole, user, subordinateCc, subordinateAgendaView]);
+
+  /** Supervisor actual puede aprobar/retornar en su nivel de revisión */
+  const canSupervisorReviewSubordinate = useMemo(() => {
     if (!isSupervisorRole || !user || !subordinateCc) return false;
     if (subordinateAgendaView?.status !== "pending") return false;
     return user.rolId === subordinateAgendaView.pending_reviewer_rol;
   }, [isSupervisorRole, user, subordinateCc, subordinateAgendaView]);
+
+  /** Edición de subordinado: en revisión en su nivel o enmienda de agenda aprobada */
+  const canSupervisorEditSubordinate = useMemo(
+    () => canSupervisorReviewSubordinate || canSupervisorAmendApprovedAgenda,
+    [canSupervisorReviewSubordinate, canSupervisorAmendApprovedAgenda]
+  );
 
   const isAgendaReadOnly = useMemo(() => {
     if (selectedDocente && user && selectedDocente.id !== user.id) {
@@ -419,7 +432,8 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         loadFromAgendaView,
         isAgendaReadOnly,
         isOwnAgendaPendingReview,
-        canSupervisorReviewSubordinate: canSupervisorEditSubordinate,
+        canSupervisorReviewSubordinate,
+        canSupervisorAmendApprovedAgenda,
         canAccessScheduleDistribution: canAccessSchedule,
       }}
     >
