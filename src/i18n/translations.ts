@@ -354,7 +354,7 @@ const translations: Record<string, Record<Language, string>> = {
   "summary.observationPlaceholder": { es: "Escribe la observación para el docente...", en: "Write observation for the teacher..." },
 
   // Settings (Vicerrector only)
-  "profile.settings": { es: "Ajustes", en: "Settings" },
+  "profile.settings": { es: "Lineamientos", en: "Guidelines" },
   "profile.systemSwitch": { es: "Interruptor", en: "System Switch" },
   "profile.systemSwitchOn": { es: "Encendido", en: "On" },
   "profile.systemSwitchOff": { es: "Apagado", en: "Off" },
