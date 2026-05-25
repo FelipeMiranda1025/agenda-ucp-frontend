@@ -18,6 +18,10 @@ import {
 
 export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, roleName } = useAuth();
+  const isDirectorUser =
+    roleName === "DirectorPrograma" || user?.rolId === 2;
+  const isDecanoUser =
+    roleName === "DecanoFacultad" || user?.rolId === 3;
   const isVicerrector = roleName === "VicerrectorAcadémico";
   const { data: ownAgendaView } = useAgendaView(user?.id);
   const isSupervisorRole =
@@ -112,12 +116,30 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const isViewingOwnAgenda = !!(selectedDocente && user && selectedDocente.id === user.id);
 
-  /** Director o decano pueden modificar una agenda ya aprobada (reenvío a vicerrectoría). */
+  /**
+   * Director o decano pueden editar: agenda aprobada, o corrección mientras espera el siguiente nivel.
+   */
   const canSupervisorAmendApprovedAgenda = useMemo(() => {
-    if (!isSupervisorRole || !user || !subordinateCc) return false;
-    if (subordinateAgendaView?.status !== "approved") return false;
-    return user.rolId === 2 || user.rolId === 3;
-  }, [isSupervisorRole, user, subordinateCc, subordinateAgendaView]);
+    if (!isSupervisorRole || !user || !subordinateCc || !subordinateAgendaView) {
+      return false;
+    }
+    const { status, pending_reviewer_rol } = subordinateAgendaView;
+    if (status === "approved" && (isDirectorUser || isDecanoUser)) return true;
+    if (status === "pending" && pending_reviewer_rol === 3 && isDirectorUser) {
+      return true;
+    }
+    if (status === "pending" && pending_reviewer_rol === 4 && isDecanoUser) {
+      return true;
+    }
+    return false;
+  }, [
+    isSupervisorRole,
+    user,
+    subordinateCc,
+    subordinateAgendaView,
+    isDirectorUser,
+    isDecanoUser,
+  ]);
 
   /** Supervisor actual puede aprobar/retornar en su nivel de revisión */
   const canSupervisorReviewSubordinate = useMemo(() => {

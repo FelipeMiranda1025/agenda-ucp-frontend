@@ -190,6 +190,10 @@ const translations: Record<string, Record<Language, string>> = {
   "form.editing": { es: "Editando registro", en: "Editing record" },
   "form.viewing": { es: "Visualizando registro", en: "Viewing record" },
   "form.readOnlyBanner": { es: "Modo lectura — Revisión de agenda del docente", en: "Read-only mode — Reviewing teacher's agenda" },
+  "form.amendEditBanner": {
+    es: "Modo edición — Puede modificar la agenda y reenviarla al siguiente nivel de aprobación.",
+    en: "Edit mode — You may modify the agenda and resubmit it to the next approval level.",
+  },
   "form.readOnlyOwnLocked": {
     es: "Modo consulta — Su agenda está en revisión o ya ha sido aprobada. Los campos no se pueden modificar hasta un retorno.",
     en: "View-only — Your agenda is under review or has already been approved. Fields cannot be modified until it is returned.",

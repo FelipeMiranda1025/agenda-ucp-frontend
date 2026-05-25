@@ -132,14 +132,21 @@ function ScheduleReadOnlyView({
 }
 
 export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
-  const { activeSubfunction, records, dropdownOptions, addDropdownOption, addRecord, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord, selectedDocente, isAgendaReadOnly, canAccessScheduleDistribution: scheduleUnlocked } = useAgenda();
+  const { activeSubfunction, records, dropdownOptions, addDropdownOption, addRecord, upsertRecord, updateRecord, getRecordsBySubfunction, hasSchedule, getSchedule, editingRecord, setEditingRecord, selectedDocente, isAgendaReadOnly, canSupervisorAmendApprovedAgenda, canAccessScheduleDistribution: scheduleUnlocked } = useAgenda();
   const { user } = useAuth();
   const { t, language } = useLanguage();
   const { data: lineamientos } = useActiveLineamientos();
   const isOwnAgenda = selectedDocente?.id === user?.id;
   const { data: ownAgendaView } = useAgendaView(isOwnAgenda ? user?.id : undefined);
+  const isReviewingSubordinate =
+    !!selectedDocente && selectedDocente.firstName !== "Yo" && selectedDocente.id !== user?.id;
   const readOnlyBannerText = useMemo(() => {
-    if (!isAgendaReadOnly) return "";
+    if (!isAgendaReadOnly) {
+      if (isReviewingSubordinate && canSupervisorAmendApprovedAgenda) {
+        return t("form.amendEditBanner");
+      }
+      return "";
+    }
     if (
       isOwnAgenda &&
       (ownAgendaView?.status === "approved" || ownAgendaView?.status === "pending")
@@ -147,7 +154,14 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
       return t("form.readOnlyOwnLocked");
     }
     return t("form.readOnlyBanner");
-  }, [isAgendaReadOnly, isOwnAgenda, ownAgendaView?.status, t]);
+  }, [
+    isAgendaReadOnly,
+    isOwnAgenda,
+    ownAgendaView?.status,
+    isReviewingSubordinate,
+    canSupervisorAmendApprovedAgenda,
+    t,
+  ]);
 
   const displayName = selectedDocente && selectedDocente.firstName !== "Yo"
     ? [selectedDocente.firstName, selectedDocente.secondName, selectedDocente.firstLastName].filter(Boolean).join(' ')
@@ -557,9 +571,15 @@ export function SubfunctionForm({ subfunctionId }: { subfunctionId?: string }) {
         )}
       </div>
 
-      {isAgendaReadOnly && (
-        <div className="px-4 py-2 rounded-md bg-muted border border-border text-xs text-muted-foreground flex items-center gap-2">
-          <Lock className="h-3.5 w-3.5" />
+      {readOnlyBannerText && (
+        <div
+          className={`px-4 py-2 rounded-md border text-xs flex items-center gap-2 ${
+            isAgendaReadOnly
+              ? "bg-muted border-border text-muted-foreground"
+              : "bg-primary/10 border-primary/30 text-foreground"
+          }`}
+        >
+          {isAgendaReadOnly ? <Lock className="h-3.5 w-3.5 shrink-0" /> : null}
           {readOnlyBannerText}
         </div>
       )}
