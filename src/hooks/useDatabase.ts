@@ -258,6 +258,29 @@ export function useAgendaView(userCc?: string) {
   });
 }
 
+/** Elimina todas las agenda_views, comentarios y agendas (solo Vicerrector/Soporte en API). */
+export function usePurgeAllAgendaViews() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      api.delete<{ message: string; deleted_views: number }>(
+        "/agenda-views/admin/purge-all"
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["agenda_views"] });
+      qc.invalidateQueries({ queryKey: ["pending_agenda_views_supervisor"] });
+      qc.invalidateQueries({ queryKey: ["approved_agendas_history"] });
+      qc.invalidateQueries({ queryKey: ["agenda_comments"] });
+      qc.invalidateQueries({ queryKey: ["agenda_comments_all"] });
+      qc.invalidateQueries({ queryKey: ["agenda_comments_by_agenda"] });
+      qc.invalidateQueries({ queryKey: ["approved_agenda_ccs"] });
+      qc.invalidateQueries({ queryKey: ["fully_approved_careers"] });
+      qc.invalidateQueries({ queryKey: ["agendas"] });
+      qc.invalidateQueries({ queryKey: ["agenda_views_by_ccs"] });
+    },
+  });
+}
+
 export function useUpsertAgendaView() {
   const qc = useQueryClient();
   return useMutation({

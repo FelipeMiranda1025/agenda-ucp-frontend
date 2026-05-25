@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronRight, Copy, Inbox } from "lucide-react";
+import { ArrowLeft, ChevronRight, Copy, Inbox, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -17,7 +17,11 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { useSemesterArchives, useSemesterLabel, type SemesterArchive } from "@/hooks/useSemesterArchive";
-import { useApprovedAgendasForHistory, useUpsertAgendaView } from "@/hooks/useDatabase";
+import {
+  useApprovedAgendasForHistory,
+  usePurgeAllAgendaViews,
+  useUpsertAgendaView,
+} from "@/hooks/useDatabase";
 import { toast } from "sonner";
 
 interface ArchivedDocenteEntry {
@@ -37,6 +41,10 @@ const HistoryPanel = () => {
     user?.rolId
   );
   const upsertAgendaView = useUpsertAgendaView();
+  const purgeAllAgendas = usePurgeAllAgendaViews();
+  const isVicerrector = user?.rolId === 4;
+
+  const [purgeConfirmOpen, setPurgeConfirmOpen] = useState(false);
 
   const isSupervisor =
     roleName === "DirectorPrograma" ||
@@ -68,6 +76,18 @@ const HistoryPanel = () => {
     }
     return map;
   }, [user, approvedAgendas, t]);
+
+  const handlePurgeAll = async () => {
+    try {
+      const result = await purgeAllAgendas.mutateAsync();
+      toast.success(
+        t("history.purgeAllSuccess").replace("{count}", String(result.deleted_views ?? 0))
+      );
+      setPurgeConfirmOpen(false);
+    } catch (e) {
+      toast.error((e as Error)?.message || t("history.purgeAllError"));
+    }
+  };
 
   const handleCopy = async (entry: ArchivedDocenteEntry) => {
     try {
@@ -111,6 +131,30 @@ const HistoryPanel = () => {
       <main className="max-w-6xl mx-auto px-6 py-6 space-y-6">
         {!selectedArchive && (
           <>
+            {isVicerrector && (
+              <Card className="border-destructive/40">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base text-destructive">
+                    {t("history.qaSection")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <p className="text-sm text-muted-foreground max-w-xl">
+                    {t("history.purgeAllDescription")}
+                  </p>
+                  <Button
+                    variant="destructive"
+                    className="shrink-0 gap-2"
+                    onClick={() => setPurgeConfirmOpen(true)}
+                    disabled={purgeAllAgendas.isPending}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {t("history.purgeAllButton")}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <CardTitle>
@@ -263,6 +307,30 @@ const HistoryPanel = () => {
             <AlertDialogCancel>{t("common.cancel") || "Cancelar"}</AlertDialogCancel>
             <AlertDialogAction onClick={() => confirmCopy && handleCopy(confirmCopy.entry)}>
               {t("history.copyToCurrent")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={purgeConfirmOpen} onOpenChange={setPurgeConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("history.purgeAllTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("history.purgeAllDescription")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={purgeAllAgendas.isPending}>
+              {t("common.cancel") || "Cancelar"}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={purgeAllAgendas.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                void handlePurgeAll();
+              }}
+            >
+              {t("history.purgeAllButton")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

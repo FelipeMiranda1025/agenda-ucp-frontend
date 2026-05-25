@@ -53,6 +53,30 @@ const translations: Record<string, Record<Language, string>> = {
   "history.recordsCount": { es: "Registros", en: "Records" },
   "history.actions": { es: "Acciones", en: "Actions" },
   "history.you": { es: "Yo", en: "Me" },
+  "history.purgeAllButton": {
+    es: "Eliminar todas las agendas de prueba",
+    en: "Delete all test agendas",
+  },
+  "history.purgeAllTitle": {
+    es: "¿Eliminar todas las agendas del semestre actual?",
+    en: "Delete all agendas for the current semester?",
+  },
+  "history.purgeAllDescription": {
+    es: "Se borrarán permanentemente todas las agendas enviadas (pendientes, aprobadas y devueltas), sus comentarios y registros asociados. Los semestres archivados no se modifican. Use solo para limpiar datos de prueba.",
+    en: "All submitted agendas (pending, approved, and returned), their comments, and related records will be permanently deleted. Archived semesters are not affected. Use only to clear test data.",
+  },
+  "history.purgeAllSuccess": {
+    es: "Se eliminaron {count} agenda(s) del sistema",
+    en: "{count} agenda(s) were removed from the system",
+  },
+  "history.purgeAllError": {
+    es: "No se pudieron eliminar las agendas",
+    en: "Could not delete agendas",
+  },
+  "history.qaSection": {
+    es: "Limpieza de datos de prueba (Vicerrector)",
+    en: "Test data cleanup (Vice-Rector)",
+  },
   "common.back": { es: "Volver", en: "Back" },
 
   // System shutdown / new semester
