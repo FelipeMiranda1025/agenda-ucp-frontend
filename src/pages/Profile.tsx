@@ -8,14 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Pencil, Save, X, KeyRound, Settings } from "lucide-react";
+import { ArrowLeft, Calendar, Pencil, Save, X, KeyRound, Settings } from "lucide-react";
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog";
 import { LineamientosImportSection } from "@/components/LineamientosImportSection";
 import { ROLES, STATUSES } from "@/types/auth";
 import { toast } from "sonner";
+import { useAgendaView } from "@/hooks/useDatabase";
+import { canAccessScheduleDistribution } from "@/lib/agendaScheduleAccess";
+import { hasScheduleInStorage } from "@/lib/scheduleStorage";
 
 const Profile = () => {
-  const { user, roleName } = useAuth();
+  const { user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
@@ -27,7 +30,12 @@ const Profile = () => {
   const roleLabel = ROLES.find((r) => r.id === user.rolId)?.name || "";
   const statusLabel = STATUSES.find((s) => s.id === user.statusId)?.name || "";
 
-  const isSupport = user.rolId === 4;
+  const isVicerrector = user.rolId === 4;
+  const { data: ownAgendaView, isLoading: loadingAgendaView } = useAgendaView(user.id);
+  const scheduleAccess = canAccessScheduleDistribution(ownAgendaView, user.rolId);
+  const agendaApproved = ownAgendaView?.status === "approved";
+  const scheduleReady = hasScheduleInStorage(user.id);
+  const showScheduleCard = agendaApproved && scheduleAccess && !loadingAgendaView;
 
   const handleSave = () => {
     toast.success(t("profilePage.updated"));
@@ -35,8 +43,8 @@ const Profile = () => {
   };
 
   const fields = [
-    { label: t("profilePage.cedula"), key: "id", disabled: !isSupport },
-    { label: t("profilePage.email"), key: "email", disabled: !isSupport },
+    { label: t("profilePage.cedula"), key: "id", disabled: !isVicerrector },
+    { label: t("profilePage.email"), key: "email", disabled: !isVicerrector },
     { label: t("profilePage.firstName"), key: "firstName", disabled: false },
     { label: t("profilePage.secondName"), key: "secondName", disabled: false },
     { label: t("profilePage.firstLastName"), key: "firstLastName", disabled: false },
@@ -56,7 +64,7 @@ const Profile = () => {
         <Tabs defaultValue="info" className="space-y-6">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="info">Información Personal</TabsTrigger>
-            {isSupport && (
+            {isVicerrector && (
               <TabsTrigger value="settings" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
                 {t("profile.settings")}
@@ -64,7 +72,34 @@ const Profile = () => {
             )}
           </TabsList>
 
-          <TabsContent value="info">
+          <TabsContent value="info" className="space-y-6">
+            {showScheduleCard && (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    {t("profilePage.scheduleSection")}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <p className="text-sm text-muted-foreground">
+                    {scheduleReady
+                      ? t("profilePage.scheduleReady")
+                      : t("profilePage.schedulePending")}
+                  </p>
+                  <Button
+                    className="shrink-0 gap-2"
+                    onClick={() => navigate("/schedule")}
+                  >
+                    <Calendar className="h-4 w-4" />
+                    {scheduleReady
+                      ? t("profilePage.viewSchedule")
+                      : t("profilePage.openSchedule")}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader className="flex flex-row items-start justify-between">
                 <CardTitle className="text-xl">{t("profilePage.userInfo")}</CardTitle>
@@ -123,7 +158,7 @@ const Profile = () => {
                     ))}
                     <div className="space-y-1.5">
                       <Label className="text-sm font-medium text-muted-foreground">{t("profilePage.role")}</Label>
-                      {editing && isSupport ? (
+                      {editing && isVicerrector ? (
                          <Input
                            value={form.rolId}
                            onChange={(e) => setForm((p: any) => ({ ...p, rolId: Number(e.target.value) }))}
@@ -135,7 +170,7 @@ const Profile = () => {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-sm font-medium text-muted-foreground">{t("profilePage.status")}</Label>
-                      {editing && isSupport ? (
+                      {editing && isVicerrector ? (
                          <Input
                            value={form.statusId}
                            onChange={(e) => setForm((p: any) => ({ ...p, statusId: Number(e.target.value) }))}
@@ -151,7 +186,7 @@ const Profile = () => {
             </Card>
           </TabsContent>
 
-          {isSupport && (
+          {isVicerrector && (
             <TabsContent value="settings">
               <LineamientosImportSection />
             </TabsContent>

@@ -253,6 +253,26 @@ const translations: Record<string, Record<Language, string>> = {
   "profilePage.validate": { es: "Validar", en: "Validate" },
   "profilePage.cancel": { es: "Cancelar", en: "Cancel" },
   "profilePage.step": { es: "Paso {n} de 2", en: "Step {n} of 2" },
+  "profilePage.scheduleSection": {
+    es: "Distribución horaria",
+    en: "Schedule distribution",
+  },
+  "profilePage.scheduleReady": {
+    es: "Su agenda está aprobada y ya tiene horario guardado. Puede revisarlo o modificarlo.",
+    en: "Your agenda is approved and your schedule is saved. You can review or edit it.",
+  },
+  "profilePage.schedulePending": {
+    es: "Su agenda está aprobada. Puede diligenciar la distribución horaria semanal.",
+    en: "Your agenda is approved. You can complete your weekly schedule distribution.",
+  },
+  "profilePage.openSchedule": {
+    es: "Diligenciar distribución horaria",
+    en: "Complete schedule distribution",
+  },
+  "profilePage.viewSchedule": {
+    es: "Ver distribución horaria",
+    en: "View schedule distribution",
+  },
 
   // Validation toasts
   "validation.16hours": { es: "El docente debe cumplir exactamente 16 horas semanales de Docencia Directa. Actualmente tiene {hours} horas.", en: "The teacher must complete exactly 16 weekly hours of Direct Teaching. Currently has {hours} hours." },

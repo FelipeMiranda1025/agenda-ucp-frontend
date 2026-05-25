@@ -10,6 +10,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useSystemEnabled } from "@/hooks/useSystemEnabled";
 import { useActiveLineamientos } from "@/hooks/useActiveLineamientos";
 import { canAccessScheduleDistribution } from "@/lib/agendaScheduleAccess";
+import {
+  clearSchedulesFromStorage,
+  loadSchedulesFromStorage,
+  saveScheduleToStorage,
+} from "@/lib/scheduleStorage";
 
 export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, roleName } = useAuth();
@@ -73,7 +78,9 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const [dropdownOptions, setDropdownOptions] = useState<DropdownOption[]>(initialDropdownOptions);
   const [recordsByDocente, setRecordsByDocente] = useState<{ [docenteId: string]: AgendaRecord[] }>({});
-  const [scheduleByDocente, setScheduleByDocente] = useState<{ [docenteId: string]: ScheduleData }>({});
+  const [scheduleByDocente, setScheduleByDocente] = useState<{ [docenteId: string]: ScheduleData }>(
+    () => loadSchedulesFromStorage()
+  );
   const [horasSemestreDefecto, setHorasSemestreDefecto] = useState(920);
 
   // Update semester hours when lineamientos change
@@ -291,14 +298,13 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.warn("[AgendaContext] saveSchedule blocked: cannot modify another user's agenda");
       return;
     }
-    setScheduleByDocente((prev) => ({
-      ...prev,
-      [docenteId]: {
-        docenteId,
-        blocks,
-        lastModified: new Date().toISOString(),
-      },
-    }));
+    const next: ScheduleData = {
+      docenteId,
+      blocks,
+      lastModified: new Date().toISOString(),
+    };
+    setScheduleByDocente((prev) => ({ ...prev, [docenteId]: next }));
+    saveScheduleToStorage(docenteId, next);
   }, [docenteId, user, canSupervisorEditSubordinate]);
 
   const getSchedule = useCallback(() => {
@@ -355,6 +361,7 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       console.log("[AgendaContext] Nuevo semestre detectado: limpiando memoria local.");
       setRecordsByDocente({});
       setScheduleByDocente({});
+      clearSchedulesFromStorage();
       setHasPendingAgendaView(false);
       // Re-cargar (encontrará 0 registros para el nuevo semestre)
       if (docenteId) loadFromAgendaView();
