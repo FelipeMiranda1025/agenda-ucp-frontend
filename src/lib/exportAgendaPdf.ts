@@ -85,7 +85,7 @@ function buildAgendaPdfDocument(args: ExportPdfArgs): jsPDF {
 
   doc.setFontSize(16);
   doc.setFont("helvetica", "bold");
-  doc.text("AGENDA SEMESTRAL DE TRABAJO", 105, y, { align: "center" });
+  doc.text("Agenda Docente - UCP", 105, y, { align: "center" });
   y += 10;
 
   doc.setFontSize(10);
