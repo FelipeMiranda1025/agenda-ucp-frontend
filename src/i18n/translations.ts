@@ -144,33 +144,41 @@ const translations: Record<string, Record<Language, string>> = {
     es: "Agenda en revisión. Los formularios están bloqueados hasta que un supervisor retorne o finalice el proceso.",
     en: "Agenda under review. Forms are locked until a supervisor returns it or the process is complete.",
   },
+  "summary.agendaSentToDecano": {
+    es: "Agenda enviada a la decanatura del programa para su aprobación.",
+    en: "Agenda sent to the program dean's office for approval.",
+  },
+  "summary.agendaSentToVicerrector": {
+    es: "Agenda enviada a la Vicerrectoría Académica para su aprobación.",
+    en: "Agenda sent to the Academic Vice-Rector's office for approval.",
+  },
+  "summary.agendaSentToDirector": {
+    es: "Agenda enviada al director de programa para su aprobación.",
+    en: "Agenda sent to the program director for approval.",
+  },
+  "summary.agendaSentForReview": {
+    es: "Agenda guardada y enviada para revisión.",
+    en: "Agenda saved and sent for review.",
+  },
   "summary.amendHintDirector": {
-    es: "Agenda aprobada. Puede modificar los registros y reenviar la agenda al decano de facultad para su aprobación.",
-    en: "Approved agenda. You may edit records and resubmit the agenda to the faculty dean for approval.",
+    es: "Agenda aprobada. Puede modificar los registros y reenviar la agenda a la decanatura del programa.",
+    en: "Approved agenda. You may edit records and resubmit the agenda to the program dean's office.",
   },
   "summary.amendHintDecano": {
-    es: "Agenda aprobada. Puede modificar los registros y reenviar la agenda a Vicerrectoría Académica para su aprobación.",
-    en: "Approved agenda. You may edit records and resubmit the agenda to the Academic Vice-Rector's office for approval.",
+    es: "Agenda aprobada. Puede modificar los registros y reenviar la agenda a Vicerrectoría Académica.",
+    en: "Approved agenda. You may edit records and resubmit the agenda to the Academic Vice-Rector's office.",
   },
   "summary.amendSubmitDirector": {
-    es: "Guardar modificación y enviar al decano",
-    en: "Save amendment and send to dean",
+    es: "Guardar modificación y enviar a decanatura",
+    en: "Save amendment and send to program dean's office",
   },
   "summary.amendSubmitDecano": {
     es: "Guardar modificación y enviar a Vicerrectoría",
     en: "Save amendment and send to Vice-Rector's office",
   },
-  "summary.amendSuccessDirector": {
-    es: "Modificación guardada. La agenda quedó pendiente de aprobación por el decano de facultad.",
-    en: "Amendment saved. The agenda is pending approval by the faculty dean.",
-  },
-  "summary.amendSuccessDecano": {
-    es: "Modificación guardada. La agenda quedó pendiente de aprobación por Vicerrectoría Académica.",
-    en: "Amendment saved. The agenda is pending approval by the Academic Vice-Rector's office.",
-  },
   "summary.reviewDisabledDecanoPending": {
-    es: "Modificación enviada. En espera de aprobación del decano de facultad.",
-    en: "Amendment submitted. Awaiting approval by the faculty dean.",
+    es: "Agenda enviada a la decanatura del programa. En espera de su aprobación.",
+    en: "Agenda sent to the program dean's office. Awaiting approval.",
   },
   "summary.reviewDisabledVicerrectorPending": {
     es: "Modificación enviada. En espera de aprobación de Vicerrectoría Académica.",

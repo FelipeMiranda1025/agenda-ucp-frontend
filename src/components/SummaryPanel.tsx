@@ -18,6 +18,7 @@ import { DownloadAgendasDialog } from "@/components/DownloadAgendasDialog";
 import { getDocenteFullName } from "@/types/docentePlanta";
 import { useActiveLineamientos } from "@/hooks/useActiveLineamientos";
 import type { DbAgendaView } from "@/types/database";
+import { agendaSentForReviewToastMessage } from "@/lib/agendaReviewMessages";
 
 function approveToastMessage(view: DbAgendaView, t: (key: string) => string): string {
   if (view.status === "approved") {
@@ -34,7 +35,7 @@ function approveToastMessage(view: DbAgendaView, t: (key: string) => string): st
 
 export function SummaryPanel() {
   const { records, metricas, horasSemestreDefecto, setHorasSemestreDefecto, setActiveSubfunction, setEditingRecord, deleteRecord, selectedDocente, setSelectedDocente, docentesList, loadFromAgendaView, isAgendaReadOnly, getSchedule, canSupervisorReviewSubordinate, canSupervisorAmendApprovedAgenda } = useAgenda();
-  const { user } = useAuth();
+  const { user, roleName } = useAuth();
   const { t, language } = useLanguage();
   const navigate = useNavigate();
   const insertComment = useInsertAgendaComment();
@@ -102,6 +103,7 @@ export function SummaryPanel() {
         if (saved?.id) {
           localStorage.removeItem(`read_pending_${saved.id}`);
         }
+        toast.success(agendaSentForReviewToastMessage(saved, t));
         setDialogVariant("success");
         setDialogOpen(true);
       } catch (err) {
@@ -174,14 +176,12 @@ export function SummaryPanel() {
       return;
     }
     try {
-      await upsertAgendaView.mutateAsync({
+      const saved = await upsertAgendaView.mutateAsync({
         userCc: subordinateCc,
         records: records.map((r) => ({ ...r })),
         status: "pending",
       });
-      toast.success(
-        user.rolId === 3 ? t("summary.amendSuccessDecano") : t("summary.amendSuccessDirector")
-      );
+      toast.success(agendaSentForReviewToastMessage(saved, t));
       setSelectedDocente(docentesList[0] ?? null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al guardar la modificación";
@@ -377,7 +377,9 @@ export function SummaryPanel() {
         {isReviewingSubordinate && canSupervisorAmendApprovedAgenda ? (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground text-center">
-              {user?.rolId === 3 ? t("summary.amendHintDecano") : t("summary.amendHintDirector")}
+              {roleName === "DecanoFacultad"
+                ? t("summary.amendHintDecano")
+                : t("summary.amendHintDirector")}
             </p>
             <Button
               onClick={handleAmendApproved}
@@ -385,7 +387,9 @@ export function SummaryPanel() {
               className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50"
             >
               <CheckCircle className="h-4 w-4" />
-              {user?.rolId === 3 ? t("summary.amendSubmitDecano") : t("summary.amendSubmitDirector")}
+              {roleName === "DecanoFacultad"
+                ? t("summary.amendSubmitDecano")
+                : t("summary.amendSubmitDirector")}
             </Button>
           </div>
         ) : isReviewingSubordinate ? (
