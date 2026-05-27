@@ -56,7 +56,8 @@ export function useDashboardData() {
   return useQuery<DashboardData>({
     queryKey: ["dashboard-data"],
     queryFn: async () => {
-      const [views, users, faculties, careers] = await Promise.all([
+      const [agendasRaw, views, users, faculties, careers] = await Promise.all([
+        api.get<DashboardAgenda[]>("/agendas?limit=10000"),
         api.get<DashboardAgendaView[]>("/agenda-views?all=true&limit=10000"),
         api.get<DashboardUser[]>("/users?rols=1,2,3&id_state=1"),
         api.get<DashboardFaculty[]>("/faculties"),
@@ -78,8 +79,10 @@ export function useDashboardData() {
       });
 
       const agendas: DashboardAgenda[] = [];
+      const ccsBuiltFromViews = new Set<string>();
       latestViewByCc.forEach((view) => {
         const records = Array.isArray(view.records) ? view.records : [];
+        if (records.length > 0) ccsBuiltFromViews.add(view.user_cc);
         records.forEach((record: any) => {
           const totalHoras =
             Number(record?.totalHoras ?? record?.total_horas ?? 0) || 0;
@@ -92,6 +95,14 @@ export function useDashboardData() {
             created_at: String(record?.createdAt ?? record?.created_at ?? view.created_at),
           });
         });
+      });
+
+      // Fallback for users whose latest agenda_view has no records (or no agenda_view):
+      // use legacy rows from public.agendas so dashboard does not show false zeros.
+      agendasRaw.forEach((row) => {
+        if (!usersByCc.has(row.docente_cc)) return;
+        if (ccsBuiltFromViews.has(row.docente_cc)) return;
+        agendas.push(row);
       });
 
       return { agendas, views, users, faculties, careers };
