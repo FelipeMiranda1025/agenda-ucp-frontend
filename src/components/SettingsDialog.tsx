@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import {
 } from "@/hooks/useRecommendationRules";
 import { Loader2, RotateCcw, Save, Eye, EyeOff, Plus, X } from "lucide-react";
 import { LineamientosImportSection } from "@/components/LineamientosImportSection";
+import { useLineamientosHistory } from "@/hooks/useLineamientosImport";
 
 interface Props {
   open: boolean;
@@ -33,6 +34,7 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
   const resetRules = useResetRecommendationRules();
   const toggleActive = useToggleRecommendationRuleActive();
   const createRule = useCreateRecommendationRule();
+  const history = useLineamientosHistory();
 
   const [edits, setEdits] = useState<Edits>({});
   const [showInactive, setShowInactive] = useState(false);
@@ -58,6 +60,23 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
     administrativas: rules?.filter(r => r.category === "administrativas") ?? [],
     formacion: rules?.filter(r => r.category === "formacion") ?? [],
   };
+
+  const hasManualNumericEdits = useMemo(() => {
+    if (!rules?.length) return false;
+    return rules.some(r => {
+      const e = edits[r.id];
+      if (!e) return false;
+      return Number(e.hours) !== Number(r.hours) || Number(e.subjects) !== Number(r.subjects);
+    });
+  }, [rules, edits]);
+
+  const hasValidUploadedLineamientos = useMemo(() => {
+    const docs = history.data ?? [];
+    return docs.some(d => (d.rules_extracted?.length ?? 0) > 0);
+  }, [history.data]);
+
+  // Buttons must be available only after valid PDF load or when user is manually editing/adding.
+  const canUsePersistenceButtons = hasValidUploadedLineamientos || hasManualNumericEdits || addingFor !== null;
 
   const updateEdit = (id: string, field: "hours" | "subjects", value: number) => {
     setEdits(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
@@ -313,7 +332,7 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
           <Button
             variant="outline"
             onClick={handleReset}
-            disabled={resetRules.isPending || bulkSave.isPending}
+            disabled={!canUsePersistenceButtons || resetRules.isPending || bulkSave.isPending}
             className="gap-2"
           >
             <RotateCcw className="h-4 w-4" />
@@ -321,7 +340,7 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
           </Button>
           <Button
             onClick={handleSaveAll}
-            disabled={bulkSave.isPending}
+            disabled={!canUsePersistenceButtons || bulkSave.isPending}
             className="gap-2"
           >
             {bulkSave.isPending ? (
