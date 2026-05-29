@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { toast } from "@/hooks/use-toast";
@@ -26,7 +26,11 @@ const categoryLabel = (c: ExtractedRule["category"], t: (k: string) => string) =
   return t("settings.formacion");
 };
 
-export function LineamientosImportSection() {
+interface LineamientosImportSectionProps {
+  onValidImportContextChange?: (enabled: boolean) => void;
+}
+
+export function LineamientosImportSection({ onValidImportContextChange }: LineamientosImportSectionProps) {
   const { t } = useLanguage();
   const { user } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -131,6 +135,12 @@ export function LineamientosImportSection() {
     (acc[rule.category] ||= []).push({ rule, idx });
     return acc;
   }, {});
+
+  useEffect(() => {
+    // "Documento con lineamientos válidos" only after successful processing.
+    const enabled = phase === "preview" || phase === "applied";
+    onValidImportContextChange?.(enabled);
+  }, [phase, onValidImportContextChange]);
 
   return (
     <div className="space-y-3 rounded-lg border-2 border-primary/30 bg-primary/5 p-4">

@@ -17,7 +17,6 @@ import {
 } from "@/hooks/useRecommendationRules";
 import { Loader2, RotateCcw, Save, Eye, EyeOff, Plus, X } from "lucide-react";
 import { LineamientosImportSection } from "@/components/LineamientosImportSection";
-import { useLineamientosHistory } from "@/hooks/useLineamientosImport";
 
 interface Props {
   open: boolean;
@@ -34,13 +33,13 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
   const resetRules = useResetRecommendationRules();
   const toggleActive = useToggleRecommendationRuleActive();
   const createRule = useCreateRecommendationRule();
-  const history = useLineamientosHistory();
 
   const [edits, setEdits] = useState<Edits>({});
   const [showInactive, setShowInactive] = useState(false);
   const [activeTab, setActiveTab] = useState<Category>("investigacion");
   const [addingFor, setAddingFor] = useState<Category | null>(null);
   const [newRule, setNewRule] = useState({ label: "", hours: 0, subjects: 0 });
+  const [hasValidImportContext, setHasValidImportContext] = useState(false);
   useEffect(() => {
     if (open) void refetch();
   }, [open, refetch]);
@@ -70,13 +69,9 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
     });
   }, [rules, edits]);
 
-  const hasValidUploadedLineamientos = useMemo(() => {
-    const docs = history.data ?? [];
-    return docs.some(d => (d.rules_extracted?.length ?? 0) > 0);
-  }, [history.data]);
-
-  // Buttons must be available only after valid PDF load or when user is manually editing/adding.
-  const canUsePersistenceButtons = hasValidUploadedLineamientos || hasManualNumericEdits || addingFor !== null;
+  // Buttons must be available only after a valid import in current session
+  // or when user is manually editing/adding.
+  const canUsePersistenceButtons = hasValidImportContext || hasManualNumericEdits || addingFor !== null;
 
   const updateEdit = (id: string, field: "hours" | "subjects", value: number) => {
     setEdits(prev => ({ ...prev, [id]: { ...prev[id], [field]: value } }));
@@ -298,7 +293,7 @@ export function SettingsDialog({ open, onOpenChange }: Props) {
 
         <div className="flex-1 min-h-0 overflow-y-auto px-6">
           <div className="space-y-6 pb-28">
-            <LineamientosImportSection />
+            <LineamientosImportSection onValidImportContextChange={setHasValidImportContext} />
 
             <div className="space-y-2">
               <h3 className="text-sm font-semibold">{t("settings.manualEditTitle")}</h3>
