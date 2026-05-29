@@ -416,13 +416,14 @@ export const AgendaProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       .reduce((sum, r) => sum + r.totalHoras, 0);
 
     const total = totalProd + totalAct;
+    const semesterWeeks = lineamientos?.semanasSemestre ?? 23;
     return {
       totalHorasSemestrales: total,
-      promedioHorasSemana: total / 18,
+      promedioHorasSemana: total / semesterWeeks,
       horasSemestreDefecto,
       horasFaltantes: horasSemestreDefecto - total,
     };
-  }, [records, horasSemestreDefecto]);
+  }, [records, horasSemestreDefecto, lineamientos?.semanasSemestre]);
 
   return (
     <AgendaContext.Provider
