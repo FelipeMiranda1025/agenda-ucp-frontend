@@ -1,89 +1,92 @@
-# Sistema de Agenda Docente — UCP (Frontend)
+# Sistema de Agenda Docente — UCP
 
-Aplicación web React + Vite + TypeScript para la gestión de agendas y
-distribución horaria de docentes de planta de la Universidad Católica de
-Pereira.
+Aplicación web para la gestión de agendas y distribución horaria de docentes de planta de la Universidad Católica de Pereira.
 
-> ⚠️ Este repositorio contiene **únicamente el frontend**.
-> El backend Express + PostgreSQL vive en un repositorio independiente:
-> **`agenda-ucp-backend`**.
+El sistema permite registrar, gestionar, revisar y aprobar las agendas docentes, centralizando el proceso y facilitando el seguimiento de las actividades y horas asignadas.
 
-## Stack
+> Este repositorio contiene el **frontend** de la aplicación.
+> El backend desarrollado con Express + PostgreSQL se encuentra en un repositorio independiente: **`agenda-ucp-backend`**.
 
-- React 18 + Vite 5 + TypeScript 5
-- Tailwind CSS v3 + shadcn/ui
-- React Router + React Query
-- Cliente HTTP propio (`src/lib/api.ts`) que apunta a `VITE_API_URL`
+## Funcionalidades principales
 
-## Requisitos
+- Autenticación y gestión de usuarios.
+- Gestión de agendas docentes.
+- Registro y distribución de actividades y horas.
+- Consulta y seguimiento de agendas.
+- Flujo de revisión y aprobación.
+- Gestión de comentarios y observaciones.
+- Visualización de información según el rol del usuario.
+- Registro de actividades y trazabilidad.
+- Generación de reportes.
+- Gestión de configuraciones y lineamientos.
+- Integración con servicios de inteligencia artificial para el procesamiento de documentos PDF y extracción de lineamientos.
 
-- Node.js 20+
-- npm 10+
-- Backend `agenda-ucp-backend` corriendo (por defecto en `http://localhost:4000`)
+## Capturas del sistema
 
-## Puesta en marcha (desarrollo)
+> Próximamente se agregarán capturas de las principales funcionalidades de la aplicación.
 
-```bash
-# 1. Instalar dependencias
-npm install
+## Stack tecnológico
 
-# 2. Configurar variables
-cp .env.example .env
-# Edita .env y ajusta VITE_API_URL si tu backend no está en localhost:4000
+### Frontend
 
-# 3. Levantar Vite
-npm run dev
-```
+- React 18
+- Vite 5
+- TypeScript 5
+- Tailwind CSS v3
+- shadcn/ui
+- React Router
+- React Query
 
-La aplicación queda disponible en `http://localhost:5173`.
+### Backend
 
-## Build de producción
+- Node.js
+- Express
+- TypeScript
+- PostgreSQL
 
-```bash
-npm run build      # genera /dist
-npm run preview    # sirve /dist localmente para probar
-```
+### Infraestructura
 
-El bundle resultante (`dist/`) se sirve con cualquier servidor estático
-(Nginx, Caddy, S3, etc.). Si usas Nginx, recuerda:
+- Docker
+- Docker Compose
+- Render
 
-1. Habilitar SPA fallback (`try_files $uri /index.html;`).
-2. Configurar proxy de `/api/` hacia el backend Express.
+### Inteligencia artificial
 
-Ver `frontend/Dockerfile` y `frontend/nginx.conf` como referencia.
+- Google Gemini API
 
-## Despliegue con Docker
+### Control de versiones
 
-```bash
-docker build -f frontend/Dockerfile \
-  --build-arg VITE_API_URL=http://<IP-BACKEND>:4000/api \
-  -t agenda-ucp-frontend .
+- Git
+- GitHub
 
-docker run -d -p 80:80 --name agenda-frontend agenda-ucp-frontend
-```
+## Arquitectura
 
-## Pruebas
+La aplicación utiliza una arquitectura separada de frontend y backend.
 
-```bash
-npm run test       # vitest
-```
+El frontend desarrollado con React se comunica con el backend mediante una API REST. El backend implementa la lógica de negocio y gestiona la persistencia de información en PostgreSQL.
 
-## Estructura
-
-```
-src/
-├── components/      Componentes UI (incluye shadcn en components/ui)
-├── context/         AuthContext, AgendaContext
-├── hooks/           Hooks de dominio (agenda, recomendaciones, etc.)
-├── i18n/            Sistema ES/EN
-├── lib/api.ts       Cliente HTTP central → VITE_API_URL
-├── pages/           Rutas
-└── types/           Tipados de dominio
-```
-
-## Backend asociado
-
-Repositorio: `agenda-ucp-backend`
-Endpoints expuestos bajo `/api`: `auth`, `catalogs`, `subjects`, `users`,
-`agendas`, `agendaViews`, `agendaComments`, `userHierarchy`, `auditLog`,
-`docenteConfig`, `recommendationRules`, `systemSettings`, `upload`, `health`.
+```text
+                    ┌─────────────────────┐
+                    │       Usuario       │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │      Frontend       │
+                    │ React + TypeScript  │
+                    │       + Vite        │
+                    └──────────┬──────────┘
+                               │
+                            API REST
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │       Backend       │
+                    │ Node.js + Express   │
+                    │     + TypeScript    │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                    ┌─────────────────────┐
+                    │     PostgreSQL      │
+                    └─────────────────────┘
