@@ -23,7 +23,35 @@ El sistema permite registrar, gestionar, revisar y aprobar las agendas docentes,
 
 ## Capturas del sistema
 
-> Próximamente se agregarán capturas de las principales funcionalidades de la aplicación.
+### Inicio de sesión
+
+Pantalla de acceso al Sistema de Gestión de Agenda Docente.
+
+![Inicio de sesión](docs/screenshots/login.jpeg)
+
+### Gestión de agenda
+
+Pantalla principal para la selección del formulario y el registro de las actividades docentes.
+
+![Gestión de agenda](docs/screenshots/agenda.jpeg)
+
+### Resumen de datos
+
+Panel de resumen de la distribución horaria y las horas registradas en la agenda.
+
+![Resumen de datos](docs/screenshots/resumen.jpeg)
+
+### Perfil del usuario
+
+Información del usuario, rol y configuración del perfil dentro del sistema.
+
+![Perfil del usuario](docs/screenshots/perfil.jpeg)
+
+### Gestión de lineamientos con IA
+
+Módulo para importar documentos PDF de lineamientos institucionales. El sistema utiliza inteligencia artificial para extraer las reglas del documento y permite revisarlas y modificarlas antes de aplicarlas.
+
+![Gestión de lineamientos con IA](docs/screenshots/lineamientos.jpeg)
 
 ## Stack tecnológico
 
